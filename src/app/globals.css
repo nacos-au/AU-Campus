@@ -1,0 +1,112 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #ffffff;
+  --wrapper: #faf9fa;
+  --ink: #121212;
+  --accent: #7a1f2b;
+  --brand-green: #004e28;
+  --brand-green-deep: #001f10;
+  --brand-green-shade: #003d20;
+  --brand-green-mid: #006338;
+  --brand-green-bright: #007842;
+  --rule: #e8e8e8;
+  --surface: #f5f5f5;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-wrapper: var(--wrapper);
+  --color-ink: var(--ink);
+  --color-accent: var(--accent);
+  --color-rule: var(--rule);
+  --color-surface: var(--surface);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+body {
+  background: #ffffff;
+  color: #7a1f2b;
+  font-family: var(--font-body), system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: var(--font-display), system-ui, sans-serif;
+}
+
+/* Active page content — all text oxblood */
+.page-content {
+  color: var(--accent);
+}
+
+.page-content a {
+  color: var(--accent);
+}
+
+.page-content button {
+  color: var(--accent);
+}
+
+/* Filter bar — PL-style exceptions */
+.page-content .filters-bar-reset-label {
+  color: #888888;
+}
+
+/* Branded section — all greens from #004E28, no blue */
+.branded-hero {
+  background: linear-gradient(
+    90deg,
+    var(--brand-green-deep) 0%,
+    var(--brand-green-shade) 20%,
+    var(--brand-green) 45%,
+    var(--brand-green-mid) 75%,
+    var(--brand-green-bright) 100%
+  );
+}
+
+.branded-hero-pattern {
+  position: absolute;
+  inset: 0;
+  opacity: 0.35;
+  background: repeating-linear-gradient(
+    -55deg,
+    transparent,
+    transparent 40px,
+    rgba(255, 255, 255, 0.06) 40px,
+    rgba(255, 255, 255, 0.06) 80px
+  );
+}
+
+.branded-sport-nav {
+  background: var(--brand-green);
+}
+
+.bg-wrapper {
+  background-color: var(--wrapper);
+}
+
+/* Table card — white box on wrapper */
+.table-card {
+  background: var(--paper);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.table-card tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.table-card tbody tr:hover {
+  background-color: var(--wrapper);
+}
+
+.scroll-snap-x {
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scroll-snap-x > * {
+  scroll-snap-align: start;
+}
