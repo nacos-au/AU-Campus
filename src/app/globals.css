@@ -65,19 +65,6 @@ body {
   );
 }
 
-.branded-hero-pattern {
-  position: absolute;
-  inset: 0;
-  opacity: 0.35;
-  background: repeating-linear-gradient(
-    -55deg,
-    transparent,
-    transparent 40px,
-    rgba(255, 255, 255, 0.06) 40px,
-    rgba(255, 255, 255, 0.06) 80px
-  );
-}
-
 .branded-sport-nav {
   background: var(--brand-green);
 }

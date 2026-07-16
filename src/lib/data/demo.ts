@@ -7,10 +7,14 @@ import type {
   Team,
   Tournament,
 } from "@/lib/types/database";
-import { logoForSportId, PLAYER_AVATAR } from "@/lib/utils/sport-assets";
+import { logoForSportId, playerAvatarForId } from "@/lib/utils/sport-assets";
 
 function teamLogo(sportId: string) {
   return logoForSportId(sportId);
+}
+
+function playerAvatar(playerId: string) {
+  return playerAvatarForId(playerId);
 }
 
 export const DEMO_DEPARTMENTS: Department[] = [
@@ -61,21 +65,21 @@ export const DEMO_TOURNAMENT: Tournament = {
 };
 
 export const DEMO_PLAYERS: Player[] = [
-  { id: "pl-1", department_id: "dept-csc", first_name: "Adaeze", last_name: "Okonkwo", matric_number: "AU/CS/2022/0142", avatar_url: PLAYER_AVATAR, position: "Forward" },
-  { id: "pl-2", department_id: "dept-csc", first_name: "Chidi", last_name: "Eze", matric_number: "AU/CS/2021/0089", avatar_url: PLAYER_AVATAR, position: "Midfielder" },
-  { id: "pl-3", department_id: "dept-csc", first_name: "Ngozi", last_name: "Adeyemi", matric_number: "AU/CS/2023/0201", avatar_url: PLAYER_AVATAR, position: "Goalkeeper" },
-  { id: "pl-4", department_id: "dept-mec", first_name: "Tunde", last_name: "Bakare", matric_number: "AU/ME/2022/0067", avatar_url: PLAYER_AVATAR, position: "Forward" },
-  { id: "pl-5", department_id: "dept-mec", first_name: "Fatima", last_name: "Ibrahim", matric_number: "AU/ME/2021/0034", avatar_url: PLAYER_AVATAR, position: "Defender" },
-  { id: "pl-6", department_id: "dept-eee", first_name: "Emeka", last_name: "Nwosu", matric_number: "AU/EE/2022/0118", avatar_url: PLAYER_AVATAR, position: "Midfielder" },
-  { id: "pl-7", department_id: "dept-bio", first_name: "Amina", last_name: "Bello", matric_number: "AU/BS/2023/0156", avatar_url: PLAYER_AVATAR, position: "Forward" },
-  { id: "pl-8", department_id: "dept-law", first_name: "Kelechi", last_name: "Okafor", matric_number: "AU/LW/2022/0078", avatar_url: PLAYER_AVATAR, position: "Defender" },
-  { id: "pl-9", department_id: "dept-med", first_name: "David", last_name: "Osei", matric_number: "AU/MD/2022/0091", avatar_url: PLAYER_AVATAR, position: "Guard" },
-  { id: "pl-10", department_id: "dept-csc", first_name: "Zainab", last_name: "Yusuf", matric_number: "AU/CS/2022/0178", avatar_url: PLAYER_AVATAR, position: "Singles" },
-  { id: "pl-11", department_id: "dept-mec", first_name: "James", last_name: "Adebola", matric_number: "AU/ME/2023/0045", avatar_url: PLAYER_AVATAR, position: "Sprinter" },
-  { id: "pl-12", department_id: "dept-bio", first_name: "Grace", last_name: "Etim", matric_number: "AU/BS/2022/0133", avatar_url: PLAYER_AVATAR, position: "Sprinter" },
-  { id: "pl-13", department_id: "dept-csc", first_name: "Chinwe", last_name: "Okafor", matric_number: "AU/CS/2022/0192", avatar_url: PLAYER_AVATAR, position: "Setter" },
-  { id: "pl-14", department_id: "dept-mec", first_name: "Ibrahim", last_name: "Musa", matric_number: "AU/ME/2023/0088", avatar_url: PLAYER_AVATAR, position: "Outside Hitter" },
-  { id: "pl-15", department_id: "dept-eee", first_name: "Blessing", last_name: "Udoh", matric_number: "AU/EE/2022/0144", avatar_url: PLAYER_AVATAR, position: "Middle Blocker" },
+  { id: "pl-1", department_id: "dept-csc", first_name: "Adaeze", last_name: "Okonkwo", matric_number: "AU/CS/2022/0142", avatar_url: playerAvatar("pl-1"), position: "Forward" },
+  { id: "pl-2", department_id: "dept-csc", first_name: "Chidi", last_name: "Eze", matric_number: "AU/CS/2021/0089", avatar_url: playerAvatar("pl-2"), position: "Midfielder" },
+  { id: "pl-3", department_id: "dept-csc", first_name: "Ngozi", last_name: "Adeyemi", matric_number: "AU/CS/2023/0201", avatar_url: playerAvatar("pl-3"), position: "Goalkeeper" },
+  { id: "pl-4", department_id: "dept-mec", first_name: "Tunde", last_name: "Bakare", matric_number: "AU/ME/2022/0067", avatar_url: playerAvatar("pl-4"), position: "Forward" },
+  { id: "pl-5", department_id: "dept-mec", first_name: "Fatima", last_name: "Ibrahim", matric_number: "AU/ME/2021/0034", avatar_url: playerAvatar("pl-5"), position: "Defender" },
+  { id: "pl-6", department_id: "dept-eee", first_name: "Emeka", last_name: "Nwosu", matric_number: "AU/EE/2022/0118", avatar_url: playerAvatar("pl-6"), position: "Midfielder" },
+  { id: "pl-7", department_id: "dept-bio", first_name: "Amina", last_name: "Bello", matric_number: "AU/BS/2023/0156", avatar_url: playerAvatar("pl-7"), position: "Forward" },
+  { id: "pl-8", department_id: "dept-law", first_name: "Kelechi", last_name: "Okafor", matric_number: "AU/LW/2022/0078", avatar_url: playerAvatar("pl-8"), position: "Defender" },
+  { id: "pl-9", department_id: "dept-med", first_name: "David", last_name: "Osei", matric_number: "AU/MD/2022/0091", avatar_url: playerAvatar("pl-9"), position: "Guard" },
+  { id: "pl-10", department_id: "dept-csc", first_name: "Zainab", last_name: "Yusuf", matric_number: "AU/CS/2022/0178", avatar_url: playerAvatar("pl-10"), position: "Singles" },
+  { id: "pl-11", department_id: "dept-mec", first_name: "James", last_name: "Adebola", matric_number: "AU/ME/2023/0045", avatar_url: playerAvatar("pl-11"), position: "Sprinter" },
+  { id: "pl-12", department_id: "dept-bio", first_name: "Grace", last_name: "Etim", matric_number: "AU/BS/2022/0133", avatar_url: playerAvatar("pl-12"), position: "Sprinter" },
+  { id: "pl-13", department_id: "dept-csc", first_name: "Chinwe", last_name: "Okafor", matric_number: "AU/CS/2022/0192", avatar_url: playerAvatar("pl-13"), position: "Setter" },
+  { id: "pl-14", department_id: "dept-mec", first_name: "Ibrahim", last_name: "Musa", matric_number: "AU/ME/2023/0088", avatar_url: playerAvatar("pl-14"), position: "Outside Hitter" },
+  { id: "pl-15", department_id: "dept-eee", first_name: "Blessing", last_name: "Udoh", matric_number: "AU/EE/2022/0144", avatar_url: playerAvatar("pl-15"), position: "Middle Blocker" },
 ];
 
 function team(id: string): Team {

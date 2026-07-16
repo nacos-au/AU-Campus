@@ -1,7 +1,7 @@
 import type { SportId } from "@/lib/utils/sport";
 import type { StandingRow } from "@/lib/types/database";
 import { TeamCrest } from "@/components/ui/team-crest";
-import { logoForSport, PLAYER_AVATAR } from "@/lib/utils/sport-assets";
+import { logoForSport, playerAvatarForId } from "@/lib/utils/sport-assets";
 import Link from "next/link";
 
 interface Column {
@@ -115,7 +115,7 @@ function TeamCell({ row, sport }: { row: StandingRow; sport: SportId }) {
 function AthleteCell({ row, sport }: { row: StandingRow; sport: SportId }) {
   return (
     <Link href={`/players/${row.team_id}?sport=${sport}`} className="flex items-center gap-2.5 hover:underline">
-      <TeamCrest code={row.short_code} logoUrl={row.logo_url ?? PLAYER_AVATAR} alt={row.team_name} size="sm" />
+      <TeamCrest code={row.short_code} logoUrl={row.logo_url ?? playerAvatarForId(row.team_id)} alt={row.team_name} size="sm" />
       <span className="font-display text-sm font-bold sm:text-base">{row.team_name}</span>
     </Link>
   );

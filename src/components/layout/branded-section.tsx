@@ -17,7 +17,6 @@ export function BrandedSection({
   return (
     <section className="branded-section">
       <div className="branded-hero relative overflow-hidden">
-        <div className="branded-hero-pattern" aria-hidden />
         <div className="relative mx-auto max-w-[1200px] px-4 py-8 sm:px-6 sm:py-10">
           <h1 className="font-display text-[32px] font-bold leading-none text-white sm:text-[40px]">
             {title}
