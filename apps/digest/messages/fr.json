@@ -1,0 +1,80 @@
+{
+  "nav": {
+    "home": "Accueil",
+    "editions": "Éditions imprimées",
+    "account": "Compte",
+    "admin": "Rédaction",
+    "signIn": "Se connecter",
+    "signOut": "Se déconnecter",
+    "subscribe": "Acheter le numéro de la semaine",
+    "subscribeShort": "Acheter"
+  },
+  "home": {
+    "latestNews": "Dernières nouvelles",
+    "topNews": "À la une",
+    "opinion": "Opinion",
+    "moreIn": "Plus dans",
+    "editionsPromo": "L'édition imprimée, en ligne",
+    "editionsPromoBody": "Chaque numéro du journal, page par page, tel qu'il a été imprimé. Achetez une fois, lisez pour toujours.",
+    "browseEditions": "Parcourir les éditions",
+    "advertisement": "Publicité",
+    "minRead": "{minutes} min de lecture",
+    "by": "Par {name}"
+  },
+  "editions": {
+    "title": "Éditions imprimées",
+    "subtitle": "Répliques numériques complètes du journal imprimé. Les numéros achetés se débloquent instantanément et restent dans votre compte.",
+    "buy": "Acheter · {price}",
+    "read": "Lire le numéro",
+    "owned": "Dans votre bibliothèque",
+    "signInToBuy": "Connectez-vous pour acheter",
+    "comingSoon": "Bientôt disponible"
+  },
+  "reader": {
+    "protectedNotice": "Cette édition est concédée à {email}. La copie, l'impression et la redistribution sont désactivées.",
+    "loading": "Préparation de votre édition sécurisée…",
+    "page": "Page {current} sur {total}",
+    "notAvailable": "Le fichier de cette édition n'a pas encore été téléversé."
+  },
+  "auth": {
+    "signIn": "Se connecter",
+    "signUp": "Créer un compte",
+    "email": "Adresse e-mail",
+    "password": "Mot de passe",
+    "displayName": "Nom complet",
+    "haveAccount": "Vous avez déjà un compte ?",
+    "noAccount": "Nouveau ici ?",
+    "signInCta": "Se connecter",
+    "signUpCta": "Créer un compte"
+  },
+  "account": {
+    "title": "Votre compte",
+    "library": "Votre bibliothèque",
+    "libraryEmpty": "Vous n'avez encore acheté aucune édition.",
+    "purchasedOn": "Acheté le {date}"
+  },
+  "footer": {
+    "rights": "Tous droits réservés.",
+    "tagline": "Le journal étudiant indépendant de {university}.",
+    "sections": "Rubriques",
+    "newsroom": "La Rédaction",
+    "editionsHeading": "Éditions",
+    "account": "Compte",
+    "follow": "Suivez-nous",
+    "about": "À propos",
+    "editorialBoard": "Comité de rédaction",
+    "join": "Rejoindre la rédaction",
+    "ethics": "Éthique et corrections",
+    "advertise": "Publicité",
+    "contact": "Contact",
+    "printEditions": "Éditions imprimées",
+    "latestIssue": "Dernier numéro",
+    "buyIssue": "Acheter un numéro",
+    "signIn": "Se connecter",
+    "createAccount": "Créer un compte",
+    "yourLibrary": "Votre bibliothèque",
+    "privacy": "Politique de confidentialité",
+    "terms": "Conditions d'utilisation",
+    "sitemap": "Plan du site"
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "nav": {
+    "home": "Home",
+    "editions": "Print Editions",
+    "account": "Account",
+    "admin": "Newsroom",
+    "signIn": "Sign in",
+    "signOut": "Sign out",
+    "subscribe": "Buy this week's issue",
+    "subscribeShort": "Buy edition"
+  },
+  "home": {
+    "latestNews": "Latest News",
+    "topNews": "Top News",
+    "opinion": "Opinion",
+    "moreIn": "More in",
+    "editionsPromo": "The Print Edition, Online",
+    "editionsPromoBody": "Every issue of the paper, page by page, exactly as it went to press. Buy once, read forever.",
+    "browseEditions": "Browse editions",
+    "advertisement": "Advertisement",
+    "minRead": "{minutes} min read",
+    "by": "By {name}"
+  },
+  "editions": {
+    "title": "Print Editions",
+    "subtitle": "Full digital replicas of the printed paper. Purchased issues unlock instantly and stay in your account.",
+    "buy": "Buy issue · {price}",
+    "read": "Read issue",
+    "owned": "In your library",
+    "signInToBuy": "Sign in to buy",
+    "comingSoon": "Coming soon"
+  },
+  "reader": {
+    "protectedNotice": "This edition is licensed to {email}. Copying, printing and redistribution are disabled.",
+    "loading": "Preparing your secure edition…",
+    "page": "Page {current} of {total}",
+    "notAvailable": "This edition's file has not been uploaded yet."
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signUp": "Create account",
+    "email": "Email address",
+    "password": "Password",
+    "displayName": "Full name",
+    "haveAccount": "Already have an account?",
+    "noAccount": "New here?",
+    "signInCta": "Sign in",
+    "signUpCta": "Create account"
+  },
+  "account": {
+    "title": "Your Account",
+    "library": "Your Library",
+    "libraryEmpty": "You haven't purchased any editions yet.",
+    "purchasedOn": "Purchased {date}"
+  },
+  "footer": {
+    "rights": "All rights reserved.",
+    "tagline": "The independent student newspaper of {university}.",
+    "sections": "Sections",
+    "newsroom": "The Newsroom",
+    "editionsHeading": "Editions",
+    "account": "Account",
+    "follow": "Follow Us",
+    "about": "About Us",
+    "editorialBoard": "Editorial Board",
+    "join": "Join the Newsroom",
+    "ethics": "Ethics & Corrections",
+    "advertise": "Advertise With Us",
+    "contact": "Contact",
+    "printEditions": "Print Editions",
+    "latestIssue": "Latest Issue",
+    "buyIssue": "Buy an Issue",
+    "signIn": "Sign In",
+    "createAccount": "Create Account",
+    "yourLibrary": "Your Library",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Use",
+    "sitemap": "Site Map"
+  }
+}

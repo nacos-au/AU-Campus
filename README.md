@@ -1,83 +1,62 @@
-# AU Score
+# AU Campus — Monorepo
 
-Campus Sports Analytics Engine — real-time match tracking, league standings, and SofaScore-style profiles for university athletics.
+Achievers University student platform: **Campus hub**, **AU Digest** (newspaper), and **AU Score** (sports).
 
-## Stack
+## Structure
 
-- **Next.js 16** (App Router, SSR)
-- **Supabase** (PostgreSQL, Auth, Realtime, Storage)
-- **TanStack Query** + **TanStack Table**
-- **Tailwind CSS** (dark sports-network aesthetic)
+```
+apps/
+  campus/     → Hub & app launcher     http://localhost:3000
+  digest/     → Campus newspaper       http://localhost:3001
+  score/      → Sports platform        http://localhost:3002
+supabase/     → Shared database (Digest + Score migrations)
+docs/         → Setup guides
+```
 
-## Quick Start
+## Quick start
 
 ```bash
-# Install dependencies
+# From repo root
 npm install
 
-# Copy environment template
-cp .env.example .env.local
-# Fill in your Supabase credentials (use the SAME project as AU Digest)
-
-# Run dev server — mock data built in, no Supabase required
+# Run all three frontends
 npm run dev
+
+# Or individually
+npm run dev:campus   # :3000
+npm run dev:digest   # :3001
+npm run dev:score    # :3002
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to preview the UI. All pages use in-memory demo data from `src/lib/data/demo.ts` — you do **not** need `npm run db:seed` until Supabase is configured.
+**No Supabase required for preview:**
+- **Digest** — set `DEMO_MODE=true` in `apps/digest/.env.local` (or copy from `.env.example`)
+- **Score** — uses built-in demo data automatically
+- **Campus** — static hub linking to both apps
 
-## Database Setup
+## Environment
 
-1. Create or reuse a Supabase project (shared with AU Digest for centralized auth)
-2. Run the migration in `supabase/migrations/001_initial_schema.sql` via Supabase SQL Editor or CLI
-3. Seed demo data:
+Copy root `.env.example` to `apps/digest/.env.local` and `apps/score/.env.local` when connecting Supabase.
 
 ```bash
-npm run db:seed
+cp .env.example apps/digest/.env.local
+cp .env.example apps/score/.env.local
 ```
 
-## Project Structure
+## Database (when ready)
 
-```
-src/
-  app/                  # Next.js pages (public portal, keeper, admin)
-  components/           # UI components (match cards, standings, etc.)
-  lib/
-    data/demo.ts        # Fallback demo data (no DB required)
-    supabase/           # Supabase client helpers
-    types/              # TypeScript types
-  providers/            # TanStack Query provider
-supabase/
-  migrations/           # PostgreSQL schema, triggers, RLS
-scripts/
-  seed.ts               # Database seeding script
-docs/
-  CENTRALIZED_AUTH.md   # Shared auth with AU Digest
+```bash
+npm run db:start    # Docker required
+npm run db:reset    # Digest schema + seed
+npm run db:seed:score
 ```
 
-## Key Routes
+See [docs/SUPABASE_SETUP.md](docs/SUPABASE_SETUP.md).
 
-| Route | Description |
-|-------|-------------|
-| `/` | Match Centre — live scores, standings |
-| `/matches/[id]` | Live match page with events & win probability |
-| `/standings` | League table |
-| `/teams`, `/teams/[id]` | Club profiles (SofaScore-style) |
-| `/players/[id]` | Player profiles |
-| `/keeper` | Record Keeper mobile UI |
-| `/admin` | Super Admin dashboard |
-| `/auth/login` | Sign in (shared with AU Digest) |
+## Build
 
-## Centralized Auth
-
-AU Score and AU Digest share one Supabase Auth instance. See [docs/CENTRALIZED_AUTH.md](docs/CENTRALIZED_AUTH.md) for setup.
-
-## Sports Supported
-
-- Football (event ledger, VAR disallowed goals, extra time/penalties)
-- Basketball (tap-to-increment, infinite overtime)
-- Lawn Tennis (point clicker with backend state machine)
-- Track & Field (post-race time entry, heats → finals)
-
-## License
-
-See [LICENSE](LICENSE).
+```bash
+npm run build           # all apps
+npm run build:digest
+npm run build:score
+npm run build:campus
+```

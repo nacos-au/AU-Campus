@@ -1,0 +1,22 @@
+# Role & Context
+You are an expert full-stack engineer and a software architect. We are building a white-label digital newspaper platform for universities. The architecture must be highly secure, responsive, and performance-optimized (Next.js App Router, Tailwind CSS, TypeScript, Supabase, Paystack).
+
+# Tech Stack & Principles
+- Next.js (App Router, React Server Components by default).
+- Styling: Tailwind CSS. Mobile-first responsive grids.
+- Database: Supabase (PostgreSQL with Row-Level Security enabled).
+- Payments: Paystack (Webhook-driven transaction verification).
+
+# UI/UX Style Guide
+- Typography: Use classic serif fonts for headlines (`font-serif`) to mimic physical print news, and clean sans-serif for body copy.
+- Borders & Dividers: Use thin, subtle borders (`border-gray-100` or `divide-gray-100`) to create a classic newspaper column feel.
+- Imagery: Keep aspect ratios locked (`aspect-video` or `aspect-[4/3]`) to prevent layout shifts.
+
+# Anti-Piracy Security Rules
+- For paid issue viewing: No direct PDF downloads. Render pages within a protected, non-interactive wrapper.
+- Inject a canvas overlay containing the reader's metadata (Email + Transaction Ref) rotated at -45 degrees as a dynamic watermark.
+- Strictly block context menus (right-click), text selection, copying, page printing shortcuts, and iOS long-press actions on the document canvas.
+
+# Supabase Security Policy
+- Never allow unauthenticated or unpaid users to fetch the secure URL of paid editions.
+- All database queries to the `editions` secure content table must be protected by active Row-Level Security (RLS) policies.
