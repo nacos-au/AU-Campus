@@ -5,6 +5,8 @@ import { getPreferDemoCookie } from "@/app/actions/demo-mode";
 import { isPreferDemo } from "@/lib/demo-mode";
 import { digestAuthUrl } from "@/lib/urls";
 
+const DIGEST_URL = process.env.NEXT_PUBLIC_DIGEST_URL ?? "http://localhost:3001";
+
 export const metadata: Metadata = {
   title: "Sign up — AU Campus",
 };
@@ -33,9 +35,12 @@ export default async function SignupPage() {
 
         <p className="mt-6 text-center text-sm opacity-60">
           Already have an account?{" "}
-          <Link href="/login" className="font-semibold underline underline-offset-2">
-            Sign in
-          </Link>
+          <a
+            href={`${DIGEST_URL}/login`}
+            className="font-semibold underline underline-offset-2"
+          >
+            Sign in on AU Digest
+          </a>
         </p>
       </main>
     </div>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { IconSignIn, IconUser } from "@/components/icons";
+import { PasswordInput } from "@/components/PasswordInput";
 import { signIn, signUp, type AuthState } from "./actions";
 
 export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
@@ -67,9 +68,8 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
           <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
             {t("password")}
           </span>
-          <input
+          <PasswordInput
             name="password"
-            type="password"
             required
             minLength={8}
             autoComplete={mode === "signin" ? "current-password" : "new-password"}

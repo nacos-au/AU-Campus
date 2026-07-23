@@ -25,12 +25,6 @@ export async function SiteHeader() {
       <nav className="flex flex-wrap items-center justify-center gap-3 text-sm font-semibold">
         <DemoModeToggle preferDemo={preferDemo} />
         <Link
-          href={digestAuthUrl("login", undefined, preferDemo)}
-          className="rounded-full border-2 border-[var(--accent)] px-4 py-2 transition hover:bg-white"
-        >
-          Sign in
-        </Link>
-        <Link
           href={digestAuthUrl("signup", undefined, preferDemo)}
           className="rounded-full bg-[var(--accent)] px-4 py-2 text-white transition hover:opacity-90"
         >

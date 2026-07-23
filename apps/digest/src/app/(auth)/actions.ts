@@ -51,7 +51,7 @@ export async function signUp(
   formData: FormData
 ): Promise<AuthState> {
   const supabase = await createClient();
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email: String(formData.get("email") ?? ""),
     password: String(formData.get("password") ?? ""),
     options: {
@@ -59,6 +59,13 @@ export async function signUp(
     },
   });
   if (error) return { error: error.message };
+
+  if (!data.session) {
+    return {
+      error:
+        "Account created, but email confirmation is still on in Supabase. Turn off “Confirm email” under Authentication → Providers → Email, or confirm your inbox.",
+    };
+  }
 
   revalidatePath("/", "layout");
   redirect(safeNext(formData.get("next")));
