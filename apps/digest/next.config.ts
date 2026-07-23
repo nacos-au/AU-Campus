@@ -4,9 +4,12 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
+const monorepoRoot = path.join(__dirname, "../..");
+
 const nextConfig: NextConfig = {
+  outputFileTracingRoot: monorepoRoot,
   turbopack: {
-    root: path.join(__dirname, "../.."),
+    root: monorepoRoot,
   },
   images: {
     remotePatterns: [
