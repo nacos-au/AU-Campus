@@ -5,19 +5,26 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile, hasRole } from "@/lib/auth";
 import { signOut } from "@/app/(auth)/actions";
 import { site } from "@/lib/site";
+import { canToggleDemoMode, isDemoMode } from "@/lib/demo-mode";
+import { getDemoModeCookie } from "@/app/actions/demo-mode";
 import type { Section } from "@/lib/types";
+import { DemoModeToggle } from "./DemoModeToggle";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { MobileMenu } from "./MobileMenu";
 import { WorldClock } from "./WorldClock";
 import { IconSignIn, IconSignOut, IconUser } from "./icons";
 
 export async function SiteHeader() {
-  const [t, locale, { user, profile }, supabase] = await Promise.all([
+  const [t, locale, { user, profile }, supabase, demoCookie] = await Promise.all([
     getTranslations("nav"),
     getLocale(),
     getSessionProfile(),
     createClient(),
+    getDemoModeCookie(),
   ]);
+
+  const demoActive = isDemoMode(demoCookie);
+  const showDemoToggle = canToggleDemoMode();
 
   const { data: sectionsData } = await supabase
     .from("sections")
@@ -80,6 +87,7 @@ export async function SiteHeader() {
         </div>
 
         <div className="flex items-center justify-between gap-3 px-3 pb-2.5">
+          <DemoModeToggle active={demoActive} canToggle={showDemoToggle} />
           <p className="min-w-0 truncate text-[11px] font-semibold text-ink">
             {todayShort}
           </p>
@@ -127,6 +135,7 @@ export async function SiteHeader() {
           </Link>
 
           <div className="flex items-center justify-end gap-4 text-xs">
+            <DemoModeToggle active={demoActive} canToggle={showDemoToggle} />
             <LanguageSwitcher />
             {user ? (
               <>

@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
+import { getPreferDemoCookie } from "@/app/actions/demo-mode";
+import { isPreferDemo } from "@/lib/demo-mode";
 import { digestAuthUrl } from "@/lib/urls";
 
 export const metadata: Metadata = {
   title: "Sign up — AU Campus",
 };
 
-export default function SignupPage() {
-  const authUrl = digestAuthUrl("signup");
+export default async function SignupPage() {
+  const preferDemo = isPreferDemo(await getPreferDemoCookie());
+  const authUrl = digestAuthUrl("signup", undefined, preferDemo);
 
   return (
     <div className="mx-auto flex min-h-screen max-w-[520px] flex-col px-4 py-10 sm:px-6">

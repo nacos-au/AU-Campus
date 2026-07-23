@@ -1,13 +1,15 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { hasSupabaseConfig, isDemoMode } from "@/lib/demo-mode";
+import { hasSupabaseConfig, isDemoMode, DEMO_MODE_COOKIE } from "@/lib/demo-mode";
 
 const PROTECTED_PREFIXES = ["/admin", "/account", "/read"];
 
 export async function updateSession(request: NextRequest) {
+  const demoCookie = request.cookies.get(DEMO_MODE_COOKIE)?.value;
+
   // Never construct a Supabase client without URL+key — that throws a 500
   // in the Vercel edge/proxy runtime before any page can render.
-  if (isDemoMode() || !hasSupabaseConfig()) {
+  if (isDemoMode(demoCookie) || !hasSupabaseConfig()) {
     const path = request.nextUrl.pathname;
     if (PROTECTED_PREFIXES.some((p) => path.startsWith(p))) {
       const url = request.nextUrl.clone();

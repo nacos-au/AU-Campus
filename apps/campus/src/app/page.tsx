@@ -1,33 +1,37 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
-import { DIGEST_URL, SCORE_URL } from "@/lib/urls";
+import { getPreferDemoCookie } from "@/app/actions/demo-mode";
+import { isPreferDemo } from "@/lib/demo-mode";
+import { appUrl, DIGEST_URL, SCORE_URL } from "@/lib/urls";
 
 const apps = [
   {
     name: "AU Digest",
     description: "Campus newspaper — articles, editions, and the newsroom.",
-    href: DIGEST_URL,
+    baseUrl: DIGEST_URL,
     accent: "border-[#1a1a1a] bg-white",
     tag: "News",
   },
   {
     name: "AU Score",
     description: "Live matches, league tables, stats, and club profiles.",
-    href: SCORE_URL,
+    baseUrl: SCORE_URL,
     accent: "border-[#004e28] bg-white",
     tag: "Sports",
   },
 ] as const;
 
-export default function CampusHomePage() {
+export default async function CampusHomePage() {
+  const preferDemo = isPreferDemo(await getPreferDemoCookie());
+
   return (
     <div className="mx-auto flex min-h-screen max-w-[960px] flex-col px-4 py-10 sm:px-6 sm:py-16">
       <SiteHeader />
 
       <div className="mb-8 text-center sm:mb-12">
         <p className="mx-auto max-w-md text-sm opacity-70 sm:text-base">
-          One front door for student utilities. Pick an app below — same account across
-          everything once Supabase is connected.
+          One front door for student utilities. Use the <strong>Demo / Live</strong> toggle
+          above — it applies when you open Digest or Score.
         </p>
       </div>
 
@@ -35,7 +39,7 @@ export default function CampusHomePage() {
         {apps.map((app) => (
           <Link
             key={app.name}
-            href={app.href}
+            href={appUrl(app.baseUrl, preferDemo)}
             className={`group rounded-2xl border-2 p-6 shadow-sm transition hover:shadow-md ${app.accent}`}
           >
             <span className="text-xs font-bold uppercase tracking-wide opacity-50">

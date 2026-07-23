@@ -1,13 +1,20 @@
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 import { Suspense } from "react";
 import { Search } from "lucide-react";
+import { getDemoModeCookie } from "@/app/actions/demo-mode";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { DemoModeToggle } from "@/components/layout/demo-mode-toggle";
 import { SportNav } from "@/components/layout/sport-nav";
+import { canToggleDemoMode, isDemoMode } from "@/lib/demo-mode";
 
 const LOGO_SRC = "/AU Logo.webp";
 
-export function SiteHeader() {
+export async function SiteHeader() {
+  const demoCookie = await getDemoModeCookie();
+  const demoActive = isDemoMode(demoCookie);
+  const showDemoToggle = canToggleDemoMode();
+
   return (
     <header className="sticky top-0 z-50 border-b border-rule bg-wrapper">
       <div className="mx-auto flex h-14 max-w-[1200px] items-center gap-3 px-4 sm:px-6">
@@ -27,6 +34,7 @@ export function SiteHeader() {
         </Link>
 
         <div className="ml-auto flex items-center gap-2 sm:gap-4">
+          <DemoModeToggle active={demoActive} canToggle={showDemoToggle} />
           <button
             type="button"
             aria-label="Search"
