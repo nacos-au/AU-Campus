@@ -4,6 +4,7 @@ import { BrandedSection } from "@/components/layout/branded-section";
 import { MatchesFilters } from "@/components/layout/filters-bar";
 import { PageContent } from "@/components/layout/page-content";
 import { getMatchesBySport, getSportConfig } from "@/lib/data/get-by-sport";
+import { getScoreDemoMode } from "@/lib/data/mode";
 import { parseSportParam } from "@/lib/utils/sport";
 import type { Match } from "@/lib/types/database";
 
@@ -33,7 +34,8 @@ export default async function MatchesPage({
   const { sport } = await searchParams;
   const activeSport = parseSportParam(sport);
   const config = getSportConfig(activeSport);
-  const matches = getMatchesBySport(activeSport);
+  const demo = await getScoreDemoMode();
+  const matches = demo ? getMatchesBySport(activeSport) : [];
   const grouped = groupMatchesByDate(matches);
 
   return (
@@ -47,7 +49,9 @@ export default async function MatchesPage({
         <div className="mx-auto max-w-[1200px] bg-wrapper px-4 pb-16 pt-2 sm:px-6">
           {grouped.size === 0 ? (
             <div className="table-card p-10 text-center opacity-70">
-              No {config.label.toLowerCase()} fixtures scheduled yet.
+              {demo
+                ? `No ${config.label.toLowerCase()} fixtures scheduled yet.`
+                : "No live fixtures yet. Run the Score SQL migration and seed, or switch to Demo in the header."}
             </div>
           ) : (
             Array.from(grouped.entries()).map(([date, dayMatches]) => (

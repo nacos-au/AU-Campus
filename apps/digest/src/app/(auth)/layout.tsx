@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { site } from "@/lib/site";
 
+export const dynamic = "force-dynamic";
+
 export default function AuthLayout({
   children,
 }: {

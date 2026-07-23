@@ -4,7 +4,7 @@ export const DEMO_MODE_COOKIE = "au_demo_mode";
 export function isPreferDemo(cookieValue?: string | null): boolean {
   if (cookieValue === "on") return true;
   if (cookieValue === "off") return false;
-  return true;
+  return false;
 }
 
 export function demoModeCookieOptions(enabled: boolean) {

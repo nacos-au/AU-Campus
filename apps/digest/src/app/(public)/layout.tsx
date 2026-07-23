@@ -1,6 +1,9 @@
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 
+// Cookie-based Demo/Live toggle must render per request — not at build time.
+export const dynamic = "force-dynamic";
+
 export default function PublicLayout({
   children,
 }: {

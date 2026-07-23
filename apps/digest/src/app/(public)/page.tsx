@@ -12,15 +12,18 @@ import {
 } from "@/components/stories";
 import { formatNaira } from "@/lib/site";
 import type { ArticleWithMeta, Edition, Section } from "@/lib/types";
-
-export const revalidate = 60;
-
-const ARTICLE_SELECT =
-  "*, sections(slug, name), profiles(display_name)";
+import { canToggleDemoMode, isDemoMode } from "@/lib/demo-mode";
+import { getDemoModeCookie } from "@/app/actions/demo-mode";
+import { DemoModeToggle } from "@/components/DemoModeToggle";
 
 export default async function HomePage() {
+  const demoCookie = await getDemoModeCookie();
+  const demoActive = isDemoMode(demoCookie);
   const supabase = await createClient();
   const t = await getTranslations("home");
+
+  const ARTICLE_SELECT =
+    "*, sections(slug, name), profiles(display_name)";
 
   const [{ data: articlesData }, { data: sectionsData }, { data: editionsData }] =
     await Promise.all([
@@ -48,9 +51,25 @@ export default async function HomePage() {
     return (
       <div className="py-24 text-center text-ink-soft">
         <p className="font-serif text-2xl">No stories published yet.</p>
-        <p className="mt-2 text-sm">
-          Sign in to the newsroom to publish your first article.
+        <p className="mt-2 text-sm max-w-md mx-auto">
+          {demoActive
+            ? "Demo fixtures failed to load — try refreshing. If this persists, report a bug."
+            : "Your Supabase database is connected but empty. Run the SQL migrations and seed in the Supabase SQL editor, or switch to Demo for sample stories."}
         </p>
+        {canToggleDemoMode() && (
+          <div className="mt-6 flex justify-center">
+            <DemoModeToggle active={demoActive} canToggle={canToggleDemoMode()} />
+          </div>
+        )}
+        {!demoActive && (
+          <p className="mt-4 text-xs">
+            Newsroom:{" "}
+            <a href="/admin" className="font-semibold text-ink underline underline-offset-2">
+              sign in and publish
+            </a>{" "}
+            after creating an account.
+          </p>
+        )}
       </div>
     );
   }
