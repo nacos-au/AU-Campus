@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { BrandedSection } from "@/components/layout/branded-section";
 import { PageContent } from "@/components/layout/page-content";
-import { CompetitionTabs } from "@/components/competition/competition-tabs";
+import { ClubsFilters } from "@/components/layout/filters-bar";
 import { PlayerAvatar, TeamCrest } from "@/components/ui/team-crest";
 import { DEMO_DEPARTMENTS, DEMO_PLAYERS, DEMO_TEAMS } from "@/lib/data/demo";
 import {
@@ -43,7 +43,7 @@ export default async function TeamsPage({
         activeSport={activeSport}
       />
       <PageContent>
-        <CompetitionTabs sport={activeSport} basePath="/teams" activeId={tournament?.id} />
+        <ClubsFilters sport={activeSport} competitionId={tournament?.id} />
         <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6">
           <div className="table-card divide-y divide-rule">
             {activeSport === "track" ? (

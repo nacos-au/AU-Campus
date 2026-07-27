@@ -8,7 +8,7 @@ import {
 } from "@/components/competition/competition-views";
 import { WorldCupBracket } from "@/components/competition/world-cup-bracket";
 import { TitleHolderBanner } from "@/components/competition/title-holder-banner";
-import { CompetitionTabs } from "@/components/competition/competition-tabs";
+import { CompetitionPageFilters } from "@/components/layout/filters-bar";
 import { StandingsTable } from "@/components/standings/standings-table";
 import {
   formatTournamentRules,
@@ -147,8 +147,7 @@ export default async function CompetitionPage({
     <>
       <BrandedSection title={tournament.name} activeSport={activeSport} />
       <PageContent>
-        {/* Competition switcher — headline follows the selected competition */}
-        <CompetitionTabs sport={activeSport} basePath="/competition" activeId={tournament.id} />
+        <CompetitionPageFilters sport={activeSport} competitionId={tournament.id} />
 
         <div className="mx-auto max-w-[1200px] space-y-10 px-4 py-8 sm:px-6">
           {tournament.title_holder && (

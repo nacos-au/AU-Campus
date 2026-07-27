@@ -4,7 +4,7 @@ import { StatsAwardsSection } from "@/components/stats/stats-awards-section";
 import { BrandedSection } from "@/components/layout/branded-section";
 import { PageContent } from "@/components/layout/page-content";
 import { SectionTitle } from "@/components/layout/site-header";
-import { CompetitionTabs } from "@/components/competition/competition-tabs";
+import { StatsFilters } from "@/components/layout/filters-bar";
 import { getAwardsForSport } from "@/lib/data/demo-awards";
 import { getTournamentForSport } from "@/lib/data/demo-competition";
 import { getStatCardsBySport, formatStatValue } from "@/lib/data/get-by-sport";
@@ -36,7 +36,7 @@ export default async function StatsPage({
     <>
       <BrandedSection title="Stats Centre" activeSport={activeSport} />
       <PageContent>
-        <CompetitionTabs sport={activeSport} basePath="/stats" activeId={tournament?.id} />
+        <StatsFilters sport={activeSport} competitionId={tournament?.id} />
         <nav className="border-b border-rule bg-wrapper">
           <div className="mx-auto flex max-w-[1200px] gap-6 overflow-x-auto px-4 sm:px-6">
             {statsTabs.map(({ href, label }) => (

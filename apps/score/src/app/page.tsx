@@ -3,7 +3,6 @@ import { MatchDateGroup, MatchweekNav } from "@/components/match/match-row";
 import { BrandedSection } from "@/components/layout/branded-section";
 import { MatchesFilters } from "@/components/layout/filters-bar";
 import { PageContent } from "@/components/layout/page-content";
-import { CompetitionTabs } from "@/components/competition/competition-tabs";
 import { getTournamentForSport } from "@/lib/data/demo-competition";
 import { getMatchesBySport, getSportConfig } from "@/lib/data/get-by-sport";
 import { getScoreDemoMode } from "@/lib/data/mode";
@@ -45,8 +44,7 @@ export default async function MatchesPage({
     <>
       <BrandedSection title={config.matchesTitle} activeSport={activeSport} />
       <PageContent>
-        <CompetitionTabs sport={activeSport} basePath="/" activeId={tournament?.id} />
-        <MatchesFilters sport={activeSport} />
+        <MatchesFilters sport={activeSport} competitionId={tournament?.id} />
 
         <MatchweekNav label={config.dateNavLabel} range={config.dateNavRange} />
 

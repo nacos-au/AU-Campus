@@ -1,7 +1,10 @@
 import type { SportId } from "@/lib/utils/sport";
+import { sportToDbId } from "@/lib/utils/sport";
+import { getTournamentsForSport } from "@/lib/data/demo-competition";
 import { getStatLabelsBySport } from "@/lib/data/get-by-sport";
 import { getSportConfig } from "@/lib/utils/sport-config";
 import { cn } from "@/lib/utils/cn";
+import { CompetitionFilters, toCompetitionOptions } from "@/components/layout/competition-filters";
 
 export function FiltersBar({ children }: { children: React.ReactNode }) {
   return (
@@ -26,31 +29,107 @@ function FilterChip({ label, className }: { label: string; className?: string })
   );
 }
 
-/** Matches page — sport-aware context row (demo season labels) */
-export function MatchesFilters({ sport = "football" }: { sport?: SportId }) {
-  const config = getSportConfig(sport);
+/** Matches page — competition + season + matchweek + home/away */
+export function MatchesFilters({
+  sport = "football",
+  competitionId,
+}: {
+  sport?: SportId;
+  competitionId?: string;
+}) {
+  const competitions = toCompetitionOptions(getTournamentsForSport(sportToDbId(sport)));
   return (
-    <FiltersBar>
-      <FilterChip label={config.tournament} className="min-w-[180px] flex-1 sm:max-w-[280px]" />
-      <FilterChip label={config.season} />
-      <FilterChip label={config.roundFilter} />
-      <FilterChip label={config.homeAwayFilter} />
-    </FiltersBar>
+    <CompetitionFilters
+      sport={sport}
+      basePath="/"
+      competitions={competitions}
+      activeCompetitionId={competitionId}
+      variant="matches"
+    />
   );
 }
 
-/** Table page filters */
-export function TableFilters({ sport = "football" }: { sport?: SportId }) {
-  const config = getSportConfig(sport);
+/** Table page — competition + season */
+export function TableFilters({
+  sport = "football",
+  competitionId,
+}: {
+  sport?: SportId;
+  competitionId?: string;
+}) {
+  const competitions = toCompetitionOptions(getTournamentsForSport(sportToDbId(sport)));
   return (
-    <FiltersBar>
-      <FilterChip label={config.tournament} className="min-w-[180px] flex-1 sm:max-w-[280px]" />
-      <FilterChip label={config.season} />
-    </FiltersBar>
+    <CompetitionFilters
+      sport={sport}
+      basePath="/standings"
+      competitions={competitions}
+      activeCompetitionId={competitionId}
+      variant="table"
+    />
   );
 }
 
-/** Player stats filters */
+/** Stats dashboard — competition + season */
+export function StatsFilters({
+  sport = "football",
+  competitionId,
+}: {
+  sport?: SportId;
+  competitionId?: string;
+}) {
+  const competitions = toCompetitionOptions(getTournamentsForSport(sportToDbId(sport)));
+  return (
+    <CompetitionFilters
+      sport={sport}
+      basePath="/stats"
+      competitions={competitions}
+      activeCompetitionId={competitionId}
+      variant="stats"
+    />
+  );
+}
+
+/** Clubs page — competition + season */
+export function ClubsFilters({
+  sport = "football",
+  competitionId,
+}: {
+  sport?: SportId;
+  competitionId?: string;
+}) {
+  const competitions = toCompetitionOptions(getTournamentsForSport(sportToDbId(sport)));
+  return (
+    <CompetitionFilters
+      sport={sport}
+      basePath="/teams"
+      competitions={competitions}
+      activeCompetitionId={competitionId}
+      variant="clubs"
+    />
+  );
+}
+
+/** Competition page — competition + season */
+export function CompetitionPageFilters({
+  sport = "football",
+  competitionId,
+}: {
+  sport?: SportId;
+  competitionId?: string;
+}) {
+  const competitions = toCompetitionOptions(getTournamentsForSport(sportToDbId(sport)));
+  return (
+    <CompetitionFilters
+      sport={sport}
+      basePath="/competition"
+      competitions={competitions}
+      activeCompetitionId={competitionId}
+      variant="competition"
+    />
+  );
+}
+
+/** Player stats filters — stat-focused row (no competition picker here) */
 export function PlayerStatsFilters({ sport = "football" }: { sport?: SportId }) {
   const config = getSportConfig(sport);
   const [primaryStat] = getStatLabelsBySport(sport);

@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { StandingsTable } from "@/components/standings/standings-table";
 import { GroupTables } from "@/components/competition/competition-views";
-import { CompetitionTabs } from "@/components/competition/competition-tabs";
-import { BrandedSection } from "@/components/layout/branded-section";
 import { TableFilters } from "@/components/layout/filters-bar";
+import { BrandedSection } from "@/components/layout/branded-section";
 import { PageContent } from "@/components/layout/page-content";
 import { getStandingsBySport } from "@/lib/data/get-by-sport";
 import {
@@ -34,8 +33,7 @@ export default async function StandingsPage({
         activeSport={activeSport}
       />
       <PageContent>
-        <CompetitionTabs sport={activeSport} basePath="/standings" activeId={tournament?.id} />
-        <TableFilters sport={activeSport} />
+        <TableFilters sport={activeSport} competitionId={tournament?.id} />
         <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6">
           {isLeague ? (
             <StandingsTable rows={leagueRows} sport={activeSport} />
