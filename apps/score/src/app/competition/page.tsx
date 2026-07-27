@@ -29,12 +29,7 @@ import {
 import { parseSportParam, sportToDbId, SPORT_LABELS } from "@/lib/utils/sport";
 import { ChevronDown } from "lucide-react";
 import type { Tournament } from "@/lib/types/database";
-
-const FORMAT_LABELS: Record<string, string> = {
-  league: "Round robin league",
-  group_knockout: "Group stage + knockout",
-  knockout_only: "Straight knockout",
-};
+import { formatDescription, formatLabel } from "@/lib/competition/format-labels";
 
 /** Collapsible competition facts: type, format, season, rules, awards. */
 function CompetitionDetails({
@@ -46,10 +41,10 @@ function CompetitionDetails({
   rules: string[];
   isLeague: boolean;
 }) {
-  const facts: { label: string; value: string }[] = [
+  const facts: { label: string; value: string; hint?: string }[] = [
     { label: "Type", value: isLeague ? "League" : "Cup" },
     ...(tournament.format
-      ? [{ label: "Format", value: FORMAT_LABELS[tournament.format] ?? tournament.format }]
+      ? [{ label: "Format", value: formatLabel(tournament.format), hint: formatDescription(tournament.format) }]
       : []),
     { label: "Season", value: tournament.season },
     {
@@ -77,7 +72,10 @@ function CompetitionDetails({
           {facts.map((f) => (
             <div key={f.label}>
               <dt className="text-xs font-bold uppercase opacity-50">{f.label}</dt>
-              <dd className="mt-0.5 font-semibold">{f.value}</dd>
+              <dd className="mt-0.5 font-semibold">
+                {f.value}
+                {f.hint && <p className="mt-1 text-xs font-normal leading-snug opacity-60">{f.hint}</p>}
+              </dd>
             </div>
           ))}
           {rules.length > 0 && (

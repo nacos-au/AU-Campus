@@ -1,4 +1,4 @@
-import { WinProbabilityBars } from "@/components/match/win-probability";
+import { WinProbabilityVote } from "@/components/match/win-probability";
 import { MatchPageLiveBlock } from "@/components/match/match-page-live-block";
 import { MatchLifecycleBadge } from "@/components/match/match-lifecycle-badge";
 import { MatchEventsList } from "@/components/match/match-events-list";
@@ -161,8 +161,21 @@ export default async function MatchPage({
 
             {config.showWinProbability && match.win_probability && (
               <aside className="table-card h-fit p-5">
-                <h3 className="mb-4 font-display text-sm font-extrabold uppercase">Win Probability</h3>
-                <WinProbabilityBars data={match.win_probability} showDraw={config.showDraw} />
+                <WinProbabilityVote
+                  matchId={match.id}
+                  data={match.win_probability}
+                  showDraw={config.showDraw}
+                  homeTeam={{
+                    name: homeName,
+                    logoUrl: match.home_team?.logo_url,
+                    shortCode: match.home_team?.department?.short_code ?? "H",
+                  }}
+                  awayTeam={{
+                    name: awayName,
+                    logoUrl: match.away_team?.logo_url,
+                    shortCode: match.away_team?.department?.short_code ?? "A",
+                  }}
+                />
               </aside>
             )}
           </div>
