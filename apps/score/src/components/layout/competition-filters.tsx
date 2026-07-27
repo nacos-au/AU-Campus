@@ -2,18 +2,12 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, RotateCcw, SlidersHorizontal } from "lucide-react";
-import type { Tournament } from "@/lib/types/database";
+import type { CompetitionOption } from "@/lib/competition/competition-filter-utils";
 import { getSportConfig } from "@/lib/utils/sport-config";
 import type { SportId } from "@/lib/utils/sport";
 import { cn } from "@/lib/utils/cn";
 
 type FilterVariant = "matches" | "table" | "stats" | "clubs" | "competition";
-
-interface CompetitionOption {
-  id: string;
-  name: string;
-  season: string;
-}
 
 function FilterSelect({
   value,
@@ -153,9 +147,4 @@ export function CompetitionFilters({
       </div>
     </div>
   );
-}
-
-/** Map full tournament objects to filter options */
-export function toCompetitionOptions(tournaments: Tournament[]): CompetitionOption[] {
-  return tournaments.map((t) => ({ id: t.id, name: t.name, season: t.season }));
 }

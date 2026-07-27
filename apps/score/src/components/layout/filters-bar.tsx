@@ -4,7 +4,8 @@ import { getTournamentsForSport } from "@/lib/data/demo-competition";
 import { getStatLabelsBySport } from "@/lib/data/get-by-sport";
 import { getSportConfig } from "@/lib/utils/sport-config";
 import { cn } from "@/lib/utils/cn";
-import { CompetitionFilters, toCompetitionOptions } from "@/components/layout/competition-filters";
+import { toCompetitionOptions } from "@/lib/competition/competition-filter-utils";
+import { CompetitionFilters } from "@/components/layout/competition-filters";
 
 export function FiltersBar({ children }: { children: React.ReactNode }) {
   return (
