@@ -102,67 +102,41 @@ export function GroupTables({
             <h3 className="border-b border-rule px-5 py-3 font-display text-sm font-extrabold uppercase">
               {groupName}
             </h3>
-
-            {/* Mobile cards */}
-            <div className="divide-y divide-rule md:hidden">
-              {groupRows.map((row, i) => (
-                <div key={`${row.group_id}-${row.team_id}-m`} className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="w-5 shrink-0 text-center text-sm font-extrabold opacity-50">{i + 1}</span>
-                      <Link href={`/teams/${row.team_id}?sport=${sport}`} className="flex min-w-0 items-center gap-2 hover:underline">
-                        <TeamCrest code={row.short_code} logoUrl={row.logo_url} alt={row.team_name} size="sm" />
-                        <span className="truncate font-display text-sm font-bold">{row.team_name}</span>
-                      </Link>
-                    </div>
-                    <strong className="shrink-0 font-display">{row.points}</strong>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs opacity-70">
-                    <span><span className="font-bold uppercase opacity-50">Pl</span> {row.played}</span>
-                    <span><span className="font-bold uppercase opacity-50">W</span> {row.won}</span>
-                    <span><span className="font-bold uppercase opacity-50">D</span> {row.drawn}</span>
-                    <span><span className="font-bold uppercase opacity-50">L</span> {row.lost}</span>
-                    <span>
-                      <span className="font-bold uppercase opacity-50">GD</span>{" "}
-                      {row.goal_difference > 0 ? `+${row.goal_difference}` : row.goal_difference}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Desktop table */}
-            <table className="hidden w-full text-sm md:table">
-              <thead>
-                <tr className="border-b border-rule text-xs font-bold uppercase opacity-60">
-                  <th className="px-5 py-2 text-left">Team</th>
-                  <th className="px-2 py-2 text-center">Pl</th>
-                  <th className="px-2 py-2 text-center">W</th>
-                  <th className="px-2 py-2 text-center">D</th>
-                  <th className="px-2 py-2 text-center">L</th>
-                  <th className="px-2 py-2 text-center">GD</th>
-                  <th className="px-5 py-2 text-center">Pts</th>
-                </tr>
-              </thead>
-              <tbody>
-                {groupRows.map((row) => (
-                  <tr key={`${row.group_id}-${row.team_id}`} className="border-b border-rule last:border-0">
-                    <td className="px-5 py-3">
-                      <Link href={`/teams/${row.team_id}?sport=${sport}`} className="flex items-center gap-2 hover:underline">
-                        <TeamCrest code={row.short_code} logoUrl={row.logo_url} alt={row.team_name} size="sm" />
-                        <span className="font-display font-bold">{row.team_name}</span>
-                      </Link>
-                    </td>
-                    <td className="px-2 py-3 text-center">{row.played}</td>
-                    <td className="px-2 py-3 text-center">{row.won}</td>
-                    <td className="px-2 py-3 text-center">{row.drawn}</td>
-                    <td className="px-2 py-3 text-center">{row.lost}</td>
-                    <td className="px-2 py-3 text-center">{row.goal_difference > 0 ? `+${row.goal_difference}` : row.goal_difference}</td>
-                    <td className="px-5 py-3 text-center font-display font-extrabold">{row.points}</td>
+            <div className="overflow-x-auto overscroll-x-contain">
+              <table className="w-full min-w-[480px] text-sm">
+                <thead>
+                  <tr className="border-b border-rule text-[12px] font-bold uppercase opacity-60">
+                    <th className="px-5 py-2 text-left">Team</th>
+                    <th className="px-2 py-2 text-center">Pl</th>
+                    <th className="px-2 py-2 text-center">W</th>
+                    <th className="px-2 py-2 text-center">D</th>
+                    <th className="px-2 py-2 text-center">L</th>
+                    <th className="px-2 py-2 text-center">GD</th>
+                    <th className="px-5 py-2 text-center">Pts</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {groupRows.map((row) => (
+                    <tr key={`${row.group_id}-${row.team_id}`} className="border-b border-rule last:border-0">
+                      <td className="min-w-[140px] px-5 py-3">
+                        <Link href={`/teams/${row.team_id}?sport=${sport}`} className="flex items-center gap-2 hover:underline">
+                          <TeamCrest code={row.short_code} logoUrl={row.logo_url} alt={row.team_name} size="sm" />
+                          <span className="font-display text-sm font-bold">{row.team_name}</span>
+                        </Link>
+                      </td>
+                      <td className="px-2 py-3 text-center text-[12px] tabular-nums">{row.played}</td>
+                      <td className="px-2 py-3 text-center text-[12px] tabular-nums">{row.won}</td>
+                      <td className="px-2 py-3 text-center text-[12px] tabular-nums">{row.drawn}</td>
+                      <td className="px-2 py-3 text-center text-[12px] tabular-nums">{row.lost}</td>
+                      <td className="px-2 py-3 text-center text-[12px] tabular-nums">
+                        {row.goal_difference > 0 ? `+${row.goal_difference}` : row.goal_difference}
+                      </td>
+                      <td className="px-5 py-3 text-center text-[12px] font-display font-extrabold tabular-nums">{row.points}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         );
       })}
