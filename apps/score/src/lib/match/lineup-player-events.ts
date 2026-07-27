@@ -6,14 +6,15 @@ export interface LineupPlayerEvents {
   assists: number;
   substitutedOn: boolean;
   substitutedOff: boolean;
+  yellowCard: boolean;
+  redCard: boolean;
   isMotm: boolean;
 }
 
 function playerIdFromName(name: string): string | null {
   const parts = name.trim().split(/\s+/);
   if (parts.length < 2) return null;
-  const [initial, ...rest] = parts;
-  const last = rest.join(" ");
+  const last = parts.slice(1).join(" ");
   const found = DEMO_PLAYERS.find(
     (p) => p.last_name === last || `${p.first_name[0]}. ${p.last_name}` === name
   );
@@ -28,13 +29,23 @@ export function buildLineupPlayerEvents(
   matchStarted: boolean
 ): LineupPlayerEvents {
   if (!matchStarted) {
-    return { goals: 0, assists: 0, substitutedOn: false, substitutedOff: false, isMotm: false };
+    return {
+      goals: 0,
+      assists: 0,
+      substitutedOn: false,
+      substitutedOff: false,
+      yellowCard: false,
+      redCard: false,
+      isMotm: false,
+    };
   }
 
   let goals = 0;
   let assists = 0;
   let substitutedOn = false;
   let substitutedOff = false;
+  let yellowCard = false;
+  let redCard = false;
 
   for (const event of events) {
     if (event.event_type === "goal" || event.event_type === "penalty_scored") {
@@ -58,6 +69,13 @@ export function buildLineupPlayerEvents(
             : null;
       if (outId === playerId) substitutedOff = true;
     }
+
+    if (event.event_type === "yellow_card" && event.player.id === playerId) {
+      yellowCard = true;
+    }
+    if (event.event_type === "red_card" && event.player.id === playerId) {
+      redCard = true;
+    }
   }
 
   return {
@@ -65,6 +83,8 @@ export function buildLineupPlayerEvents(
     assists,
     substitutedOn,
     substitutedOff,
+    yellowCard,
+    redCard,
     isMotm: motmPlayerId === playerId,
   };
 }

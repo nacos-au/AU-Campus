@@ -56,8 +56,8 @@ export function FootballMatchTimeline({
   return (
     <section>
       <h2 className="mb-4 font-display text-xl font-extrabold">Match Events</h2>
-      <div className="table-card px-4 py-6 sm:px-6">
-        <div className="space-y-3">
+      <div className="table-card px-3 py-5 sm:px-6 sm:py-6">
+        <div className="space-y-4">
           {items.map((item) => {
             if (item.kind === "divider") {
               return <TimelineDivider key={item.id} label={item.label} />;
@@ -72,13 +72,13 @@ export function FootballMatchTimeline({
               );
             }
             return (
-              <div key={item.id} className="grid grid-cols-2 items-center gap-2">
-                <div className="min-w-0">
+              <div key={item.id} className="flex min-h-[48px] w-full items-center gap-2 sm:gap-4">
+                <div className="flex min-h-[48px] min-w-0 flex-1 items-center">
                   {item.side === "home" && (
                     <TimelineEventRow item={item} sport={sport} isHome />
                   )}
                 </div>
-                <div className="min-w-0">
+                <div className="flex min-h-[48px] min-w-0 flex-1 items-center justify-end">
                   {item.side === "away" && (
                     <TimelineEventRow item={item} sport={sport} isHome={false} />
                   )}
@@ -128,14 +128,14 @@ function TimelineEventRow({
 
   const icon = <EventIcon event={event} />;
   const time = (
-    <span className="w-12 shrink-0 font-display text-sm font-bold tabular-nums text-accent">
+    <span className="w-11 shrink-0 font-display text-xs font-bold tabular-nums text-accent sm:w-12 sm:text-sm">
       {event.match_time}
     </span>
   );
 
   if (isHome) {
     return (
-      <div className="flex items-center justify-start gap-2 sm:gap-3">
+      <div className="flex min-w-0 flex-wrap items-center justify-start gap-x-2 gap-y-1">
         {time}
         {icon}
         {scoreLabel && <ScoreBadge score={scoreLabel} />}
@@ -153,7 +153,7 @@ function TimelineEventRow({
   }
 
   return (
-    <div className="flex items-center justify-end gap-2 sm:gap-3">
+    <div className="flex min-w-0 flex-wrap items-center justify-end gap-x-2 gap-y-1 text-right">
       <PlayerBlock
         sport={sport}
         playerId={event.player.id}
@@ -191,7 +191,7 @@ function PlayerBlock({
   align?: "left" | "right";
 }) {
   return (
-    <div className={cn("min-w-0 text-sm", align === "right" ? "text-right" : "text-left")}>
+    <div className={cn("min-w-0 text-xs sm:text-sm", align === "right" ? "text-right" : "text-left")}>
       {trailing && trailingBefore && (
         <span className="mr-1.5 text-accent/50">{trailing}</span>
       )}
@@ -212,15 +212,14 @@ function PlayerBlock({
 
 function ScoreBadge({ score }: { score: string }) {
   return (
-    <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-accent/30 bg-white px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-accent">
-      <span className="text-accent/50">▶</span>
+    <span className="inline-flex shrink-0 items-center rounded-md border border-accent/30 bg-white px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-accent sm:text-xs">
       {score}
     </span>
   );
 }
 
 function EventIcon({ event }: { event: DemoMatchEvent }) {
-  const cls = "h-5 w-5 shrink-0 text-accent";
+  const cls = "h-4 w-4 shrink-0 text-accent sm:h-5 sm:w-5";
   switch (event.event_type) {
     case "goal":
       return <GoalBallIcon className={cls} />;
@@ -229,7 +228,7 @@ function EventIcon({ event }: { event: DemoMatchEvent }) {
     case "penalty_missed":
       return <PenaltyGoalIcon className={cn(cls, "opacity-50")} />;
     case "substitution":
-      return <SubstitutionIcon className="h-5 w-5 shrink-0" />;
+      return <SubstitutionIcon className="shrink-0" />;
     case "yellow_card":
       return <YellowCardIcon />;
     case "red_card":

@@ -44,6 +44,14 @@ body {
   color: var(--accent);
 }
 
+.page-content a.btn-primary {
+  color: #ffffff;
+}
+
+.page-content a.btn-primary:hover {
+  color: #ffffff;
+}
+
 /* Default button text — filled variants keep white labels */
 .page-content button:not(.btn-filled):not(.btn-primary) {
   color: var(--accent);

@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { Star } from "lucide-react";
 import { PlayerAvatar, TeamCrest } from "@/components/ui/team-crest";
-import { GoalBallIcon, SubstitutionIcon } from "@/components/match/match-event-icons";
+import { LineupPlayerBadges } from "@/components/match/lineup-player-badges";
 import type { DemoMatchEvent } from "@/lib/data/demo-match-details";
 import { getPitchLineup, resolvePitchSlotPlayer, type PitchLineupSlot, type TeamPitchLineup } from "@/lib/data/demo-lineups";
 import { formationSlotPosition } from "@/lib/match/formation-layout";
@@ -38,14 +37,10 @@ export function FootballLineupPitch({
   }
 
   return (
-    <div className="table-card overflow-hidden">
-      <div className="flex items-center justify-between border-b border-rule px-4 py-3 sm:px-5">
-        <TeamHeader team={match.home_team} formation={homeLineup?.formation} align="left" />
-        <span className="font-display text-xs font-bold uppercase tracking-wide text-accent/40">vs</span>
-        <TeamHeader team={match.away_team} formation={awayLineup?.formation} align="right" />
-      </div>
+    <div className="overflow-hidden rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      {homeLineup && <TeamHeader team={match.home_team} formation={homeLineup.formation} />}
 
-      <div className="relative aspect-[16/10] min-h-[320px] w-full overflow-hidden bg-[#2d6a4f] sm:min-h-[380px]">
+      <div className="relative aspect-[68/105] w-full bg-[#2d6a4f]">
         <FullPitchMarkings />
 
         {homeLineup && (
@@ -71,6 +66,10 @@ export function FootballLineupPitch({
           />
         )}
       </div>
+
+      {awayLineup && (
+        <TeamHeader team={match.away_team} formation={awayLineup.formation} align="right" />
+      )}
     </div>
   );
 }
@@ -78,19 +77,24 @@ export function FootballLineupPitch({
 function TeamHeader({
   team,
   formation,
-  align,
+  align = "left",
 }: {
   team: Match["home_team"];
-  formation?: string;
-  align: "left" | "right";
+  formation: string;
+  align?: "left" | "right";
 }) {
   const code = team?.department?.short_code ?? "AU";
   return (
-    <div className={cn("flex min-w-0 items-center gap-2", align === "right" && "flex-row-reverse text-right")}>
+    <div
+      className={cn(
+        "flex items-center gap-2 border-b border-rule bg-white px-4 py-3",
+        align === "right" && "flex-row-reverse border-b-0 border-t text-right"
+      )}
+    >
       <TeamCrest code={code} logoUrl={team?.logo_url} alt={team?.name ?? "Team"} size="sm" />
       <div className="min-w-0">
         <p className="truncate font-display text-sm font-extrabold text-accent">{team?.name ?? "Team"}</p>
-        {formation && <p className="text-xs text-accent/50">{formation}</p>}
+        <p className="text-xs text-accent/50">{formation}</p>
       </div>
     </div>
   );
@@ -114,25 +118,28 @@ function TeamOnPitch({
   isCompleted: boolean;
 }) {
   const totalRows = lineup.rows.length;
-  const seen = new Set<string>();
 
   return (
     <>
       {lineup.rows.map((row, rowIndex) =>
         row.map((slot, colIndex) => {
-          const key = `${side}-${rowIndex}-${colIndex}-${slot.player_id}`;
-          if (seen.has(slot.player_id)) return null;
-          seen.add(slot.player_id);
-
           const player = resolvePitchSlotPlayer(slot);
           if (!player) return null;
 
-          const pos = formationSlotPosition(side, rowIndex, colIndex, row.length, totalRows);
+          const pos = formationSlotPosition(
+            side,
+            rowIndex,
+            colIndex,
+            row.length,
+            totalRows,
+            lineup.formation,
+            true
+          );
           const badges = buildLineupPlayerEvents(events, player.id, motmPlayerId, matchStarted);
 
           return (
             <div
-              key={key}
+              key={`${side}-${rowIndex}-${colIndex}-${slot.player_id}`}
               className="absolute z-[1] -translate-x-1/2 -translate-y-1/2"
               style={{ left: `${pos.left}%`, top: `${pos.top}%` }}
             >
@@ -165,84 +172,98 @@ function PitchPlayer({
   showMotm: boolean;
 }) {
   const name = playerShortName(player.first_name, player.last_name);
-  const captainSuffix = slot.is_captain ? " (c)" : "";
 
   return (
     <Link
       href={`/players/${player.id}?sport=${sport}`}
-      className="group flex w-[52px] flex-col items-center sm:w-[60px]"
+      className="group flex w-[68px] flex-col items-center sm:w-[74px]"
     >
-      <div className="relative">
-        <div className="rounded-full ring-2 ring-white/90">
-          <PlayerAvatar
-            firstName={player.first_name}
-            lastName={player.last_name}
-            avatarUrl={player.avatar_url}
-            size="md"
-          />
+      <div className="relative mx-1 mb-0.5 h-12 w-12">
+        <div
+          className={cn(
+            "absolute inset-0 flex items-center justify-center rounded-full bg-white p-[3px] shadow-sm",
+            badges.redCard && "blur-[2px] brightness-75"
+          )}
+        >
+          <div className="h-full w-full overflow-hidden rounded-full bg-white">
+            <PlayerAvatar
+              firstName={player.first_name}
+              lastName={player.last_name}
+              avatarUrl={player.avatar_url}
+              size="md"
+            />
+          </div>
         </div>
-
-        {(badges.substitutedOn || badges.substitutedOff) && (
-          <span className="absolute -left-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-white shadow">
-            <SubstitutionIcon className="h-3 w-3" />
-          </span>
-        )}
-
-        {badges.goals > 0 && (
-          <span className="absolute -right-1 top-0 flex items-center gap-px">
-            {Array.from({ length: Math.min(badges.goals, 2) }).map((_, i) => (
-              <GoalBallIcon key={i} className="h-3.5 w-3.5 text-accent" />
-            ))}
-          </span>
-        )}
-
-        {badges.assists > 0 && (
-          <span className="absolute -right-1 top-4">
-            <AssistIcon />
-          </span>
-        )}
-
-        {showMotm && badges.isMotm && (
-          <span className="absolute -bottom-0.5 -left-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#2563eb] text-white shadow">
-            <Star className="h-2.5 w-2.5 fill-current" />
-          </span>
-        )}
+        <LineupPlayerBadges badges={badges} showMotm={showMotm} />
       </div>
 
-      <p className="mt-1 line-clamp-2 text-center font-display text-[10px] font-bold leading-tight text-white drop-shadow-sm group-hover:underline sm:text-[11px]">
-        <span className="tabular-nums">{slot.jersey_number}</span> {name}
-        {captainSuffix}
+      <p className="max-w-[76px] text-center font-display text-[9px] font-bold leading-tight text-white drop-shadow-sm group-hover:underline sm:max-w-[84px] sm:text-[10px]">
+        {slot.jersey_number}
+        {slot.is_captain ? " (c)" : ""} {name}
       </p>
     </Link>
   );
 }
 
-function AssistIcon() {
-  return (
-    <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 text-white drop-shadow" aria-hidden>
-      <circle cx="8" cy="8" r="7" fill="#16a34a" />
-      <path
-        d="M5 10c2-3 4-3 6-5M9 5l2 1-1 2"
-        stroke="white"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    </svg>
-  );
-}
-
+/** Full vertical pitch — 68×105m, sharp rectangle, corner arcs inside touchlines. */
 function FullPitchMarkings() {
-  const line = "border-white/35";
+  const s = "rgba(255,255,255,0.38)";
+  const w = 68;
+  const h = 105;
+  const mid = h / 2;
+  const sw = 0.35;
+  const penW = 40.32;
+  const penH = 16.5;
+  const sixW = 18.32;
+  const sixH = 5.5;
+  const penX = (w - penW) / 2;
+  const sixX = (w - sixW) / 2;
+  const circleR = 9.15;
+
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0">
-      <div className={cn("absolute inset-y-4 left-1/2 w-px -translate-x-1/2 bg-white/35")} />
-      <div className={cn("absolute left-1/2 top-1/2 h-20 w-20 -translate-x-1/2 -translate-y-1/2 rounded-full border", line)} />
-      <div className={cn("absolute inset-y-[18%] left-3 w-[14%] border-y border-r", line)} />
-      <div className={cn("absolute inset-y-[18%] right-3 w-[14%] border-y border-l", line)} />
-      <div className={cn("absolute inset-y-[32%] left-3 w-[6%] border-y border-r", line)} />
-      <div className={cn("absolute inset-y-[32%] right-3 w-[6%] border-y border-l", line)} />
-    </div>
+    <svg
+      aria-hidden
+      className="pointer-events-none absolute inset-0 h-full w-full"
+      viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio="none"
+    >
+      {/* Touchlines — flush to edges */}
+      <rect x="0" y="0" width={w} height={h} fill="none" stroke={s} strokeWidth={sw} />
+
+      {/* Halfway line */}
+      <line x1="0" y1={mid} x2={w} y2={mid} stroke={s} strokeWidth={sw} />
+
+      {/* Centre circle + spot */}
+      <circle cx={w / 2} cy={mid} r={circleR} fill="none" stroke={s} strokeWidth={sw} />
+      <circle cx={w / 2} cy={mid} r="0.6" fill={s} />
+
+      {/* Top penalty area */}
+      <rect x={penX} y="0" width={penW} height={penH} fill="none" stroke={s} strokeWidth={sw} />
+      <rect x={sixX} y="0" width={sixW} height={sixH} fill="none" stroke={s} strokeWidth={sw} />
+      <circle cx={w / 2} cy={11} r="0.6" fill={s} />
+      <path
+        d={`M ${w / 2 - circleR} ${penH} A ${circleR} ${circleR} 0 0 1 ${w / 2 + circleR} ${penH}`}
+        fill="none"
+        stroke={s}
+        strokeWidth={sw}
+      />
+
+      {/* Bottom penalty area */}
+      <rect x={penX} y={h - penH} width={penW} height={penH} fill="none" stroke={s} strokeWidth={sw} />
+      <rect x={sixX} y={h - sixH} width={sixW} height={sixH} fill="none" stroke={s} strokeWidth={sw} />
+      <circle cx={w / 2} cy={h - 11} r="0.6" fill={s} />
+      <path
+        d={`M ${w / 2 - circleR} ${h - penH} A ${circleR} ${circleR} 0 0 0 ${w / 2 + circleR} ${h - penH}`}
+        fill="none"
+        stroke={s}
+        strokeWidth={sw}
+      />
+
+      {/* Corner arcs (1m radius) */}
+      <path d="M 0 1 A 1 1 0 0 1 1 0" fill="none" stroke={s} strokeWidth={sw} />
+      <path d={`M ${w - 1} 0 A 1 1 0 0 1 ${w} 1`} fill="none" stroke={s} strokeWidth={sw} />
+      <path d={`M 0 ${h - 1} A 1 1 0 0 0 1 ${h}`} fill="none" stroke={s} strokeWidth={sw} />
+      <path d={`M ${w - 1} ${h} A 1 1 0 0 0 ${w} ${h - 1}`} fill="none" stroke={s} strokeWidth={sw} />
+    </svg>
   );
 }

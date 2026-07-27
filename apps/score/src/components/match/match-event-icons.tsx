@@ -1,60 +1,28 @@
+import { GiSoccerBall, GiSoccerKick } from "react-icons/gi";
+import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { cn } from "@/lib/utils/cn";
+
 export function GoalBallIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 20 20" className={className} aria-hidden>
-      <circle cx="10" cy="10" r="8.5" fill="white" stroke="currentColor" strokeWidth="1.2" />
-      <path
-        d="M10 3.5 12 7.5 10 11 8 7.5 10 3.5Z"
-        fill="currentColor"
-        opacity="0.85"
-      />
-      <path
-        d="M10 3.5V2M12 7.5l1.8-1M8 7.5l-1.8-1M10 11v2M8 7.5 6 9M12 7.5l2 1.5M10 11l-2 1.5M10 11l2 1.5"
-        stroke="currentColor"
-        strokeWidth="0.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
+  return <GiSoccerBall className={cn("shrink-0", className)} aria-hidden />;
 }
 
 export function PenaltyGoalIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 20 20" className={className} aria-hidden>
-      <rect x="3" y="3" width="14" height="10" rx="1" fill="none" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M3 13h14" stroke="currentColor" strokeWidth="1.2" />
-      <circle cx="10" cy="8" r="3" fill="white" stroke="currentColor" strokeWidth="1" />
-      <path d="M10 6v4M8.5 7.5h3" stroke="currentColor" strokeWidth="0.7" />
-    </svg>
-  );
+  return <GiSoccerKick className={cn("shrink-0", className)} aria-hidden />;
 }
 
 export function SubstitutionIcon({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 20 20" className={className} aria-hidden>
-      <path
-        d="M4 7h8M10 7l-2.5-2.5M10 7l-2.5 2.5"
-        stroke="#dc2626"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      <path
-        d="M16 13H8M8 13l2.5-2.5M8 13l2.5 2.5"
-        stroke="#16a34a"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    </svg>
+    <span className={cn("inline-flex shrink-0 flex-col", className)} aria-hidden>
+      <ArrowDownLeft className="h-2.5 w-2.5 text-red-600" strokeWidth={2.5} />
+      <ArrowUpRight className="-mt-1 h-2.5 w-2.5 text-green-600" strokeWidth={2.5} />
+    </span>
   );
 }
 
 export function YellowCardIcon({ className }: { className?: string }) {
   return (
     <span
-      className={`inline-block h-3.5 w-2.5 rounded-[2px] bg-yellow-400 ${className ?? ""}`}
+      className={cn("inline-block h-3.5 w-2.5 shrink-0 rounded-[2px] bg-yellow-400", className)}
       aria-hidden
     />
   );
@@ -63,8 +31,27 @@ export function YellowCardIcon({ className }: { className?: string }) {
 export function RedCardIcon({ className }: { className?: string }) {
   return (
     <span
-      className={`inline-block h-3.5 w-2.5 rounded-[2px] bg-red-600 ${className ?? ""}`}
+      className={cn("inline-block h-3.5 w-2.5 shrink-0 rounded-[2px] bg-red-600", className)}
       aria-hidden
     />
+  );
+}
+
+export function AssistIcon({ className }: { className?: string }) {
+  return <FootballCleatIcon className={className} />;
+}
+
+/** Side-view football cleat — FotMob-style assist marker. */
+export function FootballCleatIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" className={cn("shrink-0", className)} aria-hidden>
+      <path
+        d="M2.5 10.2 5.2 4.8c.2-.4.6-.6 1-.6h3.6c.4 0 .8.2 1 .5l1.8 3.2c.2.3.2.7 0 1l-1.2 2.2c-.2.4-.6.6-1 .6H5.8c-.5 0-1-.3-1.2-.7l-1.1-1.8Z"
+        fill="currentColor"
+      />
+      <circle cx="5.8" cy="11.2" r="0.65" fill="white" />
+      <circle cx="8.2" cy="11.4" r="0.65" fill="white" />
+      <circle cx="10.4" cy="10.8" r="0.65" fill="white" />
+    </svg>
   );
 }

@@ -30,7 +30,7 @@ export function SignInModal({ open, onClose }: { open: boolean; onClose: () => v
         <div className="mt-6 flex flex-col gap-2">
           <Link
             href="/auth/login"
-            className="btn-primary rounded-full py-3 text-center font-display text-sm font-bold"
+            className="btn-primary rounded-full py-3 text-center font-display text-sm font-bold text-white hover:text-white"
             onClick={onClose}
           >
             Sign in
