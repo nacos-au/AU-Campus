@@ -2,6 +2,9 @@ import { WinProbabilityVote } from "@/components/match/win-probability";
 import { MatchPageLiveBlock } from "@/components/match/match-page-live-block";
 import { MatchLifecycleBadge } from "@/components/match/match-lifecycle-badge";
 import { MatchEventsList } from "@/components/match/match-events-list";
+import { FootballMatchTimeline } from "@/components/match/football-match-timeline";
+import { ManOfTheMatchCard } from "@/components/match/man-of-the-match";
+import { MatchInfoPanel } from "@/components/match/match-info-panel";
 import { DoublesLineup, MatchRulesBanner, PenaltyShootoutScore } from "@/components/match/match-rules";
 import { PeriodScoresTable, SetScoresTable } from "@/components/match/period-scores";
 import { TrackResultsTable } from "@/components/match/track-results";
@@ -23,6 +26,7 @@ import {
   podiumFromTeamScore,
   podiumFromTrackResults,
 } from "@/lib/match/podium";
+import { getManOfTheMatch, getMatchMeta } from "@/lib/match/match-meta";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -58,8 +62,11 @@ export default async function MatchPage({
   const setScores = getSetScoresForMatch(id);
   const trackResults = getTrackResultsForMatch(id);
   const isLive = match.status === "live";
+  const isCompleted = match.status === "completed";
   const homeName = match.home_team?.name ?? "Home";
   const awayName = match.away_team?.name ?? "Away";
+  const motm = isCompleted ? getManOfTheMatch(id) : null;
+  const matchMeta = getMatchMeta(match);
 
   const title = config.isEventSport
     ? (match.home_team?.name ?? "Event")
@@ -122,7 +129,7 @@ export default async function MatchPage({
           )}
 
           {!config.isEventSport && matchSport !== "tennis" && (
-            <MatchLineupsSection match={match} />
+            <MatchLineupsSection match={match} events={events} />
           )}
 
           {config.isEventSport && trackResults.length > 0 && (
@@ -150,35 +157,47 @@ export default async function MatchPage({
             </section>
           )}
 
-          <div className="grid gap-10 lg:grid-cols-3">
-            <div className={config.showWinProbability && match.win_probability ? "lg:col-span-2" : "lg:col-span-3"}>
-              <MatchEventsList
-                events={events}
-                sport={matchSport}
-                title={config.isEventSport ? "Event Timeline" : "Match Events"}
-              />
-            </div>
+          {matchSport === "football" && events.length > 0 ? (
+            <FootballMatchTimeline
+              events={events}
+              homeTeamId={match.home_team_id ?? ""}
+              awayTeamId={match.away_team_id ?? ""}
+              homeScore={match.home_score}
+              awayScore={match.away_score}
+              periodScores={periodScores}
+              isCompleted={isCompleted}
+              sport={matchSport}
+            />
+          ) : (
+            <MatchEventsList
+              events={events}
+              sport={matchSport}
+              title={config.isEventSport ? "Event Timeline" : "Match Events"}
+            />
+          )}
 
-            {config.showWinProbability && match.win_probability && (
-              <aside className="table-card h-fit p-5">
-                <WinProbabilityVote
-                  matchId={match.id}
-                  data={match.win_probability}
-                  showDraw={config.showDraw}
-                  homeTeam={{
-                    name: homeName,
-                    logoUrl: match.home_team?.logo_url,
-                    shortCode: match.home_team?.department?.short_code ?? "H",
-                  }}
-                  awayTeam={{
-                    name: awayName,
-                    logoUrl: match.away_team?.logo_url,
-                    shortCode: match.away_team?.department?.short_code ?? "A",
-                  }}
-                />
-              </aside>
-            )}
-          </div>
+          {config.showWinProbability && match.win_probability && (
+            <WinProbabilityVote
+              matchId={match.id}
+              data={match.win_probability}
+              showDraw={config.showDraw}
+              isCompleted={isCompleted}
+              homeTeam={{
+                name: homeName,
+                logoUrl: match.home_team?.logo_url,
+                shortCode: match.home_team?.department?.short_code ?? "H",
+              }}
+              awayTeam={{
+                name: awayName,
+                logoUrl: match.away_team?.logo_url,
+                shortCode: match.away_team?.department?.short_code ?? "A",
+              }}
+            />
+          )}
+
+          {motm && <ManOfTheMatchCard motm={motm} sport={matchSport} />}
+
+          {!config.isEventSport && <MatchInfoPanel match={match} meta={matchMeta} />}
         </div>
       </PageContent>
     </>

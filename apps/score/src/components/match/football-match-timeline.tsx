@@ -1,0 +1,240 @@
+import Link from "next/link";
+import type { DemoMatchEvent } from "@/lib/data/demo-match-details";
+import type { PeriodScore } from "@/lib/types/database";
+import {
+  GoalBallIcon,
+  PenaltyGoalIcon,
+  RedCardIcon,
+  SubstitutionIcon,
+  YellowCardIcon,
+} from "@/components/match/match-event-icons";
+import {
+  buildFootballTimeline,
+  playerShortName,
+  type TimelineItem,
+} from "@/lib/match/football-timeline";
+import type { SportId } from "@/lib/utils/sport";
+import { cn } from "@/lib/utils/cn";
+
+export function FootballMatchTimeline({
+  events,
+  homeTeamId,
+  awayTeamId,
+  homeScore,
+  awayScore,
+  periodScores,
+  isCompleted,
+  sport,
+}: {
+  events: DemoMatchEvent[];
+  homeTeamId: string;
+  awayTeamId: string;
+  homeScore: number;
+  awayScore: number;
+  periodScores: PeriodScore[];
+  isCompleted: boolean;
+  sport: SportId;
+}) {
+  const items = buildFootballTimeline(
+    events,
+    homeTeamId,
+    periodScores,
+    homeScore,
+    awayScore,
+    isCompleted
+  );
+
+  if (items.length === 0) {
+    return (
+      <section>
+        <h2 className="mb-4 font-display text-xl font-extrabold">Match Events</h2>
+        <div className="table-card p-8 text-center text-sm opacity-70">No events yet</div>
+      </section>
+    );
+  }
+
+  return (
+    <section>
+      <h2 className="mb-4 font-display text-xl font-extrabold">Match Events</h2>
+      <div className="table-card px-4 py-6 sm:px-6">
+        <div className="space-y-3">
+          {items.map((item) => {
+            if (item.kind === "divider") {
+              return <TimelineDivider key={item.id} label={item.label} />;
+            }
+            if (item.kind === "added_time") {
+              return (
+                <div key={item.id} className="flex justify-center py-1">
+                  <span className="rounded-full bg-surface px-3 py-1 text-xs font-semibold text-accent/60">
+                    Additional time {item.minutes}
+                  </span>
+                </div>
+              );
+            }
+            return (
+              <div key={item.id} className="grid grid-cols-2 items-center gap-2">
+                <div className="min-w-0">
+                  {item.side === "home" && (
+                    <TimelineEventRow item={item} sport={sport} isHome />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  {item.side === "away" && (
+                    <TimelineEventRow item={item} sport={sport} isHome={false} />
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TimelineDivider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 py-2">
+      <div className="h-px flex-1 bg-rule" />
+      <span className="shrink-0 font-display text-xs font-extrabold tracking-wide text-accent/70">
+        {label}
+      </span>
+      <div className="h-px flex-1 bg-rule" />
+    </div>
+  );
+}
+
+function TimelineEventRow({
+  item,
+  sport,
+  isHome,
+}: {
+  item: Extract<TimelineItem, { kind: "event" }>;
+  sport: SportId;
+  isHome: boolean;
+}) {
+  const { event, scoreLabel } = item;
+  const isSub = event.event_type === "substitution";
+  const isCard = event.event_type.includes("card");
+  const playerName = playerShortName(event.player.first_name, event.player.last_name);
+  const assistName =
+    event.details?.assist_player_name != null
+      ? String(event.details.assist_player_name)
+      : null;
+  const outName =
+    event.details?.player_out_name != null ? String(event.details.player_out_name) : null;
+  const foulLabel =
+    event.details?.foul_label != null ? String(event.details.foul_label) : "Foul";
+
+  const icon = <EventIcon event={event} />;
+  const time = (
+    <span className="w-12 shrink-0 font-display text-sm font-bold tabular-nums text-accent">
+      {event.match_time}
+    </span>
+  );
+
+  if (isHome) {
+    return (
+      <div className="flex items-center justify-start gap-2 sm:gap-3">
+        {time}
+        {icon}
+        {scoreLabel && <ScoreBadge score={scoreLabel} />}
+        <PlayerBlock
+          sport={sport}
+          playerId={event.player.id}
+          primary={playerName}
+          secondary={isSub ? outName : assistName}
+          secondaryMuted={isSub || Boolean(assistName)}
+          trailing={isCard ? foulLabel : undefined}
+          trailingBefore={false}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-end gap-2 sm:gap-3">
+      <PlayerBlock
+        sport={sport}
+        playerId={event.player.id}
+        primary={playerName}
+        secondary={isSub ? outName : assistName}
+        secondaryMuted={isSub || Boolean(assistName)}
+        trailing={isCard ? foulLabel : undefined}
+        trailingBefore
+        align="right"
+      />
+      {scoreLabel && <ScoreBadge score={scoreLabel} />}
+      {icon}
+      {time}
+    </div>
+  );
+}
+
+function PlayerBlock({
+  sport,
+  playerId,
+  primary,
+  secondary,
+  secondaryMuted,
+  trailing,
+  trailingBefore = false,
+  align = "left",
+}: {
+  sport: SportId;
+  playerId: string;
+  primary: string;
+  secondary?: string | null;
+  secondaryMuted?: boolean;
+  trailing?: string;
+  trailingBefore?: boolean;
+  align?: "left" | "right";
+}) {
+  return (
+    <div className={cn("min-w-0 text-sm", align === "right" ? "text-right" : "text-left")}>
+      {trailing && trailingBefore && (
+        <span className="mr-1.5 text-accent/50">{trailing}</span>
+      )}
+      <Link href={`/players/${playerId}?sport=${sport}`} className="font-display font-bold text-accent hover:underline">
+        {primary}
+      </Link>
+      {secondary && (
+        <span className={cn("ml-1.5", secondaryMuted ? "text-accent/40" : "text-accent/60")}>
+          {secondary}
+        </span>
+      )}
+      {trailing && !trailingBefore && (
+        <span className="ml-1.5 text-accent/50">{trailing}</span>
+      )}
+    </div>
+  );
+}
+
+function ScoreBadge({ score }: { score: string }) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-accent/30 bg-white px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-accent">
+      <span className="text-accent/50">▶</span>
+      {score}
+    </span>
+  );
+}
+
+function EventIcon({ event }: { event: DemoMatchEvent }) {
+  const cls = "h-5 w-5 shrink-0 text-accent";
+  switch (event.event_type) {
+    case "goal":
+      return <GoalBallIcon className={cls} />;
+    case "penalty_scored":
+      return <PenaltyGoalIcon className={cls} />;
+    case "penalty_missed":
+      return <PenaltyGoalIcon className={cn(cls, "opacity-50")} />;
+    case "substitution":
+      return <SubstitutionIcon className="h-5 w-5 shrink-0" />;
+    case "yellow_card":
+      return <YellowCardIcon />;
+    case "red_card":
+      return <RedCardIcon />;
+    default:
+      return <GoalBallIcon className={cls} />;
+  }
+}

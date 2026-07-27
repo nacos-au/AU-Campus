@@ -52,6 +52,10 @@ export const DEMO_PERIOD_SCORES: Record<string, PeriodScore[]> = {
     { period: "quarter_3", label: "Q3", home_score: 17, away_score: 15 },
     { period: "quarter_4", label: "Q4", home_score: 18, away_score: 17 },
   ],
+  "match-3": [
+    { period: "half_1", label: "1st Half", home_score: 0, away_score: 1 },
+    { period: "half_2", label: "2nd Half", home_score: 0, away_score: 2 },
+  ],
   "match-15": [
     { period: "half_1", label: "1st Half", home_score: 1, away_score: 0 },
     { period: "half_2", label: "2nd Half", home_score: 1, away_score: 2 },
@@ -98,10 +102,10 @@ export const DEMO_TRACK_RESULTS: Record<string, TrackResult[]> = {
 
 export const DEMO_EVENTS_BY_MATCH: Record<string, DemoMatchEvent[]> = {
   "match-1": [
-    { id: "ev-1", match_id: "match-1", player: DEMO_PLAYERS[0], ...teamEvent("team-csc-fc"), event_type: "goal", match_time: "12'", period: "half_1", details: { assist_player_name: "Chidi Eze" } },
+    { id: "ev-1", match_id: "match-1", player: DEMO_PLAYERS[0], ...teamEvent("team-csc-fc"), event_type: "goal", match_time: "12'", period: "half_1", details: { assist_player_name: "C. Eze", assist_player_id: "pl-2" } },
     { id: "ev-2", match_id: "match-1", player: DEMO_PLAYERS[3], ...teamEvent("team-mec-giants"), event_type: "goal", match_time: "28'", period: "half_1", details: null },
     { id: "ev-3", match_id: "match-1", player: DEMO_PLAYERS[0], ...teamEvent("team-csc-fc"), event_type: "goal", match_time: "36'", period: "half_1", details: null },
-    { id: "ev-4", match_id: "match-1", player: DEMO_PLAYERS[4], ...teamEvent("team-mec-giants"), event_type: "yellow_card", match_time: "38'", period: "half_1", details: null },
+    { id: "ev-4", match_id: "match-1", player: DEMO_PLAYERS[4], ...teamEvent("team-mec-giants"), event_type: "yellow_card", match_time: "38'", period: "half_1", details: { foul_label: "Foul" } },
   ],
   "match-4": [
     { id: "ev-b1", match_id: "match-4", player: DEMO_PLAYERS[8], ...playerTeamEvent("pl-9", "sport-basketball"), event_type: "field_goal", match_time: "Q3 02:14", period: "quarter_3", details: { points: 3 } },
@@ -123,14 +127,24 @@ export const DEMO_EVENTS_BY_MATCH: Record<string, DemoMatchEvent[]> = {
     { id: "ev-tr3", match_id: "match-10", player: DEMO_PLAYERS[0], ...playerTeamEvent("pl-1", "sport-track"), event_type: "finish", match_time: "10.89", period: "final", details: { rank: 3, lane: 3 } },
   ],
   "match-15": [
-    { id: "ev-p1", match_id: "match-15", player: DEMO_PLAYERS[0], ...teamEvent("team-csc-fc"), event_type: "goal", match_time: "34'", period: "half_1", details: null },
+    { id: "ev-p0a", match_id: "match-15", player: DEMO_PLAYERS[4], ...teamEvent("team-mec-giants"), event_type: "yellow_card", match_time: "27'", period: "half_1", details: { foul_label: "Foul" } },
+    { id: "ev-p1", match_id: "match-15", player: DEMO_PLAYERS[0], ...teamEvent("team-csc-fc"), event_type: "goal", match_time: "34'", period: "half_1", details: { assist_player_name: "C. Eze" } },
+    { id: "ev-p1b", match_id: "match-15", player: DEMO_PLAYERS[17], ...teamEvent("team-csc-fc"), event_type: "substitution", match_time: "58'", period: "half_2", details: { player_out_name: "M. Okoro", player_out_id: "pl-16" } },
     { id: "ev-p2", match_id: "match-15", player: DEMO_PLAYERS[3], ...teamEvent("team-mec-giants"), event_type: "goal", match_time: "67'", period: "half_2", details: null },
+    { id: "ev-p2b", match_id: "match-15", player: DEMO_PLAYERS[5], ...teamEvent("team-mec-giants"), event_type: "red_card", match_time: "74'", period: "half_2", details: { foul_label: "Foul" } },
+    { id: "ev-p2c", match_id: "match-15", player: DEMO_PLAYERS[17], ...teamEvent("team-csc-fc"), event_type: "substitution", match_time: "75'", period: "half_2", details: { player_out_name: "J. Torres", player_out_id: "pl-16" } },
     { id: "ev-p3", match_id: "match-15", player: DEMO_PLAYERS[3], ...teamEvent("team-mec-giants"), event_type: "goal", match_time: "88'", period: "half_2", details: null },
     { id: "ev-p4", match_id: "match-15", player: DEMO_PLAYERS[1], ...teamEvent("team-csc-fc"), event_type: "goal", match_time: "90+3'", period: "half_2", details: null },
     { id: "ev-p5", match_id: "match-15", player: DEMO_PLAYERS[0], ...teamEvent("team-csc-fc"), event_type: "goal", match_time: "ET 105'", period: "extra_time", details: null },
     { id: "ev-p6", match_id: "match-15", player: DEMO_PLAYERS[4], ...teamEvent("team-mec-giants"), event_type: "goal", match_time: "ET 112'", period: "extra_time", details: null },
     { id: "ev-p7", match_id: "match-15", player: DEMO_PLAYERS[0], ...teamEvent("team-csc-fc"), event_type: "penalty_scored", match_time: "Pens", period: "penalty_shootout", details: null },
     { id: "ev-p8", match_id: "match-15", player: DEMO_PLAYERS[3], ...teamEvent("team-mec-giants"), event_type: "penalty_missed", match_time: "Pens", period: "penalty_shootout", details: null },
+  ],
+  "match-3": [
+    { id: "ev-m3-1", match_id: "match-3", player: DEMO_PLAYERS[0], ...teamEvent("team-csc-fc"), event_type: "goal", match_time: "22'", period: "half_1", details: { assist_player_name: "C. Eze" } },
+    { id: "ev-m3-2", match_id: "match-3", player: DEMO_PLAYERS[1], ...teamEvent("team-csc-fc"), event_type: "goal", match_time: "55'", period: "half_2", details: null },
+    { id: "ev-m3-3", match_id: "match-3", player: DEMO_PLAYERS[7], ...teamEvent("team-law-barristers"), event_type: "yellow_card", match_time: "61'", period: "half_2", details: { foul_label: "Foul" } },
+    { id: "ev-m3-4", match_id: "match-3", player: DEMO_PLAYERS[0], ...teamEvent("team-csc-fc"), event_type: "goal", match_time: "78'", period: "half_2", details: null },
   ],
   "match-16": [
     { id: "ev-d1", match_id: "match-16", player: DEMO_PLAYERS[9], ...teamEvent("team-csc-tennis"), event_type: "ace", match_time: "Set 1", period: "set_1", details: { partner_name: "Adaeze Okonkwo" } },

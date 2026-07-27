@@ -1,12 +1,42 @@
+import { FootballLineupPitch } from "@/components/match/football-lineup-pitch";
 import { PlayerAvatar, TeamCrest } from "@/components/ui/team-crest";
-import { getSubmittedLineup, resolveLineupPlayers } from "@/lib/data/demo-lineups";
+import { getPitchLineup, getSubmittedLineup, resolveLineupPlayers } from "@/lib/data/demo-lineups";
+import type { DemoMatchEvent } from "@/lib/data/demo-match-details";
+import { getManOfTheMatch } from "@/lib/match/match-meta";
 import type { Match } from "@/lib/types/database";
+import { dbIdToSport } from "@/lib/utils/sport";
 
-/**
- * Post-match lineups as submitted by each club. If a club never submitted,
- * we say so — that same submission is what the record keeper works from.
- */
-export function MatchLineupsSection({ match }: { match: Match }) {
+export function MatchLineupsSection({
+  match,
+  events = [],
+}: {
+  match: Match;
+  events?: DemoMatchEvent[];
+}) {
+  const sport = dbIdToSport(match.sport_id);
+  const motm = match.status === "completed" ? getManOfTheMatch(match.id) : null;
+
+  if (sport === "football") {
+    const hasPitch = Boolean(
+      (match.home_team_id && getPitchLineup(match.id, match.home_team_id)) ||
+        (match.away_team_id && getPitchLineup(match.id, match.away_team_id))
+    );
+
+    if (hasPitch) {
+      return (
+        <section>
+          <h2 className="mb-4 font-display text-xl font-extrabold">Lineups</h2>
+          <FootballLineupPitch
+            match={match}
+            events={events}
+            sport={sport}
+            motmPlayerId={motm?.player_id ?? null}
+          />
+        </section>
+      );
+    }
+  }
+
   const sides = [
     { team: match.home_team, teamId: match.home_team_id },
     { team: match.away_team, teamId: match.away_team_id },
