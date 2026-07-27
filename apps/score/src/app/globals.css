@@ -82,6 +82,47 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
+/* Inner wrapper — .table-card overflow:hidden blocks scroll on the same element */
+.table-scroll-x {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes sport-icon-pop {
+  0% {
+    transform: scale(0.85);
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.sport-nav-icon {
+  transition: transform 0.2s ease;
+}
+
+.sport-nav-link:hover .sport-nav-icon {
+  transform: scale(1.08);
+}
+
+.sport-nav-link[data-active="true"] .sport-nav-icon-active {
+  animation: sport-icon-pop 0.35s ease;
+}
+
 .table-card tbody tr {
   transition: background-color 0.15s ease;
 }

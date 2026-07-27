@@ -185,8 +185,9 @@ export function StandingsTable({
   const columns = columnsForSport(sport, showNextMatch);
 
   return (
-    <div className="table-card overflow-x-auto overscroll-x-contain">
-      <table className="w-full min-w-[640px] text-left">
+    <div className="table-card overflow-hidden">
+      <div className="table-scroll-x">
+        <table className="w-full min-w-[640px] text-left">
         <thead>
           <tr className="border-b border-rule bg-white font-display text-xs font-extrabold uppercase">
             {columns.map((col) => (
@@ -227,6 +228,7 @@ export function StandingsTable({
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }

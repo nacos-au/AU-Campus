@@ -102,7 +102,7 @@ export function GroupTables({
             <h3 className="border-b border-rule px-5 py-3 font-display text-sm font-extrabold uppercase">
               {groupName}
             </h3>
-            <div className="overflow-x-auto overscroll-x-contain">
+            <div className="table-scroll-x">
               <table className="w-full min-w-[480px] text-sm">
                 <thead>
                   <tr className="border-b border-rule text-[12px] font-bold uppercase opacity-60">
