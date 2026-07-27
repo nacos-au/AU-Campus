@@ -74,6 +74,15 @@ export interface StandingRow {
   points: number;
   form: ("W" | "D" | "L")[];
   logo_url?: string | null;
+  /** Upcoming league opponent — football & basketball leagues only */
+  next_match?: NextMatchInfo | null;
+}
+
+export interface NextMatchInfo {
+  opponent_team_id: string;
+  opponent_name: string;
+  short_code: string;
+  logo_url?: string | null;
 }
 
 export interface GroupStandingRow extends StandingRow {

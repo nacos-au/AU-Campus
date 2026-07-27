@@ -102,7 +102,37 @@ export function GroupTables({
             <h3 className="border-b border-rule px-5 py-3 font-display text-sm font-extrabold uppercase">
               {groupName}
             </h3>
-            <table className="w-full text-sm">
+
+            {/* Mobile cards */}
+            <div className="divide-y divide-rule md:hidden">
+              {groupRows.map((row, i) => (
+                <div key={`${row.group_id}-${row.team_id}-m`} className="px-4 py-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="w-5 shrink-0 text-center text-sm font-extrabold opacity-50">{i + 1}</span>
+                      <Link href={`/teams/${row.team_id}?sport=${sport}`} className="flex min-w-0 items-center gap-2 hover:underline">
+                        <TeamCrest code={row.short_code} logoUrl={row.logo_url} alt={row.team_name} size="sm" />
+                        <span className="truncate font-display text-sm font-bold">{row.team_name}</span>
+                      </Link>
+                    </div>
+                    <strong className="shrink-0 font-display">{row.points}</strong>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs opacity-70">
+                    <span><span className="font-bold uppercase opacity-50">Pl</span> {row.played}</span>
+                    <span><span className="font-bold uppercase opacity-50">W</span> {row.won}</span>
+                    <span><span className="font-bold uppercase opacity-50">D</span> {row.drawn}</span>
+                    <span><span className="font-bold uppercase opacity-50">L</span> {row.lost}</span>
+                    <span>
+                      <span className="font-bold uppercase opacity-50">GD</span>{" "}
+                      {row.goal_difference > 0 ? `+${row.goal_difference}` : row.goal_difference}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table */}
+            <table className="hidden w-full text-sm md:table">
               <thead>
                 <tr className="border-b border-rule text-xs font-bold uppercase opacity-60">
                   <th className="px-5 py-2 text-left">Team</th>

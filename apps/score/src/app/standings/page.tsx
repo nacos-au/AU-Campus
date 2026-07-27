@@ -5,6 +5,7 @@ import { TableFilters } from "@/components/layout/filters-bar";
 import { BrandedSection } from "@/components/layout/branded-section";
 import { PageContent } from "@/components/layout/page-content";
 import { getStandingsBySport } from "@/lib/data/get-by-sport";
+import { sportSupportsNextMatch } from "@/lib/standings/next-match";
 import {
   getGroupStandingsForTournament,
   getTournamentForSport,
@@ -23,7 +24,8 @@ export default async function StandingsPage({
   const sportDbId = sportToDbId(activeSport);
   const tournament = getTournamentForSport(sportDbId, competition);
   const isLeague = !tournament || tournament.competition_type !== "cup";
-  const leagueRows = getStandingsBySport(activeSport);
+  const showNextMatch = isLeague && sportSupportsNextMatch(activeSport);
+  const leagueRows = getStandingsBySport(activeSport, isLeague ? tournament?.id : undefined);
   const groupRows = tournament ? getGroupStandingsForTournament(tournament.id) : [];
 
   return (
@@ -36,7 +38,7 @@ export default async function StandingsPage({
         <TableFilters sport={activeSport} competitionId={tournament?.id} />
         <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6">
           {isLeague ? (
-            <StandingsTable rows={leagueRows} sport={activeSport} />
+            <StandingsTable rows={leagueRows} sport={activeSport} showNextMatch={showNextMatch} />
           ) : groupRows.length > 0 ? (
             <GroupTables rows={groupRows} sport={activeSport} />
           ) : (

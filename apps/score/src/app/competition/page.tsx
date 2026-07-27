@@ -18,6 +18,7 @@ import {
   getTournamentForSport,
 } from "@/lib/data/demo-competition";
 import { getStandingsBySport } from "@/lib/data/get-by-sport";
+import { sportSupportsNextMatch } from "@/lib/standings/next-match";
 import { getScoreDemoMode } from "@/lib/data/mode";
 import {
   fetchBracketFixtures,
@@ -139,7 +140,8 @@ export default async function CompetitionPage({
   const meetEvents = demo
     ? getMeetEventsForTournament(tournament.id)
     : await fetchMeetEvents(sportDbId);
-  const leagueStandings = isLeague ? getStandingsBySport(activeSport) : [];
+  const leagueStandings = isLeague ? getStandingsBySport(activeSport, tournament.id) : [];
+  const showNextMatch = isLeague && sportSupportsNextMatch(activeSport);
   const isTrack = sportDbId === "sport-track";
   const isTennis = sportDbId === "sport-tennis";
 
@@ -163,7 +165,7 @@ export default async function CompetitionPage({
           {isLeague && leagueStandings.length > 0 && (
             <section>
               <h2 className="mb-4 font-display text-xl font-extrabold">League Table</h2>
-              <StandingsTable rows={leagueStandings} sport={activeSport} />
+              <StandingsTable rows={leagueStandings} sport={activeSport} showNextMatch={showNextMatch} />
             </section>
           )}
 

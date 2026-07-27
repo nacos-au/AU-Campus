@@ -5,6 +5,7 @@ import { PlayerAvatar, TeamCrest } from "@/components/ui/team-crest";
 import { DEMO_DEPARTMENTS, DEMO_TEAMS } from "@/lib/data/demo";
 import { getClubCompetitions, getSquadRosterEntries, groupSquadByRole } from "@/lib/data/demo-squads";
 import { getStandingsBySport } from "@/lib/data/get-by-sport";
+import { getDefaultLeagueTournamentId, sportSupportsNextMatch } from "@/lib/standings/next-match";
 import { parseSportParam, sportToDbId } from "@/lib/utils/sport";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -28,7 +29,9 @@ export default async function TeamPage({
   const team = DEMO_TEAMS.find((t) => t.id === id);
   if (!team) notFound();
 
-  const standings = getStandingsBySport(activeSport);
+  const leagueTournamentId = getDefaultLeagueTournamentId(activeSport);
+  const showNextMatch = sportSupportsNextMatch(activeSport) && Boolean(leagueTournamentId);
+  const standings = getStandingsBySport(activeSport, leagueTournamentId);
   const squad = getSquadRosterEntries(id);
   const squadGroups = groupSquadByRole(squad, sportToDbId(activeSport));
   const competitions = getClubCompetitions(id);
@@ -101,7 +104,12 @@ export default async function TeamPage({
             )}
           </div>
 
-          <StandingsTable rows={standings} sport={activeSport} highlightTeamId={id} />
+          <StandingsTable
+            rows={standings}
+            sport={activeSport}
+            highlightTeamId={id}
+            showNextMatch={showNextMatch}
+          />
         </div>
       </PageContent>
     </>

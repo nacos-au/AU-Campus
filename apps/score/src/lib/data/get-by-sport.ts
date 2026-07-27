@@ -1,4 +1,5 @@
 import type { SportId } from "@/lib/utils/sport";
+import { sportToDbId } from "@/lib/utils/sport";
 import type { Match, StandingRow } from "@/lib/types/database";
 import type { StatLeader } from "@/components/stats/stat-leader-card";
 import {
@@ -17,7 +18,7 @@ import {
 } from "@/lib/data/demo";
 import { playerAvatarForId } from "@/lib/utils/sport-assets";
 import { getSportConfig } from "@/lib/utils/sport-config";
-import { sportToDbId } from "@/lib/utils/sport";
+import { enrichStandingsWithNextMatch } from "@/lib/standings/next-match";
 
 function enrichStandings(rows: StandingRow[], sport: SportId): StandingRow[] {
   if (sport === "track") {
@@ -39,19 +40,25 @@ export function getMatchesBySport(sport: SportId, tournamentId?: string): Match[
   return matches.filter((m) => m.tournament_id === tournamentId);
 }
 
-export function getStandingsBySport(sport: SportId): StandingRow[] {
+export function getStandingsBySport(sport: SportId, tournamentId?: string): StandingRow[] {
+  let rows: StandingRow[];
   switch (sport) {
     case "basketball":
-      return enrichStandings(DEMO_STANDINGS_BASKETBALL, sport);
+      rows = enrichStandings(DEMO_STANDINGS_BASKETBALL, sport);
+      break;
     case "tennis":
-      return enrichStandings(DEMO_STANDINGS_TENNIS, sport);
+      rows = enrichStandings(DEMO_STANDINGS_TENNIS, sport);
+      break;
     case "track":
-      return enrichStandings(DEMO_STANDINGS_TRACK, sport);
+      rows = enrichStandings(DEMO_STANDINGS_TRACK, sport);
+      break;
     case "volleyball":
-      return enrichStandings(DEMO_STANDINGS_VOLLEYBALL, sport);
+      rows = enrichStandings(DEMO_STANDINGS_VOLLEYBALL, sport);
+      break;
     default:
-      return enrichStandings(DEMO_STANDINGS_FOOTBALL, sport);
+      rows = enrichStandings(DEMO_STANDINGS_FOOTBALL, sport);
   }
+  return enrichStandingsWithNextMatch(rows, sport, tournamentId);
 }
 
 export function getStatLeadersBySport(sport: SportId): {

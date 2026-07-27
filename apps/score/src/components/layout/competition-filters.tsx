@@ -42,7 +42,7 @@ function FilterSelect({
 }
 
 /**
- * Horizontal filter row: competition, season, matchweek, home/away.
+ * Horizontal filter row: competition, season, matchweek.
  * Replaces the nested competition tab picker — one bar, same as the original design.
  */
 export function CompetitionFilters({
@@ -89,7 +89,6 @@ export function CompetitionFilters({
   ];
 
   const matchweekOptions = [{ value: "all", label: config.roundFilter }];
-  const homeAwayOptions = [{ value: "all", label: config.homeAwayFilter }];
 
   return (
     <div className="filters-bar border-b border-rule bg-wrapper">
@@ -120,20 +119,12 @@ export function CompetitionFilters({
         />
 
         {variant === "matches" && (
-          <>
-            <FilterSelect
-              aria-label="Matchweek"
-              value="all"
-              onChange={() => {}}
-              options={matchweekOptions}
-            />
-            <FilterSelect
-              aria-label="Home and away"
-              value="all"
-              onChange={() => {}}
-              options={homeAwayOptions}
-            />
-          </>
+          <FilterSelect
+            aria-label="Matchweek"
+            value="all"
+            onChange={() => {}}
+            options={matchweekOptions}
+          />
         )}
 
         <button

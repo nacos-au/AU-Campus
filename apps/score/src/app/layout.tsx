@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Source_Sans_3 } from "next/font/google";
 import { SiteHeader } from "@/components/layout/site-header";
-import { DataModeBanner } from "@/components/layout/data-mode-banner";
 import { QueryProvider } from "@/providers/query-provider";
 import "./globals.css";
 
@@ -41,7 +40,6 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-white font-sans text-ink">
         <QueryProvider>
           <SiteHeader />
-          <DataModeBanner />
           <main className="flex-1 bg-white">{children}</main>
         </QueryProvider>
       </body>
