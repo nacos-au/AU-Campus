@@ -2,7 +2,7 @@ import { PlayerStatRow } from "@/components/stats/stat-leader-card";
 import { BrandedSection } from "@/components/layout/branded-section";
 import { PlayerStatsFilters } from "@/components/layout/filters-bar";
 import { PageContent } from "@/components/layout/page-content";
-import { getStatLabelsBySport, getStatLeadersBySport } from "@/lib/data/get-by-sport";
+import { getStatLabelsBySport, getStatLeadersBySport, formatStatValue } from "@/lib/data/get-by-sport";
 import { parseSportParam, SPORT_LABELS } from "@/lib/utils/sport";
 
 export const metadata = { title: "Player Stats" };
@@ -43,6 +43,7 @@ export default async function PlayerStatsPage({
                 value={entry.value}
                 statLabel={primaryStat}
                 sport={activeSport}
+                formatValue={(v) => formatStatValue(activeSport, 0, v)}
               />
             ))}
           </div>

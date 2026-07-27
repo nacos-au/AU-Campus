@@ -3,23 +3,27 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { SportId } from "@/lib/utils/sport";
+import { getSportConfig } from "@/lib/utils/sport-config";
 import { cn } from "@/lib/utils/cn";
-
-const subNavItems = [
-  { href: "/", label: "Matches" },
-  { href: "/standings", label: "Table" },
-  { href: "/stats", label: "Statistics" },
-  { href: "/teams", label: "Clubs" },
-];
 
 function isSubNavActive(href: string, pathname: string): boolean {
   if (href === "/") return pathname === "/";
   if (href === "/stats") return pathname.startsWith("/stats");
+  if (href === "/competition") return pathname.startsWith("/competition");
   return pathname.startsWith(href);
 }
 
 export function PageSubNav({ activeSport }: { activeSport: SportId }) {
   const pathname = usePathname();
+  const config = getSportConfig(activeSport);
+
+  const subNavItems = [
+    { href: "/", label: "Matches" },
+    { href: "/standings", label: "Table" },
+    { href: "/competition", label: "Competition" },
+    { href: "/stats", label: "Statistics" },
+    { href: "/teams", label: config.clubsLabel },
+  ];
 
   return (
     <nav className="border-b border-rule bg-wrapper">

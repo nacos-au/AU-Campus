@@ -5,8 +5,8 @@ export const SPORT_LOGOS: Record<SportId, string> = {
   football: "/logos/football.png",
   basketball: "/logos/basketball.png",
   volleyball: "/logos/volleyball.png",
-  tennis: "/logos/basketball.png",
-  track: "/images/player-sample.png",
+  tennis: "/logos/tennis.svg",
+  track: "/logos/track.svg",
 };
 
 /** Rotating demo player headshots */

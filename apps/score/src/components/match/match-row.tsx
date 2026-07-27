@@ -4,8 +4,11 @@ import { format } from "date-fns";
 import type { Match } from "@/lib/types/database";
 import { TeamCrest } from "@/components/ui/team-crest";
 import { LiveBadge } from "@/components/layout/site-header";
+import { getTrackResultsForMatch } from "@/lib/data/demo-match-details";
+import { scoreClass } from "@/lib/match/score-highlight";
 import { dbIdToSport } from "@/lib/utils/sport";
-import { getSportConfig, scoreUnitLabel } from "@/lib/utils/sport-config";
+import { getSportConfig } from "@/lib/utils/sport-config";
+import { cn } from "@/lib/utils/cn";
 
 export function MatchRow({ match }: { match: Match }) {
   const isLive = match.status === "live";
@@ -16,6 +19,8 @@ export function MatchRow({ match }: { match: Match }) {
   const config = getSportConfig(sport);
 
   if (config.isEventSport) {
+    const results = getTrackResultsForMatch(match.id);
+    const leader = results[0];
     return (
       <Link
         href={`/matches/${match.id}?sport=${sport}`}
@@ -26,7 +31,13 @@ export function MatchRow({ match }: { match: Match }) {
           <span className="font-display text-base font-bold">{home?.name ?? "Track Event"}</span>
         </div>
         <div className="text-right">
-          {isLive ? <LiveBadge /> : (
+          {isLive && leader ? (
+            <p className="font-display text-sm font-bold tabular-nums">
+              {leader.time_display}s <span className="text-xs font-semibold opacity-60">LIVE</span>
+            </p>
+          ) : isLive ? (
+            <LiveBadge />
+          ) : (
             <p className="font-display text-sm font-bold">
               {format(new Date(match.scheduled_at), "HH:mm")}
             </p>
@@ -36,76 +47,71 @@ export function MatchRow({ match }: { match: Match }) {
     );
   }
 
+  // Kickoff time + status on the left, stacked teams, scores at the right.
+  // Unplayed matches simply show "–" — no score box needed.
   return (
     <Link
       href={`/matches/${match.id}?sport=${sport}`}
-      className="block border-b border-rule bg-white py-4 hover:bg-wrapper sm:px-5 sm:py-5"
+      className="flex items-center gap-3 border-b border-rule bg-white px-4 py-3 hover:bg-wrapper sm:px-5"
     >
-      <div className="hidden grid-cols-[1fr_auto_1fr] items-center gap-6 px-4 sm:grid sm:px-0">
-        <div className="flex items-center justify-end gap-3">
-          <span className="text-right font-display text-base font-bold">{home?.name}</span>
-          <TeamCrest code={home?.department?.short_code ?? "—"} logoUrl={home?.logo_url} alt={home?.name} />
-        </div>
-        <ScoreCenter match={match} isLive={isLive} isCompleted={isCompleted} sport={sport} />
-        <div className="flex items-center gap-3">
-          <TeamCrest code={away?.department?.short_code ?? "—"} logoUrl={away?.logo_url} alt={away?.name} />
-          <span className="font-display text-base font-bold">{away?.name}</span>
-        </div>
+      <div className="flex w-12 shrink-0 flex-col items-center gap-0.5 border-r border-rule pr-3 text-center">
+        <span className="font-display text-xs font-bold tabular-nums opacity-70">
+          {format(new Date(match.scheduled_at), "HH:mm")}
+        </span>
+        {isLive ? (
+          <LiveBadge />
+        ) : (
+          <span className={cn("text-xs font-semibold", isCompleted ? "opacity-60" : "opacity-30")}>
+            {isCompleted ? "FT" : "–"}
+          </span>
+        )}
       </div>
 
-      <div className="flex items-center justify-between gap-2 px-4 sm:hidden">
-        <div className="flex min-w-0 flex-1 flex-col items-end gap-1">
-          <TeamCrest code={home?.department?.short_code ?? "—"} logoUrl={home?.logo_url} alt={home?.name} size="sm" />
-          <span className="truncate text-right font-display text-sm font-bold">{home?.name}</span>
-        </div>
-        <div className="shrink-0 px-2">
-          <ScoreCenter match={match} isLive={isLive} isCompleted={isCompleted} sport={sport} compact />
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
-          <TeamCrest code={away?.department?.short_code ?? "—"} logoUrl={away?.logo_url} alt={away?.name} size="sm" />
-          <span className="truncate font-display text-sm font-bold">{away?.name}</span>
-        </div>
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <TeamLine team={home} highlight={isCompleted && (match.home_score ?? 0) > (match.away_score ?? 0)} />
+        <TeamLine team={away} highlight={isCompleted && (match.away_score ?? 0) > (match.home_score ?? 0)} />
       </div>
+
+      {(isLive || isCompleted) && (
+        <div
+          className={cn(
+            "flex shrink-0 flex-col items-end gap-1.5 font-display text-sm font-bold tabular-nums",
+            isLive && "text-accent"
+          )}
+        >
+          <span className={scoreClass(match.home_score, match.away_score, "home", "sm")}>
+            {match.home_score}
+          </span>
+          <span className={scoreClass(match.home_score, match.away_score, "away", "sm")}>
+            {match.away_score}
+          </span>
+        </div>
+      )}
     </Link>
   );
 }
 
-function ScoreCenter({
-  match,
-  isLive,
-  isCompleted,
-  sport,
-  compact,
-}: {
-  match: Match;
-  isLive: boolean;
-  isCompleted: boolean;
-  sport: ReturnType<typeof dbIdToSport>;
-  compact?: boolean;
-}) {
-  const config = getSportConfig(sport);
-  const unit = scoreUnitLabel(config.scoreUnit);
-
+function TeamLine({ team, highlight }: { team?: Match["home_team"]; highlight?: boolean }) {
   return (
-    <div className={compact ? "min-w-[56px] text-center" : "min-w-[80px] text-center"}>
-      {isLive || isCompleted ? (
-        <div>
-          <p className={`font-display font-extrabold tabular-nums ${compact ? "text-sm" : "text-lg"}`}>
-            {match.home_score} - {match.away_score}
-          </p>
-          {unit && (
-            <p className="text-[10px] font-semibold uppercase tracking-wide opacity-50">{unit}</p>
-          )}
-          {isLive && <LiveBadge />}
-        </div>
-      ) : (
-        <p className={`font-display font-bold ${compact ? "text-sm" : "text-base"}`}>
-          {format(new Date(match.scheduled_at), "HH:mm")}
-        </p>
-      )}
+    <div className="flex items-center gap-2">
+      <TeamCrest
+        code={team?.department?.short_code ?? "—"}
+        logoUrl={team?.logo_url}
+        alt={team?.name}
+        size="xs"
+      />
+      <span
+        className={cn(
+          "truncate font-display text-sm",
+          highlight ? "font-extrabold" : "font-semibold"
+        )}
+      >
+        {team?.name ?? "TBD"}
+      </span>
     </div>
   );
 }
+
 
 export function MatchDateGroup({ date, matches }: { date: string; matches: Match[] }) {
   const liveMatch = matches.find((m) => m.status === "live");

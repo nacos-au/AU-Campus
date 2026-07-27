@@ -3,14 +3,7 @@ import { getScoreDemoMode } from "@/lib/data/mode";
 
 export async function DataModeBanner() {
   const demo = await getScoreDemoMode();
-
-  if (demo) {
-    return (
-      <div className="border-b border-brand-green/20 bg-brand-green/5 px-4 py-2 text-center text-xs text-brand-green">
-        Demo fixtures — toggle <strong>Live</strong> in the header when the database is seeded.
-      </div>
-    );
-  }
+  if (demo) return null;
 
   return (
     <div className="border-b border-accent/20 bg-[#faf9fa] px-4 py-2 text-center text-xs text-accent">

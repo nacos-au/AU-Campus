@@ -1,4 +1,119 @@
-export type UserRole = "super_admin" | "record_keeper" | "student";
+export type UserRole =
+  | "platform_owner"
+  | "super_admin"
+  | "admin"
+  | "record_keeper"
+  | "student";
+
+export type CompetitionFormat = "team_vs_team" | "individual" | "relay";
+export type MatchScope = "official" | "pickup";
+export type MatchVariant = "standard" | "singles" | "doubles" | "relay";
+export type CompetitionPhase =
+  | "group_stage"
+  | "round_of_32"
+  | "round_of_16"
+  | "quarter_final"
+  | "semi_final"
+  | "third_place"
+  | "final";
+
+export interface FootballRules {
+  extra_time?: boolean;
+  penalty_shootout?: boolean;
+  /** If true, go straight to pens when drawn after 90 min (no extra time) */
+  penalties_after_full_time?: boolean;
+  overtime?: boolean;
+}
+
+export interface BracketFixture {
+  id: string;
+  round: CompetitionPhase;
+  round_label: string;
+  match_id: string | null;
+  home_team_id: string | null;
+  away_team_id: string | null;
+  home_team_name: string | null;
+  away_team_name: string | null;
+  home_score: number | null;
+  away_score: number | null;
+  home_penalties: number | null;
+  away_penalties: number | null;
+  status: "scheduled" | "live" | "completed" | "tbd";
+  scheduled_at: string | null;
+  /** Individual bracket (tennis singles) */
+  home_player_id?: string | null;
+  away_player_id?: string | null;
+  home_subtitle?: string | null;
+  away_subtitle?: string | null;
+  home_avatar_url?: string | null;
+  away_avatar_url?: string | null;
+  bracket_mode?: "team" | "player";
+}
+
+export interface MeetEventFixture {
+  id: string;
+  event_name: string;
+  category: string;
+  match_id: string | null;
+  status: "scheduled" | "live" | "completed";
+  scheduled_at: string | null;
+  venue?: string | null;
+}
+
+export interface StandingRow {
+  team_id: string;
+  team_name: string;
+  short_code: string;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goals_for: number;
+  goals_against: number;
+  goal_difference: number;
+  points: number;
+  form: ("W" | "D" | "L")[];
+  logo_url?: string | null;
+}
+
+export interface GroupStandingRow extends StandingRow {
+  group_id: string;
+  group_name: string;
+}
+
+export interface CompetitionTimelinePhase {
+  phase: CompetitionPhase;
+  label: string;
+  status: "completed" | "active" | "upcoming";
+  fixture_count: number;
+  completed_count: number;
+}
+
+export interface PeriodScore {
+  period: string;
+  label: string;
+  home_score: number;
+  away_score: number;
+}
+
+export interface SetScore {
+  set_number: number;
+  home_games: number;
+  away_games: number;
+  tiebreak?: boolean;
+}
+
+export interface TrackResult {
+  rank: number;
+  lane: number;
+  player_id: string;
+  athlete_name: string;
+  department_code: string;
+  time_ms: number;
+  time_display: string;
+  avatar_url?: string | null;
+  status?: "finished" | "dnf" | "false_start" | "dns";
+}
 
 export type MatchStatus =
   | "scheduled"
@@ -45,17 +160,27 @@ export interface Player {
   department?: Department;
 }
 
+export interface TitleHolder {
+  team_id?: string | null;
+  team_name: string;
+  /** Season they won, e.g. "2024/25" */
+  season: string;
+  logo_url?: string | null;
+  short_code?: string | null;
+}
+
 export interface Tournament {
   id: string;
   name: string;
   sport_id: string;
-  category: "league" | "knockout_cup" | "friendly";
-  rules: {
-    extra_time?: boolean;
-    penalty_shootout?: boolean;
-    overtime?: boolean;
-  };
+  category: "league" | "knockout_cup" | "group_knockout" | "friendly";
+  format?: "league" | "group_knockout" | "knockout_only";
+  /** league → Team of the Season; cup → Team of the Tournament */
+  competition_type?: "league" | "cup";
+  title_holder?: TitleHolder | null;
+  rules: FootballRules;
   season: string;
+  phases?: CompetitionTimelinePhase[];
 }
 
 export interface Match {
@@ -72,10 +197,21 @@ export interface Match {
   started_at: string | null;
   ended_at: string | null;
   win_probability: WinProbability | null;
+  competition_format?: CompetitionFormat;
+  match_variant?: MatchVariant;
+  competition_phase?: CompetitionPhase;
+  group_id?: string | null;
+  scope?: MatchScope;
+  home_penalties?: number | null;
+  away_penalties?: number | null;
+  went_to_extra_time?: boolean;
   home_team?: Team;
   away_team?: Team;
   tournament?: Tournament;
   sport?: Sport;
+  period_scores?: PeriodScore[];
+  set_scores?: SetScore[];
+  track_results?: TrackResult[];
 }
 
 export interface WinProbability {
@@ -120,20 +256,4 @@ export interface TeamEloRating {
   tournament_id: string;
   rating: number;
   updated_at: string;
-}
-
-export interface StandingRow {
-  team_id: string;
-  team_name: string;
-  short_code: string;
-  played: number;
-  won: number;
-  drawn: number;
-  lost: number;
-  goals_for: number;
-  goals_against: number;
-  goal_difference: number;
-  points: number;
-  form: ("W" | "D" | "L")[];
-  logo_url?: string | null;
 }

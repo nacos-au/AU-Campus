@@ -12,16 +12,18 @@ export interface SportConfig {
   clubsLabel: string;
   scoreUnit: "goals" | "points" | "sets" | "event";
   showDraw: boolean;
+  showWinProbability: boolean;
   isEventSport: boolean;
+  competitionFormat: "team_vs_team" | "individual" | "relay";
   playerStats: { label: string; value: (position: string) => number }[];
 }
 
 export const SPORT_CONFIG: Record<SportId, SportConfig> = {
   football: {
     label: "Football",
-    tournament: "Inter-Faculty League",
+    tournament: "All Competitions",
     season: "2025/26",
-    matchesTitle: "Inter-Faculty League Matches 2025/26",
+    matchesTitle: "Football Matches 2025/26",
     dateNavLabel: "Matchweek 9",
     dateNavRange: "Fri 14 Mar – Thu 20 Mar",
     roundFilter: "All Matchweeks",
@@ -29,7 +31,9 @@ export const SPORT_CONFIG: Record<SportId, SportConfig> = {
     clubsLabel: "Clubs",
     scoreUnit: "goals",
     showDraw: true,
+    showWinProbability: true,
     isEventSport: false,
+    competitionFormat: "team_vs_team",
     playerStats: [
       { label: "Appearances", value: () => 8 },
       { label: "Goals", value: (p) => (p === "Forward" ? 6 : 0) },
@@ -39,9 +43,9 @@ export const SPORT_CONFIG: Record<SportId, SportConfig> = {
   },
   basketball: {
     label: "Basketball",
-    tournament: "Campus Basketball League",
+    tournament: "All Competitions",
     season: "2025/26",
-    matchesTitle: "Campus Basketball League 2025/26",
+    matchesTitle: "Basketball Matches 2025/26",
     dateNavLabel: "Week 12",
     dateNavRange: "Mon 10 Mar – Sun 16 Mar",
     roundFilter: "All Weeks",
@@ -49,7 +53,9 @@ export const SPORT_CONFIG: Record<SportId, SportConfig> = {
     clubsLabel: "Teams",
     scoreUnit: "points",
     showDraw: false,
+    showWinProbability: true,
     isEventSport: false,
+    competitionFormat: "team_vs_team",
     playerStats: [
       { label: "Games", value: () => 10 },
       { label: "Points", value: (p) => (p === "Guard" ? 284 : 195) },
@@ -59,9 +65,9 @@ export const SPORT_CONFIG: Record<SportId, SportConfig> = {
   },
   tennis: {
     label: "Tennis",
-    tournament: "Campus Tennis Open",
+    tournament: "All Competitions",
     season: "2025/26",
-    matchesTitle: "Campus Tennis Open 2025/26",
+    matchesTitle: "Tennis Matches 2025/26",
     dateNavLabel: "Round 3",
     dateNavRange: "Wed 12 Mar – Sat 15 Mar",
     roundFilter: "All Rounds",
@@ -69,7 +75,9 @@ export const SPORT_CONFIG: Record<SportId, SportConfig> = {
     clubsLabel: "Clubs",
     scoreUnit: "sets",
     showDraw: false,
+    showWinProbability: false,
     isEventSport: false,
+    competitionFormat: "individual",
     playerStats: [
       { label: "Matches", value: () => 6 },
       { label: "Match Wins", value: (p) => (p === "Singles" ? 8 : 4) },
@@ -79,9 +87,9 @@ export const SPORT_CONFIG: Record<SportId, SportConfig> = {
   },
   track: {
     label: "Track & Field",
-    tournament: "Campus Track Championships",
+    tournament: "All Competitions",
     season: "2025/26",
-    matchesTitle: "Campus Track Championships 2025/26",
+    matchesTitle: "Track & Field Events 2025/26",
     dateNavLabel: "Day 2",
     dateNavRange: "Fri 14 Mar – Sat 15 Mar",
     roundFilter: "All Events",
@@ -89,7 +97,9 @@ export const SPORT_CONFIG: Record<SportId, SportConfig> = {
     clubsLabel: "Athletes",
     scoreUnit: "event",
     showDraw: false,
+    showWinProbability: false,
     isEventSport: true,
+    competitionFormat: "relay",
     playerStats: [
       { label: "Events", value: () => 4 },
       { label: "Gold", value: (p) => (p === "Sprinter" ? 3 : 1) },
@@ -99,9 +109,9 @@ export const SPORT_CONFIG: Record<SportId, SportConfig> = {
   },
   volleyball: {
     label: "Volleyball",
-    tournament: "Campus Volleyball League",
+    tournament: "All Competitions",
     season: "2025/26",
-    matchesTitle: "Campus Volleyball League 2025/26",
+    matchesTitle: "Volleyball Matches 2025/26",
     dateNavLabel: "Matchday 5",
     dateNavRange: "Thu 13 Mar – Sun 16 Mar",
     roundFilter: "All Matchdays",
@@ -109,7 +119,9 @@ export const SPORT_CONFIG: Record<SportId, SportConfig> = {
     clubsLabel: "Teams",
     scoreUnit: "sets",
     showDraw: false,
+    showWinProbability: true,
     isEventSport: false,
+    competitionFormat: "team_vs_team",
     playerStats: [
       { label: "Matches", value: () => 8 },
       { label: "Kills", value: (p) => (p === "Outside Hitter" ? 86 : 62) },
@@ -125,6 +137,8 @@ export function getSportConfig(sport: SportId): SportConfig {
 
 export function scoreUnitLabel(unit: SportConfig["scoreUnit"]): string | null {
   switch (unit) {
+    case "goals":
+      return "Goals";
     case "sets":
       return "Sets";
     case "points":
@@ -132,4 +146,46 @@ export function scoreUnitLabel(unit: SportConfig["scoreUnit"]): string | null {
     default:
       return null;
   }
+}
+
+const PERIOD_LABELS: Record<SportId, Record<string, string>> = {
+  football: {
+    half_1: "41' (+2m)",
+    half_2: "78'",
+    full_time: "Full time",
+    not_started: "Kickoff",
+  },
+  basketball: {
+    quarter_1: "Q1",
+    quarter_2: "Q2",
+    quarter_3: "Q3 08:42",
+    quarter_4: "Q4",
+    full_time: "Final",
+    not_started: "Tip-off",
+  },
+  volleyball: {
+    set_1: "Set 1",
+    set_2: "Set 2",
+    set_3: "Set 3",
+    set_4: "Set 4",
+    set_5: "Set 5",
+    full_time: "Final",
+    not_started: "First serve",
+  },
+  tennis: {
+    set_1: "Set 1",
+    set_2: "Set 2",
+    set_3: "Set 3",
+    full_time: "Final",
+    not_started: "First serve",
+  },
+  track: {
+    final: "Final in progress",
+    heat: "Heat in progress",
+    not_started: "Scheduled",
+  },
+};
+
+export function livePeriodLabel(sport: SportId, period: string): string {
+  return PERIOD_LABELS[sport][period] ?? period.replace(/_/g, " ");
 }

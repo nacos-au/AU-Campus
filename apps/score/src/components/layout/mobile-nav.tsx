@@ -14,8 +14,10 @@ const LOGO_SRC = "/AU Logo.webp";
 const subNavItems = [
   { href: "/", label: "Matches" },
   { href: "/standings", label: "Table" },
+  { href: "/competition", label: "Competition" },
   { href: "/stats", label: "Statistics" },
   { href: "/teams", label: "Clubs" },
+  { href: "/demo", label: "Demo Links" },
   { href: "/keeper", label: "Record Keeper" },
   { href: "/admin", label: "Admin" },
 ];
@@ -34,8 +36,11 @@ export function MobileNav() {
   }, [open]);
 
   function hrefWithSport(href: string) {
-    if (href === "/keeper" || href === "/admin" || href === "/auth/login") {
+    if (href === "/admin" || href === "/auth/login" || href === "/demo") {
       return href;
+    }
+    if (href === "/keeper") {
+      return `/keeper?sport=${sport}`;
     }
     return `${href}?sport=${sport}`;
   }

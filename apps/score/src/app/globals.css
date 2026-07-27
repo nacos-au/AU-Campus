@@ -44,7 +44,8 @@ body {
   color: var(--accent);
 }
 
-.page-content button {
+/* Default button text — filled variants keep white labels */
+.page-content button:not(.btn-filled):not(.btn-primary) {
   color: var(--accent);
 }
 
@@ -96,4 +97,59 @@ body {
 
 .scroll-snap-x > * {
   scroll-snap-align: start;
+}
+
+/* Interactive buttons — hover keeps text readable */
+.interactive-btn {
+  color: var(--accent);
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.interactive-btn:not(.btn-filled):hover {
+  background-color: var(--wrapper);
+  border-color: var(--accent);
+}
+
+.interactive-btn:not(.btn-filled):active {
+  background-color: var(--surface);
+}
+
+/* Filled accent control (tabs, clock toggles) */
+.btn-filled {
+  background-color: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.btn-filled:hover,
+.btn-filled:active {
+  color: #ffffff;
+  opacity: 0.92;
+}
+
+.interactive-row {
+  color: var(--accent);
+  transition: background-color 0.15s ease;
+}
+
+.interactive-row:hover {
+  background-color: var(--wrapper);
+}
+
+/* Primary CTA buttons with filled accent */
+.btn-primary {
+  background-color: var(--accent);
+  color: #ffffff;
+  transition: opacity 0.15s ease;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+  color: #ffffff;
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  color: #ffffff;
 }

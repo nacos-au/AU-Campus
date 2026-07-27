@@ -2,6 +2,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils/cn";
 
 const sizeMap = {
+  xs: { box: "h-4 w-4", px: 16, text: "text-[7px]" },
   sm: { box: "h-6 w-6", px: 24, text: "text-[9px]" },
   md: { box: "h-9 w-9", px: 36, text: "text-[11px]" },
   lg: { box: "h-12 w-12", px: 48, text: "text-sm" },
@@ -16,11 +17,24 @@ export function TeamCrest({
   code: string;
   logoUrl?: string | null;
   alt?: string;
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
 }) {
   const s = sizeMap[size];
 
   if (logoUrl) {
+    const isSvg = logoUrl.endsWith(".svg");
+    if (isSvg) {
+      return (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={logoUrl}
+          alt={alt ?? code}
+          width={s.px}
+          height={s.px}
+          className={cn("shrink-0 object-contain", s.box)}
+        />
+      );
+    }
     return (
       <Image
         src={logoUrl}

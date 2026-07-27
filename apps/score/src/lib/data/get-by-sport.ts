@@ -13,26 +13,44 @@ import {
   DEMO_STAT_LEADERS_TENNIS,
   DEMO_STAT_LEADERS_TRACK,
   DEMO_STAT_LEADERS_VOLLEYBALL,
+  DEMO_TEAMS,
 } from "@/lib/data/demo";
+import { playerAvatarForId } from "@/lib/utils/sport-assets";
 import { getSportConfig } from "@/lib/utils/sport-config";
 import { sportToDbId } from "@/lib/utils/sport";
 
-export function getMatchesBySport(sport: SportId): Match[] {
-  return DEMO_MATCHES.filter((m) => m.sport_id === sportToDbId(sport));
+function enrichStandings(rows: StandingRow[], sport: SportId): StandingRow[] {
+  if (sport === "track") {
+    return rows.map((row) => ({
+      ...row,
+      logo_url: row.logo_url ?? playerAvatarForId(row.team_id),
+    }));
+  }
+  const sportDbId = sportToDbId(sport);
+  return rows.map((row) => {
+    const team = DEMO_TEAMS.find((t) => t.id === row.team_id && t.sport_id === sportDbId);
+    return { ...row, logo_url: row.logo_url ?? team?.logo_url ?? null };
+  });
+}
+
+export function getMatchesBySport(sport: SportId, tournamentId?: string): Match[] {
+  const matches = DEMO_MATCHES.filter((m) => m.sport_id === sportToDbId(sport));
+  if (!tournamentId) return matches;
+  return matches.filter((m) => m.tournament_id === tournamentId);
 }
 
 export function getStandingsBySport(sport: SportId): StandingRow[] {
   switch (sport) {
     case "basketball":
-      return DEMO_STANDINGS_BASKETBALL;
+      return enrichStandings(DEMO_STANDINGS_BASKETBALL, sport);
     case "tennis":
-      return DEMO_STANDINGS_TENNIS;
+      return enrichStandings(DEMO_STANDINGS_TENNIS, sport);
     case "track":
-      return DEMO_STANDINGS_TRACK;
+      return enrichStandings(DEMO_STANDINGS_TRACK, sport);
     case "volleyball":
-      return DEMO_STANDINGS_VOLLEYBALL;
+      return enrichStandings(DEMO_STANDINGS_VOLLEYBALL, sport);
     default:
-      return DEMO_STANDINGS_FOOTBALL;
+      return enrichStandings(DEMO_STANDINGS_FOOTBALL, sport);
   }
 }
 
@@ -69,6 +87,41 @@ export function getStatLabelsBySport(sport: SportId): [string, string, string, s
     default:
       return ["Goals", "Assists", "Total Passes", "Clean Sheets"];
   }
+}
+
+export interface StatCard {
+  title: string;
+  leaders: StatLeader[];
+  /** Index into the sport's stat slots — used for value formatting */
+  statIndex: number;
+}
+
+/**
+ * Stat leader cards per sport. Football drops the passes column — clean
+ * sheets are computed post-match from goalkeeper minutes (see
+ * lib/match/clean-sheets.ts), not tallied live.
+ */
+export function getStatCardsBySport(sport: SportId): StatCard[] {
+  const labels = getStatLabelsBySport(sport);
+  const leaders = getStatLeadersBySport(sport);
+  const slots: { title: string; leaders: StatLeader[]; statIndex: number }[] = [
+    { title: labels[0], leaders: leaders.goals, statIndex: 0 },
+    { title: labels[1], leaders: leaders.assists, statIndex: 1 },
+    { title: labels[2], leaders: leaders.passes, statIndex: 2 },
+    { title: labels[3], leaders: leaders.cleanSheets, statIndex: 3 },
+  ];
+  if (sport === "football") {
+    return slots.filter((s) => s.title !== "Total Passes");
+  }
+  return slots;
+}
+
+/** Format leader stat values per sport (e.g. track times in seconds). */
+export function formatStatValue(sport: SportId, statIndex: number, value: number): string {
+  if (sport === "track" && statIndex < 3) {
+    return `${value.toFixed(2)}s`;
+  }
+  return String(value);
 }
 
 export { getSportConfig };

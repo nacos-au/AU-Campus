@@ -43,8 +43,14 @@ export async function SiteHeader() {
             <Search className="h-5 w-5" />
           </button>
           <Link
+            href="/demo"
+            className="interactive-btn hidden rounded-full border border-rule px-4 py-1.5 font-display text-xs font-bold sm:block"
+          >
+            Demo links
+          </Link>
+          <Link
             href="/auth/login"
-            className="rounded-full border-2 border-accent px-4 py-1.5 font-display text-xs font-bold text-accent sm:px-5 sm:text-sm"
+            className="interactive-btn rounded-full border-2 border-accent px-4 py-1.5 font-display text-xs font-bold sm:px-5 sm:text-sm"
           >
             Sign in
           </Link>

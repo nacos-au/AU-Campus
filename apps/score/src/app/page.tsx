@@ -3,9 +3,11 @@ import { MatchDateGroup, MatchweekNav } from "@/components/match/match-row";
 import { BrandedSection } from "@/components/layout/branded-section";
 import { MatchesFilters } from "@/components/layout/filters-bar";
 import { PageContent } from "@/components/layout/page-content";
+import { CompetitionTabs } from "@/components/competition/competition-tabs";
+import { getTournamentForSport } from "@/lib/data/demo-competition";
 import { getMatchesBySport, getSportConfig } from "@/lib/data/get-by-sport";
 import { getScoreDemoMode } from "@/lib/data/mode";
-import { parseSportParam } from "@/lib/utils/sport";
+import { parseSportParam, sportToDbId } from "@/lib/utils/sport";
 import type { Match } from "@/lib/types/database";
 
 function formatMatchDate(dateStr: string): string {
@@ -29,19 +31,21 @@ function groupMatchesByDate(matches: Match[]): Map<string, Match[]> {
 export default async function MatchesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sport?: string }>;
+  searchParams: Promise<{ sport?: string; competition?: string }>;
 }) {
-  const { sport } = await searchParams;
+  const { sport, competition } = await searchParams;
   const activeSport = parseSportParam(sport);
   const config = getSportConfig(activeSport);
   const demo = await getScoreDemoMode();
-  const matches = demo ? getMatchesBySport(activeSport) : [];
+  const tournament = getTournamentForSport(sportToDbId(activeSport), competition);
+  const matches = demo ? getMatchesBySport(activeSport, tournament?.id) : [];
   const grouped = groupMatchesByDate(matches);
 
   return (
     <>
       <BrandedSection title={config.matchesTitle} activeSport={activeSport} />
       <PageContent>
+        <CompetitionTabs sport={activeSport} basePath="/" activeId={tournament?.id} />
         <MatchesFilters sport={activeSport} />
 
         <MatchweekNav label={config.dateNavLabel} range={config.dateNavRange} />

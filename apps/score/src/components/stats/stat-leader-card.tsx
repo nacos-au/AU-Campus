@@ -17,11 +17,13 @@ export function StatLeaderCard({
   leaders,
   href,
   sport = "football",
+  formatValue,
 }: {
   title: string;
   leaders: StatLeader[];
   href?: string;
   sport?: SportId;
+  formatValue?: (value: number) => string;
 }) {
   return (
     <div className="h-full rounded-xl border border-rule bg-white shadow-sm">
@@ -54,7 +56,9 @@ export function StatLeaderCard({
               </Link>
               <p className="truncate text-xs font-medium opacity-60">{leader.teamName}</p>
             </div>
-            <span className="font-display text-xl font-extrabold tabular-nums">{leader.value}</span>
+            <span className="font-display text-xl font-extrabold tabular-nums">
+              {formatValue ? formatValue(leader.value) : leader.value}
+            </span>
           </li>
         ))}
       </ul>
@@ -69,6 +73,7 @@ export function PlayerStatRow({
   teamCode,
   value,
   sport = "football",
+  formatValue,
 }: {
   rank: number;
   player: Player;
@@ -77,6 +82,7 @@ export function PlayerStatRow({
   value: number;
   statLabel: string;
   sport?: SportId;
+  formatValue?: (value: number) => string;
 }) {
   return (
     <Link
@@ -100,7 +106,9 @@ export function PlayerStatRow({
           </p>
         </div>
       </div>
-      <span className="font-display text-xl font-extrabold tabular-nums sm:text-2xl">{value}</span>
+      <span className="font-display text-xl font-extrabold tabular-nums sm:text-2xl">
+        {formatValue ? formatValue(value) : value}
+      </span>
     </Link>
   );
 }
