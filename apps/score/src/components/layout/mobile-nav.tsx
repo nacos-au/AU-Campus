@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ChevronRight, LogIn, Menu, X } from "lucide-react";
 import { SPORTS } from "@/components/layout/branded-section";
+import { SportIcon } from "@/components/ui/sport-icon";
 import { parseSportParam } from "@/lib/utils/sport";
 import { cn } from "@/lib/utils/cn";
 
@@ -109,11 +110,14 @@ export function MobileNav() {
                 href={href}
                 onClick={() => setOpen(false)}
                 className={cn(
-                  "flex items-center justify-between rounded-xl px-3 py-3 font-display text-base font-bold text-accent hover:bg-surface",
+                  "flex items-center justify-between gap-3 rounded-xl px-3 py-3 font-display text-base font-bold text-accent hover:bg-surface",
                   sport === id && "bg-surface"
                 )}
               >
-                {label}
+                <span className="flex items-center gap-2.5">
+                  <SportIcon sport={id} size="sm" active={sport === id} />
+                  {label}
+                </span>
                 <ChevronRight className="h-4 w-4 text-accent/30" />
               </Link>
             );

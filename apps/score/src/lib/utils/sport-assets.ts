@@ -37,3 +37,15 @@ export function logoForSportId(sportId: string): string {
 export function logoForSport(sport: SportId): string {
   return SPORT_LOGOS[sport];
 }
+
+const SPORT_LOGO_SET = new Set<string>(Object.values(SPORT_LOGOS));
+
+/** True when the URL is a generic sport placeholder (not a club crest). */
+export function isSportLogoUrl(url?: string | null): boolean {
+  return Boolean(url && SPORT_LOGO_SET.has(url));
+}
+
+export function sportFromLogoUrl(url?: string | null): SportId | undefined {
+  if (!url) return undefined;
+  return (Object.entries(SPORT_LOGOS).find(([, logo]) => logo === url)?.[0] as SportId | undefined);
+}

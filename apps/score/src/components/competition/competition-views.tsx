@@ -120,7 +120,7 @@ export function GroupTables({
                     <tr key={`${row.group_id}-${row.team_id}`} className="border-b border-rule last:border-0">
                       <td className="min-w-[140px] px-5 py-3">
                         <Link href={`/teams/${row.team_id}?sport=${sport}`} className="flex items-center gap-2 hover:underline">
-                          <TeamCrest code={row.short_code} logoUrl={row.logo_url} alt={row.team_name} size="sm" />
+                          <TeamCrest code={row.short_code} logoUrl={row.logo_url} sport={sport} alt={row.team_name} size="sm" />
                           <span className="font-display text-sm font-bold">{row.team_name}</span>
                         </Link>
                       </td>

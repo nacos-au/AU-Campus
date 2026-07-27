@@ -12,6 +12,7 @@ import {
   XCircle,
   Zap,
 } from "lucide-react";
+import { GiSoccerBall } from "react-icons/gi";
 import type { KeeperLogEntry } from "@/lib/keeper/keeper-events";
 import type { SportId } from "@/lib/utils/sport";
 
@@ -157,7 +158,7 @@ const CONFIG: Record<SportId, KeeperSportConfig> = {
     foulSectionLabel: "Foul / card",
     logSectionLabel: "Match log",
     playerActions: [
-      { id: "goal", label: "Goal", icon: <span className="text-base leading-none">⚽</span> },
+      { id: "goal", label: "Goal", icon: <GiSoccerBall className="h-5 w-5" /> },
       { id: "penalty_scored", label: "Pen ✓", icon: <CircleDot className="h-5 w-5" /> },
       { id: "penalty_missed", label: "Pen ✗", icon: <XCircle className="h-5 w-5" /> },
       { id: "offside", label: "Offside", icon: <Flag className="h-5 w-5" /> },

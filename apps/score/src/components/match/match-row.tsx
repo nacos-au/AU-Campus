@@ -6,7 +6,7 @@ import { TeamCrest } from "@/components/ui/team-crest";
 import { LiveBadge } from "@/components/layout/site-header";
 import { getTrackResultsForMatch } from "@/lib/data/demo-match-details";
 import { scoreClass } from "@/lib/match/score-highlight";
-import { dbIdToSport } from "@/lib/utils/sport";
+import { dbIdToSport, type SportId } from "@/lib/utils/sport";
 import { getSportConfig } from "@/lib/utils/sport-config";
 import { cn } from "@/lib/utils/cn";
 
@@ -27,7 +27,7 @@ export function MatchRow({ match }: { match: Match }) {
         className="flex items-center justify-between border-b border-rule bg-white px-4 py-5 hover:bg-wrapper sm:px-5"
       >
         <div className="flex items-center gap-3">
-          <TeamCrest code={home?.department?.short_code ?? "AU"} logoUrl={home?.logo_url} alt={home?.name} />
+          <TeamCrest code={home?.department?.short_code ?? "AU"} logoUrl={home?.logo_url} sport={sport} alt={home?.name} />
           <span className="font-display text-base font-bold">{home?.name ?? "Track Event"}</span>
         </div>
         <div className="text-right">
@@ -68,8 +68,8 @@ export function MatchRow({ match }: { match: Match }) {
       </div>
 
       <div className="min-w-0 flex-1 space-y-1.5">
-        <TeamLine team={home} highlight={isCompleted && (match.home_score ?? 0) > (match.away_score ?? 0)} />
-        <TeamLine team={away} highlight={isCompleted && (match.away_score ?? 0) > (match.home_score ?? 0)} />
+        <TeamLine team={home} sport={sport} highlight={isCompleted && (match.home_score ?? 0) > (match.away_score ?? 0)} />
+        <TeamLine team={away} sport={sport} highlight={isCompleted && (match.away_score ?? 0) > (match.home_score ?? 0)} />
       </div>
 
       {(isLive || isCompleted) && (
@@ -91,12 +91,13 @@ export function MatchRow({ match }: { match: Match }) {
   );
 }
 
-function TeamLine({ team, highlight }: { team?: Match["home_team"]; highlight?: boolean }) {
+function TeamLine({ team, highlight, sport }: { team?: Match["home_team"]; highlight?: boolean; sport: SportId }) {
   return (
     <div className="flex items-center gap-2">
       <TeamCrest
         code={team?.department?.short_code ?? "—"}
         logoUrl={team?.logo_url}
+        sport={sport}
         alt={team?.name}
         size="xs"
       />
