@@ -44,3 +44,12 @@ export function formatKickoffTime(scheduledAt: string): string {
     minute: "2-digit",
   });
 }
+
+/** 24-hour kickoff label e.g. 19:00 */
+export function formatKickoffTime24(scheduledAt: string): string {
+  return new Date(scheduledAt).toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}

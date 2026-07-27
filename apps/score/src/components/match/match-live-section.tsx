@@ -1,5 +1,3 @@
-"use client";
-
 import type { Match } from "@/lib/types/database";
 import type { DemoMatchEvent } from "@/lib/data/demo-match-details";
 import { MatchLivePanel } from "@/components/match/match-live-panel";
@@ -7,23 +5,24 @@ import { BasketballMatchPanel } from "@/components/match/basketball-match-panel"
 import { VolleyballMatchPanel } from "@/components/match/volleyball-match-panel";
 import { TennisMatchPanel } from "@/components/match/tennis-match-panel";
 import type { SportId } from "@/lib/utils/sport";
+import type { LifecycleStatus } from "@/lib/match/use-match-lifecycle";
 import { getPeriodScoresForMatch, getSetScoresForMatch } from "@/lib/data/demo-match-details";
 
 export function MatchLiveSection({
   match,
   events,
-  isLive,
+  status,
   sport,
 }: {
   match: Match;
   events: DemoMatchEvent[];
-  isLive: boolean;
+  status: LifecycleStatus;
   sport: SportId;
 }) {
   if (sport === "football") {
     return (
       <div className="mt-8">
-        <MatchLivePanel match={match} events={events} isLive={isLive} />
+        <MatchLivePanel match={match} events={events} status={status} />
       </div>
     );
   }
@@ -34,7 +33,7 @@ export function MatchLiveSection({
         <BasketballMatchPanel
           match={match}
           events={events}
-          isLive={isLive}
+          status={status}
           periodScores={getPeriodScoresForMatch(match.id)}
         />
       </div>
@@ -47,7 +46,7 @@ export function MatchLiveSection({
         <VolleyballMatchPanel
           match={match}
           events={events}
-          isLive={isLive}
+          status={status}
           setScores={getSetScoresForMatch(match.id)}
         />
       </div>
@@ -60,7 +59,7 @@ export function MatchLiveSection({
         <TennisMatchPanel
           match={match}
           events={events}
-          isLive={isLive}
+          status={status}
           setScores={getSetScoresForMatch(match.id)}
         />
       </div>

@@ -3,20 +3,23 @@
 import type { Match, SetScore } from "@/lib/types/database";
 import type { DemoMatchEvent } from "@/lib/data/demo-match-details";
 import { TeamCrest } from "@/components/ui/team-crest";
+import { MatchStatusPill } from "@/components/match/match-status-pill";
+import type { LifecycleStatus } from "@/lib/match/use-match-lifecycle";
 import { scoreClass } from "@/lib/match/score-highlight";
 import { cn } from "@/lib/utils/cn";
 
 export function VolleyballMatchPanel({
   match,
   events,
-  isLive,
+  status,
   setScores,
 }: {
   match: Match;
   events: DemoMatchEvent[];
-  isLive: boolean;
+  status: LifecycleStatus;
   setScores: SetScore[];
 }) {
+  const isLive = status === "live";
   const homeCode = match.home_team?.department?.short_code ?? "H";
   const awayCode = match.away_team?.department?.short_code ?? "A";
   const currentSet = setScores[setScores.length - 1];
@@ -25,6 +28,14 @@ export function VolleyballMatchPanel({
   return (
     <div className="mx-auto w-full max-w-3xl">
       <div className="branded-hero rounded-xl px-4 py-6 text-white sm:px-8 sm:py-8">
+        <div className="mb-4 flex justify-center">
+          <MatchStatusPill
+            status={status}
+            scheduledAt={match.scheduled_at}
+            currentPeriod={match.current_period}
+            sport="volleyball"
+          />
+        </div>
         <div className="mb-4 text-center">
           <span className="inline-block rounded-full bg-white/15 px-3 py-1 text-xs font-bold">
             Sets {match.home_score} – {match.away_score}

@@ -5,7 +5,9 @@ import type { Match } from "@/lib/types/database";
 import type { DemoMatchEvent } from "@/lib/data/demo-match-details";
 import { TeamCrest } from "@/components/ui/team-crest";
 import { MatchClockStatusBadge } from "@/components/match/match-clock-status-badge";
+import { MatchStatusPill } from "@/components/match/match-status-pill";
 import { useMatchClock } from "@/lib/keeper/use-match-clock";
+import type { LifecycleStatus } from "@/lib/match/use-match-lifecycle";
 import { eventsToMarkers } from "@/lib/match/timeline";
 import { getMatchStats } from "@/lib/match/match-stats";
 import { scoreClass } from "@/lib/match/score-highlight";
@@ -17,12 +19,13 @@ const TICKS = [0, 15, 30, 45, 60, 75, 90];
 export function MatchLivePanel({
   match,
   events,
-  isLive,
+  status,
 }: {
   match: Match;
   events: DemoMatchEvent[];
-  isLive: boolean;
+  status: LifecycleStatus;
 }) {
+  const isLive = status === "live";
   const totalMinutes = match.went_to_extra_time ? 120 : 90;
   const { elapsedMinutes, formatTime, clock } = useMatchClock(match.id, {
     period: match.current_period,
@@ -32,9 +35,6 @@ export function MatchLivePanel({
   const homeCode = match.home_team?.department?.short_code ?? "H";
   const awayCode = match.away_team?.department?.short_code ?? "A";
   const stats = getMatchStats(match.id, events, match.home_team_id ?? "");
-
-  const periodLabel =
-    elapsedMinutes > 90 ? "ET" : elapsedMinutes > 45 ? "2nd" : "1st";
 
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -47,9 +47,13 @@ export function MatchLivePanel({
             align="left"
           />
           <div className="shrink-0 text-center">
-            <span className="inline-block rounded-full bg-white/15 px-3 py-1 font-mono text-xs font-bold tabular-nums">
-              {isLive ? `${periodLabel} | ${formatTime()}` : "Scheduled"}
-            </span>
+            <MatchStatusPill
+              status={status}
+              scheduledAt={match.scheduled_at}
+              currentPeriod={match.current_period}
+              sport="football"
+              liveTime={isLive ? formatTime() : undefined}
+            />
             <div className="mt-2 flex items-center justify-center gap-3 sm:gap-4">
               <span className={cn("text-4xl sm:text-5xl", scoreClass(match.home_score, match.away_score, "home", "lg", "dark"))}>
                 {match.home_score}

@@ -22,9 +22,6 @@ export function MatchStatsComparison({
       {stats.map((row) => (
         <StatBar key={row.label} row={row} />
       ))}
-      <p className="text-center text-[11px] opacity-40">
-        Stats from record keeper. Possession is not tracked — it cannot be measured accurately from events alone.
-      </p>
     </div>
   );
 }

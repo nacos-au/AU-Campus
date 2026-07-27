@@ -3,26 +3,28 @@
 import type { Match, PeriodScore } from "@/lib/types/database";
 import type { DemoMatchEvent } from "@/lib/data/demo-match-details";
 import { TeamCrest } from "@/components/ui/team-crest";
+import { MatchStatusPill } from "@/components/match/match-status-pill";
 import { MatchClockStatusBadge } from "@/components/match/match-clock-status-badge";
 import { useMatchClock } from "@/lib/keeper/use-match-clock";
+import type { LifecycleStatus } from "@/lib/match/use-match-lifecycle";
 import { scoreClass } from "@/lib/match/score-highlight";
 import { cn } from "@/lib/utils/cn";
 
 export function BasketballMatchPanel({
   match,
   events,
-  isLive,
+  status,
   periodScores,
 }: {
   match: Match;
   events: DemoMatchEvent[];
-  isLive: boolean;
+  status: LifecycleStatus;
   periodScores: PeriodScore[];
 }) {
+  const isLive = status === "live";
   const { clock, formatTime } = useMatchClock(match.id, { period: match.current_period });
   const homeCode = match.home_team?.department?.short_code ?? "H";
   const awayCode = match.away_team?.department?.short_code ?? "A";
-  const periodLabel = match.current_period.replace("quarter_", "Q").replace("_", " ").toUpperCase();
 
   const homeEvents = events.filter((e) => e.team_id === match.home_team_id).length;
   const awayEvents = events.filter((e) => e.team_id === match.away_team_id).length;
@@ -33,9 +35,13 @@ export function BasketballMatchPanel({
         <div className="flex items-center justify-between gap-2 sm:gap-6">
           <TeamBlock name={match.home_team?.name ?? "Home"} code={homeCode} logo={match.home_team?.logo_url} align="left" />
           <div className="shrink-0 text-center">
-            <span className="inline-block rounded-full bg-white/15 px-3 py-1 font-mono text-xs font-bold tabular-nums">
-              {isLive ? `${periodLabel} · ${formatTime()}` : "Scheduled"}
-            </span>
+            <MatchStatusPill
+              status={status}
+              scheduledAt={match.scheduled_at}
+              currentPeriod={match.current_period}
+              sport="basketball"
+              liveTime={isLive ? formatTime() : undefined}
+            />
             <div className="mt-2 flex items-center justify-center gap-3 sm:gap-4">
               <span className={cn("text-4xl sm:text-5xl", scoreClass(match.home_score, match.away_score, "home", "lg", "dark"))}>
                 {match.home_score}

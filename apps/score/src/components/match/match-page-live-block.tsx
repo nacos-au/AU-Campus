@@ -2,7 +2,6 @@
 
 import type { Match } from "@/lib/types/database";
 import type { DemoMatchEvent } from "@/lib/data/demo-match-details";
-import { MatchCountdown } from "@/components/match/match-countdown";
 import { MatchLiveSection } from "@/components/match/match-live-section";
 import { TeamCrest } from "@/components/ui/team-crest";
 import { useMatchLifecycle } from "@/lib/match/use-match-lifecycle";
@@ -29,9 +28,6 @@ export function MatchPageLiveBlock({
   if (isEventSport) {
     return (
       <div className="flex flex-col items-center gap-4">
-        {lifecycle.isScheduled && (
-          <MatchCountdown scheduledAt={match.scheduled_at} status={lifecycle.status} />
-        )}
         {lifecycle.isLive && <LiveBadge />}
         <TeamCrest
           code={match.home_team?.department?.short_code ?? "AU"}
@@ -48,18 +44,11 @@ export function MatchPageLiveBlock({
   }
 
   return (
-    <>
-      {lifecycle.isScheduled && (
-        <div className="mb-6 flex justify-center">
-          <MatchCountdown scheduledAt={match.scheduled_at} status={lifecycle.status} />
-        </div>
-      )}
-      <MatchLiveSection
-        match={match}
-        events={events}
-        isLive={lifecycle.isLive}
-        sport={sport}
-      />
-    </>
+    <MatchLiveSection
+      match={match}
+      events={events}
+      status={lifecycle.status}
+      sport={sport}
+    />
   );
 }
