@@ -129,12 +129,12 @@ function DesktopPitchCard({
         <TeamHeaderDesktop team={match.away_team} sport={sport} align="right" />
       </div>
 
-      <div className="flex bg-[#2d6a4f]">
-        <aside className="flex w-[72px] shrink-0 flex-col items-center justify-center gap-2 px-2 py-4 sm:w-[88px]">
-          {homeLineup && <FormationBadge formation={homeLineup.formation} kit="home" light />}
+      <div className="flex bg-white">
+        <aside className="flex w-[72px] shrink-0 flex-col items-center justify-center gap-2 border-r border-rule px-2 py-4 sm:w-[88px]">
+          {homeLineup && <FormationBadge formation={homeLineup.formation} kit="home" />}
         </aside>
 
-        <div className="relative min-w-0 flex-1 aspect-[105/68]">
+        <div className="relative min-w-0 flex-1 aspect-[105/68] bg-[#2d6a4f]">
           <PitchMarkings orientation="horizontal" />
 
           {homeLineup && (
@@ -165,8 +165,8 @@ function DesktopPitchCard({
           )}
         </div>
 
-        <aside className="flex w-[72px] shrink-0 flex-col items-center justify-center gap-2 px-2 py-4 sm:w-[88px]">
-          {awayLineup && <FormationBadge formation={awayLineup.formation} kit="away" light />}
+        <aside className="flex w-[72px] shrink-0 flex-col items-center justify-center gap-2 border-l border-rule px-2 py-4 sm:w-[88px]">
+          {awayLineup && <FormationBadge formation={awayLineup.formation} kit="away" />}
         </aside>
       </div>
     </div>
@@ -272,8 +272,8 @@ function InfoIcon({ className }: { className?: string }) {
 }
 
 function JerseyIcon({ className, kit }: { className?: string; kit: "home" | "away" }) {
-  const fill = kit === "home" ? "#f8fafc" : "#cbd5e1";
-  const stroke = kit === "home" ? "#ffffff" : "#94a3b8";
+  const fill = kit === "home" ? "var(--accent)" : "#e5e7eb";
+  const stroke = kit === "home" ? "var(--accent)" : "#9ca3af";
   return (
     <svg viewBox="0 0 16 16" className={className} aria-hidden>
       <path
