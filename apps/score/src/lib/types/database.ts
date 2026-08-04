@@ -148,14 +148,29 @@ export interface Sport {
   score_type: ScoreType;
 }
 
+export interface Venue {
+  id: string;
+  name: string;
+  location: string;
+  is_active: boolean;
+  deleted_at: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Team {
   id: string;
-  department_id: string;
+  department_id: string | null;
   sport_id: string;
   name: string;
   logo_url: string | null;
   department?: Department;
   sport?: Sport;
+  /** External opponent (e.g. a visiting university) not tied to an AU department */
+  is_guest?: boolean;
+  /** Institution name shown in place of a department for guest teams */
+  institution?: string | null;
+  deleted_at?: string | null;
 }
 
 export interface Player {
@@ -211,9 +226,12 @@ export interface Match {
   competition_phase?: CompetitionPhase;
   group_id?: string | null;
   scope?: MatchScope;
+  venue_id?: string | null;
+  venue?: Venue | null;
   home_penalties?: number | null;
   away_penalties?: number | null;
   went_to_extra_time?: boolean;
+  deleted_at?: string | null;
   home_team?: Team;
   away_team?: Team;
   tournament?: Tournament;

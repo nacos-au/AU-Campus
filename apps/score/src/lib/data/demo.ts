@@ -446,9 +446,24 @@ const RAW_DEMO_MATCHES: Match[] = [
 ];
 
 /** tournament_id always mirrors the attached tournament — keeps per-competition filtering correct. */
-export const DEMO_MATCHES: Match[] = RAW_DEMO_MATCHES.map((m) =>
-  m.tournament ? { ...m, tournament_id: m.tournament.id } : m
-);
+export const DEMO_MATCHES: Match[] = RAW_DEMO_MATCHES.map((m, index) => {
+  const withTournament = m.tournament ? { ...m, tournament_id: m.tournament.id } : m;
+  // Lazy import avoided — venue ids are stable seed keys from venues.ts
+  const venueIds = [
+    "venue-joked-field",
+    "venue-main-field",
+    "venue-main-court",
+    "venue-indoor-hall",
+    "venue-tennis-courts",
+    "venue-main-track",
+  ] as const;
+  const venueId = venueIds[index % venueIds.length];
+  return {
+    ...withTournament,
+    scope: withTournament.scope ?? "official",
+    venue_id: withTournament.venue_id ?? venueId,
+  };
+});
 
 export const DEMO_STANDINGS_FOOTBALL: StandingRow[] = [
   { team_id: "team-csc-fc", team_name: "CSC FC", short_code: "CSC", played: 8, won: 6, drawn: 1, lost: 1, goals_for: 18, goals_against: 7, goal_difference: 11, points: 19, form: ["W", "W", "D", "W", "L"] },

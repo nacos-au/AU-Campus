@@ -1,7 +1,8 @@
 import type { Match } from "@/lib/types/database";
+import { getDemoVenueById } from "@/lib/data/venues";
 import { playerAvatarForId } from "@/lib/utils/sport-assets";
 
-const VENUES = ["Joked Field", "Main Field"] as const;
+const FALLBACK_VENUES = ["Joked Field", "Main Field"] as const;
 
 export interface MatchMeta {
   venue: string;
@@ -10,9 +11,18 @@ export interface MatchMeta {
 }
 
 export function getMatchMeta(match: Match): MatchMeta {
+  const joined = match.venue ?? (match.venue_id ? getDemoVenueById(match.venue_id) : null);
+  if (joined) {
+    return {
+      venue: joined.name,
+      location: joined.location,
+      referee: "Emmanuel Adebayo",
+    };
+  }
+
   const idx = match.id.split("").reduce((n, c) => n + c.charCodeAt(0), 0);
   return {
-    venue: VENUES[idx % VENUES.length],
+    venue: FALLBACK_VENUES[idx % FALLBACK_VENUES.length],
     location: "Achievers University, Owo",
     referee: "Emmanuel Adebayo",
   };

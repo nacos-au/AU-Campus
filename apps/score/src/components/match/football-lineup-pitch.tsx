@@ -36,12 +36,49 @@ export function FootballLineupPitch({
     );
   }
 
+  const isCompleted = match.status === "completed";
+  const shared = { match, homeLineup, awayLineup, sport, events, matchStarted, motmPlayerId, isCompleted };
+
+  return (
+    <>
+      <div className="sm:hidden">
+        <MobilePitchCard {...shared} />
+      </div>
+      <div className="hidden sm:block">
+        <DesktopPitchCard {...shared} />
+      </div>
+    </>
+  );
+}
+
+interface PitchCardProps {
+  match: Match;
+  homeLineup: TeamPitchLineup | null;
+  awayLineup: TeamPitchLineup | null;
+  sport: SportId;
+  events: DemoMatchEvent[];
+  matchStarted: boolean;
+  motmPlayerId: string | null;
+  isCompleted: boolean;
+}
+
+/** Portrait pitch, teams stacked top/bottom — used on small screens. */
+function MobilePitchCard({
+  match,
+  homeLineup,
+  awayLineup,
+  sport,
+  events,
+  matchStarted,
+  motmPlayerId,
+  isCompleted,
+}: PitchCardProps) {
   return (
     <div className="overflow-hidden rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-      {homeLineup && <TeamHeader team={match.home_team} formation={homeLineup.formation} />}
+      {homeLineup && <TeamHeader team={match.home_team} sport={sport} formation={homeLineup.formation} />}
 
       <div className="relative aspect-[68/105] w-full bg-[#2d6a4f]">
-        <FullPitchMarkings />
+        <PitchMarkings orientation="vertical" />
 
         {homeLineup && (
           <TeamOnPitch
@@ -51,7 +88,7 @@ export function FootballLineupPitch({
             events={events}
             matchStarted={matchStarted}
             motmPlayerId={motmPlayerId}
-            isCompleted={match.status === "completed"}
+            isCompleted={isCompleted}
           />
         )}
         {awayLineup && (
@@ -62,24 +99,88 @@ export function FootballLineupPitch({
             events={events}
             matchStarted={matchStarted}
             motmPlayerId={motmPlayerId}
-            isCompleted={match.status === "completed"}
+            isCompleted={isCompleted}
           />
         )}
       </div>
 
       {awayLineup && (
-        <TeamHeader team={match.away_team} formation={awayLineup.formation} align="right" />
+        <TeamHeader team={match.away_team} sport={sport} formation={awayLineup.formation} align="right" />
       )}
+    </div>
+  );
+}
+
+/** Landscape pitch — compact field with side gutters for formation + kit. */
+function DesktopPitchCard({
+  match,
+  homeLineup,
+  awayLineup,
+  sport,
+  events,
+  matchStarted,
+  motmPlayerId,
+  isCompleted,
+}: PitchCardProps) {
+  return (
+    <div className="mx-auto max-w-[920px] overflow-hidden rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <div className="flex items-center justify-between gap-4 border-b border-rule px-5 py-3">
+        <TeamHeaderDesktop team={match.home_team} sport={sport} />
+        <TeamHeaderDesktop team={match.away_team} sport={sport} align="right" />
+      </div>
+
+      <div className="flex bg-[#2d6a4f]">
+        <aside className="flex w-[72px] shrink-0 flex-col items-center justify-center gap-2 px-2 py-4 sm:w-[88px]">
+          {homeLineup && <FormationBadge formation={homeLineup.formation} kit="home" light />}
+        </aside>
+
+        <div className="relative min-w-0 flex-1 aspect-[105/68]">
+          <PitchMarkings orientation="horizontal" />
+
+          {homeLineup && (
+            <TeamOnPitch
+              lineup={homeLineup}
+              side="home"
+              sport={sport}
+              events={events}
+              matchStarted={matchStarted}
+              motmPlayerId={motmPlayerId}
+              isCompleted={isCompleted}
+              orientation="horizontal"
+              compact
+            />
+          )}
+          {awayLineup && (
+            <TeamOnPitch
+              lineup={awayLineup}
+              side="away"
+              sport={sport}
+              events={events}
+              matchStarted={matchStarted}
+              motmPlayerId={motmPlayerId}
+              isCompleted={isCompleted}
+              orientation="horizontal"
+              compact
+            />
+          )}
+        </div>
+
+        <aside className="flex w-[72px] shrink-0 flex-col items-center justify-center gap-2 px-2 py-4 sm:w-[88px]">
+          {awayLineup && <FormationBadge formation={awayLineup.formation} kit="away" light />}
+        </aside>
+      </div>
     </div>
   );
 }
 
 function TeamHeader({
   team,
+  sport,
   formation,
   align = "left",
 }: {
   team: Match["home_team"];
+  sport: SportId;
   formation: string;
   align?: "left" | "right";
 }) {
@@ -96,7 +197,93 @@ function TeamHeader({
         <p className="truncate font-display text-sm font-extrabold text-accent">{team?.name ?? "Team"}</p>
         <p className="text-xs text-accent/50">{formation}</p>
       </div>
+      {team?.id && (
+        <Link
+          href={`/teams/${team.id}?sport=${sport}`}
+          aria-label={`${team.name} club page`}
+          className="ml-auto shrink-0 text-accent/40 hover:text-accent"
+        >
+          <InfoIcon className="h-4 w-4" />
+        </Link>
+      )}
     </div>
+  );
+}
+
+function TeamHeaderDesktop({
+  team,
+  sport,
+  align = "left",
+}: {
+  team: Match["home_team"];
+  sport: SportId;
+  align?: "left" | "right";
+}) {
+  const code = team?.department?.short_code ?? "AU";
+  return (
+    <div className={cn("flex min-w-0 items-center gap-2", align === "right" && "justify-end")}>
+      <TeamCrest code={code} logoUrl={team?.logo_url} alt={team?.name ?? "Team"} size="sm" />
+      <p className="truncate font-display text-sm font-extrabold text-accent">{team?.name ?? "Team"}</p>
+      {team?.id && (
+        <Link
+          href={`/teams/${team.id}?sport=${sport}`}
+          aria-label={`${team.name} club page`}
+          className="shrink-0 text-accent/40 hover:text-accent"
+        >
+          <InfoIcon className="h-4 w-4" />
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function FormationBadge({
+  formation,
+  kit,
+  light = false,
+}: {
+  formation: string;
+  kit: "home" | "away";
+  light?: boolean;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <p
+        className={cn(
+          "font-display text-xs font-extrabold tabular-nums",
+          light ? "text-white/90" : "text-accent"
+        )}
+      >
+        {formation}
+      </p>
+      <JerseyIcon className="h-6 w-6" kit={kit} />
+    </div>
+  );
+}
+
+function InfoIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" className={className} fill="none" aria-hidden>
+      <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.3" />
+      <circle cx="8" cy="4.9" r="0.9" fill="currentColor" />
+      <path d="M8 7.2v4.6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function JerseyIcon({ className, kit }: { className?: string; kit: "home" | "away" }) {
+  const fill = kit === "home" ? "#f8fafc" : "#cbd5e1";
+  const stroke = kit === "home" ? "#ffffff" : "#94a3b8";
+  return (
+    <svg viewBox="0 0 16 16" className={className} aria-hidden>
+      <path
+        d="M5.2 1.5 1 3.6l1.3 2.6L4 5.4V14a.6.6 0 0 0 .6.6h6.8a.6.6 0 0 0 .6-.6V5.4l1.7.8L15 3.6l-4.2-2.1c-.3.9-1.4 1.6-2.8 1.6s-2.5-.7-2.8-1.6Z"
+        fill={fill}
+        stroke={stroke}
+        strokeWidth="0.5"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
@@ -108,6 +295,8 @@ function TeamOnPitch({
   matchStarted,
   motmPlayerId,
   isCompleted,
+  orientation = "vertical",
+  compact = false,
 }: {
   lineup: TeamPitchLineup;
   side: "home" | "away";
@@ -116,6 +305,8 @@ function TeamOnPitch({
   matchStarted: boolean;
   motmPlayerId: string | null;
   isCompleted: boolean;
+  orientation?: "vertical" | "horizontal";
+  compact?: boolean;
 }) {
   const totalRows = lineup.rows.length;
 
@@ -126,7 +317,7 @@ function TeamOnPitch({
           const player = resolvePitchSlotPlayer(slot);
           if (!player) return null;
 
-          const pos = formationSlotPosition(
+          const rawPos = formationSlotPosition(
             side,
             rowIndex,
             colIndex,
@@ -135,6 +326,10 @@ function TeamOnPitch({
             lineup.formation,
             true
           );
+          const pos =
+            orientation === "horizontal"
+              ? { left: rawPos.top, top: 100 - rawPos.left }
+              : rawPos;
           const badges = buildLineupPlayerEvents(events, player.id, motmPlayerId, matchStarted);
 
           return (
@@ -149,6 +344,7 @@ function TeamOnPitch({
                 sport={sport}
                 badges={badges}
                 showMotm={isCompleted}
+                compact={compact}
               />
             </div>
           );
@@ -164,24 +360,30 @@ function PitchPlayer({
   sport,
   badges,
   showMotm,
+  compact = false,
 }: {
   player: NonNullable<ReturnType<typeof resolvePitchSlotPlayer>>;
   slot: PitchLineupSlot;
   sport: SportId;
   badges: ReturnType<typeof buildLineupPlayerEvents>;
   showMotm: boolean;
+  compact?: boolean;
 }) {
   const name = playerShortName(player.first_name, player.last_name);
 
   return (
     <Link
       href={`/players/${player.id}?sport=${sport}`}
-      className="group flex w-[68px] flex-col items-center sm:w-[74px]"
+      className={cn(
+        "group flex flex-col items-center",
+        compact ? "w-[52px]" : "w-[68px] sm:w-[74px]"
+      )}
     >
-      <div className="relative mx-1 mb-0.5 h-12 w-12">
+      <div className={cn("relative mx-1 mb-0.5", compact ? "h-9 w-9" : "h-12 w-12")}>
         <div
           className={cn(
-            "absolute inset-0 flex items-center justify-center rounded-full bg-white p-[3px] shadow-sm",
+            "absolute inset-0 flex items-center justify-center rounded-full bg-white shadow-sm",
+            compact ? "p-[2px]" : "p-[3px]",
             badges.redCard && "blur-[2px] brightness-75"
           )}
         >
@@ -190,14 +392,21 @@ function PitchPlayer({
               firstName={player.first_name}
               lastName={player.last_name}
               avatarUrl={player.avatar_url}
-              size="md"
+              size={compact ? "sm" : "md"}
             />
           </div>
         </div>
         <LineupPlayerBadges badges={badges} showMotm={showMotm} />
       </div>
 
-      <p className="max-w-[76px] text-center font-display text-[9px] font-bold leading-tight text-white drop-shadow-sm group-hover:underline sm:max-w-[84px] sm:text-[10px]">
+      <p
+        className={cn(
+          "text-center font-display font-bold leading-tight text-white drop-shadow-sm group-hover:underline",
+          compact
+            ? "max-w-[56px] text-[8px]"
+            : "max-w-[76px] text-[9px] sm:max-w-[84px] sm:text-[10px]"
+        )}
+      >
         {slot.jersey_number}
         {slot.is_captain ? " (c)" : ""} {name}
       </p>
@@ -205,8 +414,11 @@ function PitchPlayer({
   );
 }
 
-/** Full vertical pitch — 68×105m, sharp rectangle, corner arcs inside touchlines. */
-function FullPitchMarkings() {
+/**
+ * Full pitch markings — 68×105m, sharp rectangle, corner arcs inside touchlines.
+ * Drawn once in portrait coordinates, rotated -90° for the landscape variant.
+ */
+function PitchMarkings({ orientation }: { orientation: "vertical" | "horizontal" }) {
   const s = "rgba(255,255,255,0.38)";
   const w = 68;
   const h = 105;
@@ -220,13 +432,8 @@ function FullPitchMarkings() {
   const sixX = (w - sixW) / 2;
   const circleR = 9.15;
 
-  return (
-    <svg
-      aria-hidden
-      className="pointer-events-none absolute inset-0 h-full w-full"
-      viewBox={`0 0 ${w} ${h}`}
-      preserveAspectRatio="none"
-    >
+  const content = (
+    <>
       {/* Touchlines — flush to edges */}
       <rect x="0" y="0" width={w} height={h} fill="none" stroke={s} strokeWidth={sw} />
 
@@ -264,6 +471,30 @@ function FullPitchMarkings() {
       <path d={`M ${w - 1} 0 A 1 1 0 0 1 ${w} 1`} fill="none" stroke={s} strokeWidth={sw} />
       <path d={`M 0 ${h - 1} A 1 1 0 0 0 1 ${h}`} fill="none" stroke={s} strokeWidth={sw} />
       <path d={`M ${w - 1} ${h} A 1 1 0 0 0 ${w} ${h - 1}`} fill="none" stroke={s} strokeWidth={sw} />
+    </>
+  );
+
+  if (orientation === "vertical") {
+    return (
+      <svg
+        aria-hidden
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        viewBox={`0 0 ${w} ${h}`}
+        preserveAspectRatio="none"
+      >
+        {content}
+      </svg>
+    );
+  }
+
+  return (
+    <svg
+      aria-hidden
+      className="pointer-events-none absolute inset-0 h-full w-full"
+      viewBox={`0 0 ${h} ${w}`}
+      preserveAspectRatio="none"
+    >
+      <g transform={`translate(0, ${w}) rotate(-90)`}>{content}</g>
     </svg>
   );
 }

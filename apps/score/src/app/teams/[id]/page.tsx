@@ -2,11 +2,14 @@ import { StandingsTable } from "@/components/standings/standings-table";
 import { BrandedSection } from "@/components/layout/branded-section";
 import { PageContent } from "@/components/layout/page-content";
 import { PlayerAvatar, TeamCrest } from "@/components/ui/team-crest";
+import { HeadToHeadCard } from "@/components/match/head-to-head-card";
 import { DEMO_DEPARTMENTS, DEMO_TEAMS } from "@/lib/data/demo";
 import { getClubCompetitions, getSquadRosterEntries, groupSquadByRole } from "@/lib/data/demo-squads";
 import { getStandingsBySport } from "@/lib/data/get-by-sport";
+import { supportsHeadToHead } from "@/lib/match/head-to-head";
 import { getDefaultLeagueTournamentId, sportSupportsNextMatch } from "@/lib/standings/next-match";
-import { parseSportParam, sportToDbId } from "@/lib/utils/sport";
+import { dbIdToSport, parseSportParam, sportToDbId } from "@/lib/utils/sport";
+import { cn } from "@/lib/utils/cn";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -21,10 +24,10 @@ export default async function TeamPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ sport?: string }>;
+  searchParams: Promise<{ sport?: string; opponent?: string }>;
 }) {
   const { id } = await params;
-  const { sport } = await searchParams;
+  const { sport, opponent } = await searchParams;
   const activeSport = parseSportParam(sport);
   const team = DEMO_TEAMS.find((t) => t.id === id);
   if (!team) notFound();
@@ -36,6 +39,10 @@ export default async function TeamPage({
   const squadGroups = groupSquadByRole(squad, sportToDbId(activeSport));
   const competitions = getClubCompetitions(id);
   const dept = DEMO_DEPARTMENTS.find((d) => d.id === team.department_id);
+
+  const teamSport = dbIdToSport(team.sport_id);
+  const opponents = DEMO_TEAMS.filter((t) => t.sport_id === team.sport_id && t.id !== team.id);
+  const selectedOpponent = opponents.find((o) => o.id === opponent) ?? null;
 
   return (
     <>
@@ -103,6 +110,41 @@ export default async function TeamPage({
               <p className="p-8 text-center opacity-70">No squad registered yet.</p>
             )}
           </div>
+
+          {supportsHeadToHead(teamSport) && opponents.length > 0 && (
+            <section className="mb-12">
+              <h2 className="mb-3 font-display text-lg font-extrabold">Head-to-Head</h2>
+              <div className="mb-4 flex flex-wrap gap-2">
+                {opponents.map((opp) => (
+                  <Link
+                    key={opp.id}
+                    href={`/teams/${id}?sport=${sport ?? teamSport}&opponent=${opp.id}`}
+                    className={cn(
+                      "interactive-btn rounded-full border px-3 py-1.5 font-display text-xs font-bold",
+                      opp.id === selectedOpponent?.id
+                        ? "border-accent bg-accent text-white"
+                        : "border-rule bg-white"
+                    )}
+                  >
+                    {opp.name}
+                  </Link>
+                ))}
+              </div>
+              {selectedOpponent ? (
+                <HeadToHeadCard
+                  sport={teamSport}
+                  teamAId={team.id}
+                  teamAName={team.name}
+                  teamBId={selectedOpponent.id}
+                  teamBName={selectedOpponent.name}
+                />
+              ) : (
+                <p className="table-card px-4 py-6 text-center text-sm opacity-60">
+                  Pick an opponent to see past results.
+                </p>
+              )}
+            </section>
+          )}
 
           <StandingsTable
             rows={standings}

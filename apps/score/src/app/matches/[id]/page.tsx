@@ -4,6 +4,7 @@ import { MatchLifecycleBadge } from "@/components/match/match-lifecycle-badge";
 import { MatchEventsList } from "@/components/match/match-events-list";
 import { FootballMatchTimeline } from "@/components/match/football-match-timeline";
 import { ManOfTheMatchCard } from "@/components/match/man-of-the-match";
+import { HeadToHeadCard } from "@/components/match/head-to-head-card";
 import { MatchInfoPanel } from "@/components/match/match-info-panel";
 import { DoublesLineup, MatchRulesBanner, PenaltyShootoutScore } from "@/components/match/match-rules";
 import { PeriodScoresTable, SetScoresTable } from "@/components/match/period-scores";
@@ -12,13 +13,13 @@ import { PodiumDisplay } from "@/components/match/podium-display";
 import { MatchLineupsSection } from "@/components/match/match-lineups-section";
 import { BrandedSection } from "@/components/layout/branded-section";
 import { PageContent } from "@/components/layout/page-content";
-import { DEMO_MATCHES } from "@/lib/data/demo";
 import {
   getEventsForMatch,
   getPeriodScoresForMatch,
   getSetScoresForMatch,
   getTrackResultsForMatch,
 } from "@/lib/data/demo-match-details";
+import { fetchMatchById } from "@/lib/data/repository";
 import { dbIdToSport, parseSportParam } from "@/lib/utils/sport";
 import { getSportConfig, scoreUnitLabel } from "@/lib/utils/sport-config";
 import {
@@ -27,12 +28,13 @@ import {
   podiumFromTrackResults,
 } from "@/lib/match/podium";
 import { getManOfTheMatch, getMatchMeta } from "@/lib/match/match-meta";
+import { supportsHeadToHead } from "@/lib/match/head-to-head";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const match = DEMO_MATCHES.find((m) => m.id === id);
+  const match = await fetchMatchById(id);
   if (!match) return { title: "Match" };
   const sport = dbIdToSport(match.sport_id);
   const config = getSportConfig(sport);
@@ -51,7 +53,7 @@ export default async function MatchPage({
 }) {
   const { id } = await params;
   const { sport } = await searchParams;
-  const match = DEMO_MATCHES.find((m) => m.id === id);
+  const match = await fetchMatchById(id);
   if (!match) notFound();
 
   const matchSport = dbIdToSport(match.sport_id);
@@ -196,6 +198,20 @@ export default async function MatchPage({
           )}
 
           {motm && <ManOfTheMatchCard motm={motm} sport={matchSport} />}
+
+          {supportsHeadToHead(matchSport) && match.home_team_id && match.away_team_id && (
+            <section>
+              <h2 className="mb-4 font-display text-xl font-extrabold">Head-to-Head</h2>
+              <HeadToHeadCard
+                sport={matchSport}
+                teamAId={match.home_team_id}
+                teamAName={homeName}
+                teamBId={match.away_team_id}
+                teamBName={awayName}
+                excludeMatchId={match.id}
+              />
+            </section>
+          )}
 
           {!config.isEventSport && <MatchInfoPanel match={match} meta={matchMeta} />}
         </div>

@@ -3,7 +3,6 @@ import { sportToDbId } from "@/lib/utils/sport";
 import type { Match, StandingRow } from "@/lib/types/database";
 import type { StatLeader } from "@/components/stats/stat-leader-card";
 import {
-  DEMO_MATCHES,
   DEMO_STANDINGS_BASKETBALL,
   DEMO_STANDINGS_FOOTBALL,
   DEMO_STANDINGS_TENNIS,
@@ -16,6 +15,7 @@ import {
   DEMO_STAT_LEADERS_VOLLEYBALL,
   DEMO_TEAMS,
 } from "@/lib/data/demo";
+import { listAllDemoMatches } from "@/lib/data/demo-match-store";
 import { playerAvatarForId } from "@/lib/utils/sport-assets";
 import { getSportConfig } from "@/lib/utils/sport-config";
 import { enrichStandingsWithNextMatch } from "@/lib/standings/next-match";
@@ -35,7 +35,7 @@ function enrichStandings(rows: StandingRow[], sport: SportId): StandingRow[] {
 }
 
 export function getMatchesBySport(sport: SportId, tournamentId?: string): Match[] {
-  const matches = DEMO_MATCHES.filter((m) => m.sport_id === sportToDbId(sport));
+  const matches = listAllDemoMatches().filter((m) => m.sport_id === sportToDbId(sport));
   if (!tournamentId) return matches;
   return matches.filter((m) => m.tournament_id === tournamentId);
 }

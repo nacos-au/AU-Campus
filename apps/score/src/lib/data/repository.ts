@@ -2,11 +2,14 @@ import type {
   BracketFixture,
   GroupStandingRow,
   Match,
+  MatchScope,
   MeetEventFixture,
   PeriodScore,
   SetScore,
+  Team,
   Tournament,
   TrackResult,
+  Venue,
 } from "@/lib/types/database";
 import type { DemoMatchEvent } from "@/lib/data/demo-match-details";
 import type { SquadPlayer } from "@/lib/data/demo-squads";
@@ -18,7 +21,27 @@ import {
   getMeetEventsForSport,
   getTournamentForSport,
 } from "@/lib/data/demo-competition";
-import { DEMO_MATCHES, DEMO_PLAYERS } from "@/lib/data/demo";
+import { DEMO_PLAYERS } from "@/lib/data/demo";
+import {
+  getDemoMatchById,
+  listAllDemoMatches,
+  postDemoMatch,
+  softDeleteDemoMatch,
+  updateDemoMatch,
+} from "@/lib/data/demo-match-store";
+import {
+  addGuestTeam,
+  listGuestTeams,
+  removeGuestTeam,
+  type CreateGuestTeamInput,
+} from "@/lib/data/demo-guest-teams";
+import {
+  createDemoVenue,
+  getDemoVenueById,
+  listDemoVenues,
+  softDeleteDemoVenue,
+  updateDemoVenue,
+} from "@/lib/data/venues";
 import {
   getEventsForMatch,
   getPeriodScoresForMatch,
@@ -29,6 +52,7 @@ import type { SeasonAward } from "@/lib/data/demo-awards";
 import { getAwardsForSport } from "@/lib/data/demo-awards";
 import { getSquadForTeam } from "@/lib/data/demo-squads";
 import { createClient } from "@/lib/supabase/server";
+import { sportToDbId, type SportId } from "@/lib/utils/sport";
 
 type TournamentRow = {
   id: string;
@@ -176,17 +200,49 @@ export async function fetchMeetEvents(sportDbId: string): Promise<MeetEventFixtu
 }
 
 export async function fetchMatchById(id: string): Promise<Match | null> {
-  if (!hasSupabaseConfig() || (await getScoreDemoMode())) return DEMO_MATCHES.find((m) => m.id === id) ?? null;
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) return getDemoMatchById(id);
 
   const supabase = await createClient();
   const { data } = await supabase
     .from("matches")
-    .select("*")
+    .select("*, venue:venues(*), home_team:teams!home_team_id(*), away_team:teams!away_team_id(*), tournament:tournaments(*)")
     .eq("id", id)
+    .is("deleted_at", null)
     .maybeSingle() as { data: Match | null };
 
-  if (!data) return DEMO_MATCHES.find((m) => m.id === id) ?? null;
+  if (!data) return getDemoMatchById(id);
   return data as unknown as Match;
+}
+
+export async function fetchMatchesForHeadToHead(
+  sportDbId: string,
+  teamAId: string,
+  teamBId: string
+): Promise<Match[]> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    return listAllDemoMatches().filter(
+      (m) =>
+        m.sport_id === sportDbId &&
+        m.status === "completed" &&
+        !m.deleted_at &&
+        [m.home_team_id, m.away_team_id].includes(teamAId) &&
+        [m.home_team_id, m.away_team_id].includes(teamBId)
+    );
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("matches")
+    .select("*, home_team:teams!home_team_id(*), away_team:teams!away_team_id(*), tournament:tournaments(*)")
+    .eq("sport_id", sportDbId)
+    .eq("status", "completed")
+    .is("deleted_at", null)
+    .or(
+      `and(home_team_id.eq.${teamAId},away_team_id.eq.${teamBId}),and(home_team_id.eq.${teamBId},away_team_id.eq.${teamAId})`
+    )
+    .order("scheduled_at", { ascending: false }) as { data: Match[] | null };
+
+  return (data ?? []) as Match[];
 }
 
 export async function fetchMatchEvents(matchId: string): Promise<DemoMatchEvent[]> {
@@ -218,7 +274,7 @@ export async function fetchMatchEvents(matchId: string): Promise<DemoMatchEvent[
     match_id: row.match_id,
     player: {
       id: row.player_id ?? "",
-      department_id: "",
+      department_id: "unknown",
       first_name: "",
       last_name: "",
       matric_number: null,
@@ -489,22 +545,288 @@ export async function upsertSeasonAward(input: UpsertSeasonAwardInput): Promise<
   return { id: data.id };
 }
 
+export interface CreateMatchInput {
+  sport_id: string;
+  home_team_id: string;
+  away_team_id: string;
+  status: "scheduled" | "completed";
+  scheduled_at: string;
+  home_score: number;
+  away_score: number;
+  scope?: MatchScope;
+  venue_id?: string | null;
+  tournament_id?: string | null;
+  set_scores?: Array<{ set_number: number; home_games: number; away_games: number }>;
+}
+
+async function resolveFriendlyTournamentId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sportId: string
+): Promise<string | { error: string }> {
+  const { data: existing } = await supabase
+    .from("tournaments")
+    .select("id")
+    .eq("sport_id", sportId)
+    .eq("category", "friendly")
+    .eq("name", "Friendlies")
+    .maybeSingle() as { data: { id: string } | null };
+
+  if (existing?.id) return existing.id;
+
+  const { data: created, error } = await (supabase.from("tournaments") as ReturnType<typeof supabase.from>)
+    .insert({
+      name: "Friendlies",
+      sport_id: sportId,
+      category: "friendly",
+      season: "2025/26",
+      rules: {},
+    } as Record<string, unknown>)
+    .select("id")
+    .single() as { data: { id: string } | null; error: { message: string } | null };
+
+  if (error) return { error: error.message };
+  if (!created) return { error: "Could not create Friendlies tournament" };
+  return created.id;
+}
+
+/**
+ * Creates a one-off match — used by admin/keeper "Post a Result" for
+ * friendlies (including guest-team fixtures) posted without a live keeper.
+ */
+export async function createMatch(input: CreateMatchInput): Promise<{ id: string } | { error: string }> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    const match = postDemoMatch(input);
+    return { id: match.id };
+  }
+
+  const supabase = await createClient();
+  const tournamentId =
+    input.tournament_id ?? (await resolveFriendlyTournamentId(supabase, input.sport_id));
+  if (typeof tournamentId === "object") return tournamentId;
+
+  const { data, error } = await (supabase.from("matches") as ReturnType<typeof supabase.from>)
+    .insert({
+      tournament_id: tournamentId,
+      sport_id: input.sport_id,
+      home_team_id: input.home_team_id,
+      away_team_id: input.away_team_id,
+      status: input.status,
+      current_period: input.status === "completed" ? "full_time" : "not_started",
+      home_score: input.home_score,
+      away_score: input.away_score,
+      scheduled_at: input.scheduled_at,
+      started_at: input.status === "completed" ? input.scheduled_at : null,
+      ended_at: input.status === "completed" ? new Date().toISOString() : null,
+      scope: input.scope ?? "pickup",
+      venue_id: input.venue_id ?? null,
+    } as Record<string, unknown>)
+    .select("id")
+    .single() as { data: { id: string } | null; error: { message: string } | null };
+
+  if (error) return { error: error.message };
+  if (!data) return { error: "Match not created" };
+
+  if (input.set_scores?.length) {
+    await (supabase.from("set_scores") as ReturnType<typeof supabase.from>).insert(
+      input.set_scores.map((s) => ({ match_id: data.id, ...s })) as Record<string, unknown>[]
+    );
+  }
+
+  return { id: data.id };
+}
+
+export interface UpdateMatchInput {
+  home_score?: number;
+  away_score?: number;
+  status?: "scheduled" | "live" | "completed";
+  scheduled_at?: string;
+  venue_id?: string | null;
+  scope?: MatchScope;
+}
+
+export async function updateMatch(
+  matchId: string,
+  patch: UpdateMatchInput
+): Promise<{ ok: true } | { error: string }> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    const updated = updateDemoMatch(matchId, patch);
+    return updated ? { ok: true } : { error: "Match not found" };
+  }
+
+  const supabase = await createClient();
+  const body: Record<string, unknown> = { ...patch };
+  if (patch.status === "live") body.started_at = new Date().toISOString();
+  if (patch.status === "completed") body.ended_at = new Date().toISOString();
+
+  const { error } = await (supabase.from("matches") as ReturnType<typeof supabase.from>)
+    .update(body)
+    .eq("id", matchId)
+    .is("deleted_at", null) as { error: { message: string } | null };
+
+  if (error) return { error: error.message };
+  return { ok: true };
+}
+
+export async function softDeleteMatch(matchId: string): Promise<{ ok: true } | { error: string }> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    return softDeleteDemoMatch(matchId) ? { ok: true } : { error: "Match not found" };
+  }
+
+  const supabase = await createClient();
+  const { error } = await (supabase.from("matches") as ReturnType<typeof supabase.from>)
+    .update({ deleted_at: new Date().toISOString(), status: "cancelled" } as Record<string, unknown>)
+    .eq("id", matchId) as { error: { message: string } | null };
+
+  if (error) return { error: error.message };
+  return { ok: true };
+}
+
 export async function updateMatchStatus(
   matchId: string,
   status: "scheduled" | "live" | "completed"
 ): Promise<{ ok: true } | { error: string }> {
+  return updateMatch(matchId, { status });
+}
+
+// ─── Venues ─────────────────────────────────────────────────────────────────
+
+export async function fetchVenues(opts?: { includeDeleted?: boolean }): Promise<Venue[]> {
   if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    return listDemoVenues({ includeDeleted: opts?.includeDeleted });
+  }
+
+  const supabase = await createClient();
+  let query = supabase.from("venues").select("*").order("name");
+  if (!opts?.includeDeleted) {
+    query = query.is("deleted_at", null);
+  }
+  const { data } = await query as { data: Venue[] | null };
+  return data ?? [];
+}
+
+export async function createVenue(input: {
+  name: string;
+  location?: string;
+}): Promise<{ venue: Venue } | { error: string }> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    return { venue: createDemoVenue(input) };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await (supabase.from("venues") as ReturnType<typeof supabase.from>)
+    .insert({
+      name: input.name.trim(),
+      location: (input.location ?? "Achievers University, Owo").trim(),
+    } as Record<string, unknown>)
+    .select("*")
+    .single() as { data: Venue | null; error: { message: string } | null };
+
+  if (error) return { error: error.message };
+  if (!data) return { error: "Venue not created" };
+  return { venue: data };
+}
+
+export async function updateVenue(
+  id: string,
+  patch: { name?: string; location?: string; is_active?: boolean }
+): Promise<{ venue: Venue } | { error: string }> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    const venue = updateDemoVenue(id, patch);
+    return venue ? { venue } : { error: "Venue not found" };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await (supabase.from("venues") as ReturnType<typeof supabase.from>)
+    .update({ ...patch, updated_at: new Date().toISOString() } as Record<string, unknown>)
+    .eq("id", id)
+    .is("deleted_at", null)
+    .select("*")
+    .single() as { data: Venue | null; error: { message: string } | null };
+
+  if (error) return { error: error.message };
+  if (!data) return { error: "Venue not found" };
+  return { venue: data };
+}
+
+export async function softDeleteVenue(id: string): Promise<{ ok: true } | { error: string }> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    return softDeleteDemoVenue(id) ? { ok: true } : { error: "Venue not found" };
+  }
+
+  const supabase = await createClient();
+  const { error } = await (supabase.from("venues") as ReturnType<typeof supabase.from>)
+    .update({
+      deleted_at: new Date().toISOString(),
+      is_active: false,
+      updated_at: new Date().toISOString(),
+    } as Record<string, unknown>)
+    .eq("id", id) as { error: { message: string } | null };
+
+  if (error) return { error: error.message };
+  return { ok: true };
+}
+
+export async function resolveVenue(id: string): Promise<Venue | null> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) return getDemoVenueById(id);
+
+  const supabase = await createClient();
+  const { data } = await supabase.from("venues").select("*").eq("id", id).maybeSingle() as {
+    data: Venue | null;
+  };
+  return data;
+}
+
+// ─── Guest teams ────────────────────────────────────────────────────────────
+
+export async function fetchGuestTeams(sport?: SportId): Promise<Team[]> {
+  const sportDbId = sport ? sportToDbId(sport) : undefined;
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    return listGuestTeams(sportDbId);
+  }
+
+  const supabase = await createClient();
+  let query = supabase.from("teams").select("*").eq("is_guest", true).is("deleted_at", null);
+  if (sportDbId) query = query.eq("sport_id", sportDbId);
+  const { data } = await query.order("name") as { data: Team[] | null };
+  return data ?? [];
+}
+
+export async function createGuestTeamRepo(
+  input: CreateGuestTeamInput
+): Promise<{ team: Team } | { error: string }> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    return { team: addGuestTeam(input) };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await (supabase.from("teams") as ReturnType<typeof supabase.from>)
+    .insert({
+      name: input.name.trim(),
+      sport_id: sportToDbId(input.sport),
+      department_id: null,
+      logo_url: input.logo_url ?? null,
+      is_guest: true,
+      institution: input.institution ?? null,
+    } as Record<string, unknown>)
+    .select("*")
+    .single() as { data: Team | null; error: { message: string } | null };
+
+  if (error) return { error: error.message };
+  if (!data) return { error: "Guest team not created" };
+  return { team: data };
+}
+
+export async function softDeleteGuestTeam(id: string): Promise<{ ok: true } | { error: string }> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    removeGuestTeam(id);
     return { ok: true };
   }
 
   const supabase = await createClient();
-  const patch: Record<string, unknown> = { status };
-  if (status === "live") patch.started_at = new Date().toISOString();
-  if (status === "completed") patch.ended_at = new Date().toISOString();
-
-  const { error } = await (supabase.from("matches") as ReturnType<typeof supabase.from>)
-    .update(patch)
-    .eq("id", matchId) as { error: { message: string } | null };
+  const { error } = await (supabase.from("teams") as ReturnType<typeof supabase.from>)
+    .update({ deleted_at: new Date().toISOString() } as Record<string, unknown>)
+    .eq("id", id)
+    .eq("is_guest", true) as { error: { message: string } | null };
 
   if (error) return { error: error.message };
   return { ok: true };
