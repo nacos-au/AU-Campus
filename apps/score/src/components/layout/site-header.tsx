@@ -3,9 +3,11 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Search } from "lucide-react";
 import { getDemoModeCookie } from "@/app/actions/demo-mode";
-import { MobileNav } from "@/components/layout/mobile-nav";
+import { SiteNav } from "@/components/layout/site-nav";
 import { DemoModeToggle } from "@/components/layout/demo-mode-toggle";
 import { SportNav } from "@/components/layout/sport-nav";
+import { PhantomIcon } from "@/components/phantom/phantom-icon";
+import { PHANTOM_BRAND } from "@/lib/phantom/types";
 import { canToggleDemoMode, isDemoMode } from "@/lib/demo-mode";
 
 const LOGO_SRC = "/AU Logo.webp";
@@ -19,7 +21,7 @@ export async function SiteHeader() {
     <header className="sticky top-0 z-50 border-b border-rule bg-wrapper">
       <div className="mx-auto flex h-14 max-w-[1200px] items-center gap-3 px-4 sm:px-6">
         <Suspense fallback={null}>
-          <MobileNav />
+          <SiteNav />
         </Suspense>
 
         <Link href="/?sport=football" className="flex shrink-0 items-center lg:mr-2">
@@ -33,24 +35,30 @@ export async function SiteHeader() {
           />
         </Link>
 
-        <div className="ml-auto flex items-center gap-2 sm:gap-4">
-          <DemoModeToggle active={demoActive} canToggle={showDemoToggle} />
-          <button
-            type="button"
-            aria-label="Search"
-            className="hidden text-accent sm:block"
+        <div className="ml-auto flex items-center gap-2 sm:gap-3">
+          <Link
+            href={PHANTOM_BRAND.path}
+            className="interactive-btn inline-flex items-center gap-1.5 rounded-full border border-accent/25 bg-accent/[0.06] px-3 py-1.5 font-display text-xs font-extrabold text-accent sm:px-3.5 sm:text-sm"
+            aria-label={`${PHANTOM_BRAND.name} — ${PHANTOM_BRAND.tagline}`}
+            title={PHANTOM_BRAND.name}
           >
+            <PhantomIcon size={16} />
+            <span className="hidden xs:inline sm:inline">{PHANTOM_BRAND.name}</span>
+          </Link>
+
+          <DemoModeToggle active={demoActive} canToggle={showDemoToggle} />
+          <button type="button" aria-label="Search" className="hidden text-accent sm:block">
             <Search className="h-5 w-5" />
           </button>
           <Link
             href="/demo"
-            className="interactive-btn hidden rounded-full border border-rule px-4 py-1.5 font-display text-xs font-bold sm:block"
+            className="interactive-btn hidden rounded-full border border-rule px-4 py-1.5 font-display text-xs font-bold md:block"
           >
             Demo links
           </Link>
           <Link
             href="/auth/login"
-            className="interactive-btn rounded-full border-2 border-accent px-4 py-1.5 font-display text-xs font-bold sm:px-5 sm:text-sm"
+            className="interactive-btn rounded-full border-2 border-accent px-3 py-1.5 font-display text-xs font-bold sm:px-5 sm:text-sm"
           >
             Sign in
           </Link>
