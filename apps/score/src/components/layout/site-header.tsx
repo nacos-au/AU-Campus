@@ -2,22 +2,70 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Search } from "lucide-react";
+import { cookies } from "next/headers";
+import { createServerClient } from "@supabase/ssr";
 import { getDemoModeCookie } from "@/app/actions/demo-mode";
 import { isAdminModeActive } from "@/app/actions/admin-mode";
 import { SiteNav } from "@/components/layout/site-nav";
 import { DemoModeToggle } from "@/components/layout/demo-mode-toggle";
 import { AdminModeToggle } from "@/components/layout/admin-mode-toggle";
 import { AdminModeBanner } from "@/components/layout/admin-mode-banner";
+import { ProfileMenu } from "@/components/layout/profile-menu";
 import { SportNav } from "@/components/layout/sport-nav";
 import { PhantomIcon } from "@/components/phantom/phantom-icon";
 import { PHANTOM_BRAND } from "@/lib/phantom/types";
-import { canToggleDemoMode, isDemoMode } from "@/lib/demo-mode";
+import { canToggleDemoMode, isDemoMode, hasSupabaseConfig } from "@/lib/demo-mode";
 import { getSessionStaff } from "@/lib/auth/roles";
-import { createClient } from "@/lib/supabase/server";
-import { hasSupabaseConfig } from "@/lib/demo-mode";
 import { signOut } from "@/app/auth/actions";
 
 const LOGO_SRC = "/AU Logo.webp";
+
+async function getSignedInProfile(): Promise<{
+  email: string;
+  displayName: string;
+} | null> {
+  if (!hasSupabaseConfig()) return null;
+  try {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll() {
+            // Header is read-only for auth cookies
+          },
+        },
+      }
+    );
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user?.email) return null;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("display_name")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const row = profile as { display_name?: string | null } | null;
+    const metaName =
+      typeof user.user_metadata?.display_name === "string"
+        ? user.user_metadata.display_name
+        : "";
+
+    return {
+      email: user.email,
+      displayName: row?.display_name?.trim() || metaName.trim() || "",
+    };
+  } catch {
+    return null;
+  }
+}
 
 export async function SiteHeader() {
   const demoCookie = await getDemoModeCookie();
@@ -27,26 +75,15 @@ export async function SiteHeader() {
   const staff = await getSessionStaff();
   const adminMode = await isAdminModeActive();
   const canAdmin = Boolean(staff?.isAdmin && !staff.isDemoBypass);
-
-  let signedInEmail: string | null = null;
-  if (hasSupabaseConfig()) {
-    try {
-      const supabase = await createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      signedInEmail = user?.email ?? staff?.email ?? null;
-    } catch {
-      signedInEmail = staff?.email ?? null;
-    }
-  }
+  const signedIn = await getSignedInProfile();
+  const showAdminRole = Boolean(staff?.isAdmin && !staff?.isDemoBypass && signedIn);
 
   return (
     <header className="sticky top-0 z-50 border-b border-rule bg-wrapper">
       {adminMode && canAdmin && <AdminModeBanner />}
       <div className="mx-auto flex h-14 max-w-[1200px] items-center gap-3 px-4 sm:px-6">
         <Suspense fallback={null}>
-          <SiteNav adminMode={adminMode && canAdmin} />
+          <SiteNav adminMode={adminMode && canAdmin} signedIn={Boolean(signedIn)} />
         </Suspense>
 
         <Link href="/?sport=football" className="flex shrink-0 items-center lg:mr-2">
@@ -82,16 +119,13 @@ export async function SiteHeader() {
           >
             Demo links
           </Link>
-          {signedInEmail ? (
-            <form action={signOut}>
-              <button
-                type="submit"
-                className="interactive-btn rounded-full border-2 border-accent px-3 py-1.5 font-display text-xs font-bold sm:px-5 sm:text-sm"
-                title={signedInEmail}
-              >
-                Sign out
-              </button>
-            </form>
+          {signedIn ? (
+            <ProfileMenu
+              email={signedIn.email}
+              displayName={signedIn.displayName}
+              showAdminRole={showAdminRole}
+              signOutAction={signOut}
+            />
           ) : (
             <Link
               href="/auth/login"

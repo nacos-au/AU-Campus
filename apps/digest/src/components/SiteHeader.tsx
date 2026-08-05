@@ -14,8 +14,9 @@ import { AdminModeToggle } from "./AdminModeToggle";
 import { DemoModeToggle } from "./DemoModeToggle";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { MobileMenu } from "./MobileMenu";
+import { ProfileMenu } from "./ProfileMenu";
 import { WorldClock } from "./WorldClock";
-import { IconSignIn, IconSignOut, IconUser } from "./icons";
+import { IconSignIn } from "./icons";
 
 export async function SiteHeader() {
   const [t, locale, { user, profile }, supabase, demoCookie, adminMode] = await Promise.all([
@@ -32,6 +33,7 @@ export async function SiteHeader() {
   const isWriter = hasRole(profile, "writer");
   const canAdminMode = isWriter;
   const adminModeOn = adminMode && canAdminMode;
+  const showAdminRole = hasRole(profile, "admin");
 
   const { data: sectionsData } = await supabase
     .from("sections")
@@ -84,13 +86,23 @@ export async function SiteHeader() {
             </span>
           </Link>
 
-          <Link
-            href={user ? "/account" : "/login"}
-            aria-label={user ? t("account") : t("signIn")}
-            className="flex h-10 w-10 items-center justify-center text-ink"
-          >
-            <IconUser className="h-6 w-6" />
-          </Link>
+          {user ? (
+            <ProfileMenu
+              compact
+              email={user.email}
+              displayName={profile?.display_name ?? ""}
+              showAdminRole={showAdminRole}
+              signOutAction={signOut}
+            />
+          ) : (
+            <Link
+              href="/login"
+              aria-label={t("signIn")}
+              className="flex h-10 w-10 items-center justify-center text-ink"
+            >
+              <IconSignIn className="h-6 w-6" />
+            </Link>
+          )}
         </div>
 
         <div className="flex items-center justify-between gap-3 px-3 pb-2.5">
@@ -158,19 +170,12 @@ export async function SiteHeader() {
                     {t("admin")}
                   </Link>
                 )}
-                <Link
-                  href="/account"
-                  className="inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider text-ink-soft transition-colors hover:text-ink"
-                >
-                  <IconUser className="h-3.5 w-3.5" />
-                  {t("account")}
-                </Link>
-                <form action={signOut}>
-                  <button className="inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider text-ink-soft transition-colors hover:text-ink">
-                    <IconSignOut className="h-3.5 w-3.5" />
-                    {t("signOut")}
-                  </button>
-                </form>
+                <ProfileMenu
+                  email={user.email}
+                  displayName={profile?.display_name ?? ""}
+                  showAdminRole={showAdminRole}
+                  signOutAction={signOut}
+                />
               </>
             ) : (
               <Link

@@ -4,10 +4,10 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { getSessionProfile } from "@/lib/auth";
+import { getSessionProfile, hasRole } from "@/lib/auth";
 import type { Edition, Purchase } from "@/lib/types";
 
-export const metadata: Metadata = { title: "Account" };
+export const metadata: Metadata = { title: "Library" };
 
 type PurchaseWithEdition = Purchase & { editions: Edition | null };
 
@@ -31,22 +31,33 @@ export default async function AccountPage() {
   return (
     <div className="mx-auto max-w-3xl py-8">
       <header className="border-b-2 border-ink pb-4">
-        <h1 className="font-serif text-4xl font-bold">{t("title")}</h1>
-        <p className="mt-2 text-sm text-ink-soft">
-          {profile?.display_name} · {user.email} ·{" "}
-          <span className="uppercase tracking-wide">{profile?.role}</span>
-        </p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h1 className="font-serif text-4xl font-bold">{t("library")}</h1>
+            <p className="mt-2 text-sm text-ink-soft">
+              {profile?.display_name}
+              {hasRole(profile, "admin") && (
+                <>
+                  {" "}
+                  · <span className="uppercase tracking-wide">Admin</span>
+                </>
+              )}
+            </p>
+          </div>
+          <Link
+            href="/account/settings"
+            className="text-sm text-[#326891] underline underline-offset-2 hover:text-ink"
+          >
+            Account settings
+          </Link>
+        </div>
       </header>
 
-      <section className="pt-8">
-        <h2 className="text-sm font-bold uppercase tracking-wider">
-          {t("library")}
-        </h2>
-
+      <section className="pt-6">
         {purchases.length === 0 ? (
-          <p className="mt-6 text-sm text-ink-soft">{t("libraryEmpty")}</p>
+          <p className="mt-2 text-sm text-ink-soft">{t("libraryEmpty")}</p>
         ) : (
-          <div className="mt-4 divide-y divide-rule">
+          <div className="divide-y divide-rule">
             {purchases.map((p) => (
               <div key={p.id} className="flex items-center gap-4 py-4">
                 <div className="relative h-20 w-14 shrink-0 overflow-hidden border border-rule-dark bg-rule">

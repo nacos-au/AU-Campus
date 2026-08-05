@@ -26,7 +26,13 @@ const baseNavItems: Array<{ href: string; label: string; featured?: boolean }> =
 ];
 
 /** Hamburger drawer — available on mobile and desktop. */
-export function SiteNav({ adminMode = false }: { adminMode?: boolean }) {
+export function SiteNav({
+  adminMode = false,
+  signedIn = false,
+}: {
+  adminMode?: boolean;
+  signedIn?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -98,14 +104,24 @@ export function SiteNav({ adminMode = false }: { adminMode?: boolean }) {
         </div>
 
         <div className="flex flex-wrap gap-2 px-5 pb-4">
-          <Link
-            href="/auth/login"
-            onClick={() => setOpen(false)}
-            className="inline-flex items-center gap-2 rounded-full border-2 border-accent px-5 py-2 font-display text-sm font-bold text-accent"
-          >
-            <LogIn className="h-4 w-4" />
-            Login
-          </Link>
+          {signedIn ? (
+            <Link
+              href="/account/settings"
+              onClick={() => setOpen(false)}
+              className="inline-flex items-center gap-2 rounded-full border-2 border-accent px-5 py-2 font-display text-sm font-bold text-accent"
+            >
+              Account settings
+            </Link>
+          ) : (
+            <Link
+              href="/auth/login"
+              onClick={() => setOpen(false)}
+              className="inline-flex items-center gap-2 rounded-full border-2 border-accent px-5 py-2 font-display text-sm font-bold text-accent"
+            >
+              <LogIn className="h-4 w-4" />
+              Login
+            </Link>
+          )}
           <Link
             href={PHANTOM_BRAND.path}
             onClick={() => setOpen(false)}

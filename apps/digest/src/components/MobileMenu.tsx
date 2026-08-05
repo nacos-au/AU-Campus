@@ -196,7 +196,13 @@ export function MobileMenu({
                         className="inline-flex items-center gap-2 py-2 text-sm font-semibold uppercase tracking-wider"
                       >
                         <IconUser className="h-4 w-4" />
-                        {t("account")}
+                        Library
+                      </Link>
+                      <Link
+                        href="/account/settings"
+                        className="py-2 text-sm font-semibold uppercase tracking-wider text-ink-soft"
+                      >
+                        Account settings
                       </Link>
                       <form action={signOutAction}>
                         <button

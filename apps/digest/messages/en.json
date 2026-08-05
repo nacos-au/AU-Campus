@@ -51,7 +51,14 @@
     "title": "Your Account",
     "library": "Your Library",
     "libraryEmpty": "You haven't purchased any editions yet.",
-    "purchasedOn": "Purchased {date}"
+    "purchasedOn": "Purchased {date}",
+    "settings": "Account settings",
+    "newsletters": "Newsletters",
+    "editProfile": "Edit your profile",
+    "logOut": "Log out",
+    "yourContent": "Your content",
+    "getSupport": "Get support",
+    "helpCenter": "Help Center"
   },
   "footer": {
     "rights": "All rights reserved.",
