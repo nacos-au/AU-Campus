@@ -58,7 +58,7 @@ export function AdminVenueManager() {
   }
 
   async function handleSoftDelete(id: string) {
-    if (!confirm("Soft-delete this venue? Existing matches keep the location.")) return;
+    if (!confirm("Admin action: soft-delete this venue?\n\nExisting matches keep the location, but it leaves the dropdown.")) return;
     setBusy(true);
     const res = await fetch(`/api/venues?id=${id}`, { method: "DELETE" });
     setBusy(false);

@@ -19,7 +19,8 @@ export function LoginForm() {
   return (
     <div className="mx-auto w-full max-w-md">
       <p className="mb-6 text-center text-sm opacity-70">
-        Same account as AU Digest — one login for all campus apps.
+        Same campus account as AU Digest. Sign up on Digest if you do not have an account yet.
+        After signing in here you should see <span className="font-semibold">Sign out</span> in the header.
       </p>
 
       <form action={formAction} className="space-y-4">

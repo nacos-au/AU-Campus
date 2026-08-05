@@ -94,6 +94,11 @@ export function AdminCompetitionWizard() {
   }
 
   async function handlePublish() {
+    const ok = window.confirm(
+      `Publish competition as Admin?\n\n"${name.trim()}" (${registered.length} teams)\n\nThis creates live fixtures.`
+    );
+    if (!ok) return;
+
     setPublishState("saving");
     const payload = {
       name,

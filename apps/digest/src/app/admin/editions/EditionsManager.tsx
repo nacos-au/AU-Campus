@@ -256,7 +256,17 @@ export function EditionsManager() {
                     </Link>
                   )}
                   <button
-                    onClick={() => togglePublish.mutate(e)}
+                    onClick={() => {
+                      if (
+                        !confirm(
+                          e.published
+                            ? `Admin action: take "${e.title}" off sale?`
+                            : `Admin action: put "${e.title}" on sale for readers?`
+                        )
+                      )
+                        return;
+                      togglePublish.mutate(e);
+                    }}
                     className={`px-2.5 py-1 transition-colors ${
                       e.published
                         ? "border border-ink hover:bg-ink hover:text-paper"

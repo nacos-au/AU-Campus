@@ -55,6 +55,12 @@ export function AdminPostResultTool() {
 
   async function handlePublish() {
     if (!canPublish || !homeTeam) return;
+    const awayLabel = isNewGuest ? guestName.trim() : (awayTeam?.name ?? "Away");
+    const ok = window.confirm(
+      `Publish this result as Admin?\n\n${homeTeam.name} ${score.home_score}–${score.away_score} ${awayLabel}\n\nThis writes to the live Score record.`
+    );
+    if (!ok) return;
+
     setPublishState("saving");
     setPublishedMatchId(null);
 

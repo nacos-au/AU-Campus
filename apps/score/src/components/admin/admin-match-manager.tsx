@@ -95,7 +95,7 @@ export function AdminMatchManager() {
 
   async function handleSoftDelete() {
     if (!selectedId) return;
-    if (!confirm("Soft-delete this match? It will leave public lists but keep history.")) return;
+    if (!confirm("Admin action: soft-delete this match?\n\nIt will leave public lists but keep history.")) return;
     setBusy(true);
     const res = await fetch(`/api/matches/${selectedId}`, { method: "DELETE" });
     setBusy(false);

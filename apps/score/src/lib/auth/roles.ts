@@ -134,5 +134,16 @@ export async function requireAdmin(): Promise<
   const staff = await getSessionStaff();
   if (!staff) return { error: "Sign in required", status: 401 };
   if (!staff.canManageVenues) return { error: "Admin access required", status: 403 };
+
+  if (!staff.isDemoBypass) {
+    const { isAdminModeActive } = await import("@/app/actions/admin-mode");
+    if (!(await isAdminModeActive())) {
+      return {
+        error: "Turn on Admin Mode in the header before performing admin actions.",
+        status: 403,
+      };
+    }
+  }
+
   return { staff };
 }

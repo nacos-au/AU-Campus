@@ -325,7 +325,15 @@ export function ArticleForm({
                 Save to review queue
               </button>
               <button
-                onClick={() => save.mutate("publish")}
+                onClick={() => {
+                  if (
+                    !confirm(
+                      "Admin action: publish this article now?\n\nIt will go live on AU Digest immediately."
+                    )
+                  )
+                    return;
+                  save.mutate("publish");
+                }}
                 disabled={save.isPending || uploading}
                 className="bg-accent px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
               >

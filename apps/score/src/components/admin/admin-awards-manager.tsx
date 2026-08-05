@@ -84,6 +84,15 @@ export function AdminAwardsManager() {
   async function handlePublish() {
     const player = players.find((p) => p.id === playerId);
     const team = teams.find((t) => t.id === teamId);
+    const label =
+      player
+        ? `${player.first_name} ${player.last_name}`
+        : team?.name ?? awardType;
+    const ok = window.confirm(
+      `Publish this award as Admin?\n\n${awardType.replaceAll("_", " ")} → ${label}\n\nThis updates the public awards board.`
+    );
+    if (!ok) return;
+
     const parsedValue = statValue.trim() ? Number(statValue) : null;
     const entry: SeasonAward = {
       id: `admin-${Date.now()}`,

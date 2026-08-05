@@ -7,7 +7,10 @@ import { signOut } from "@/app/(auth)/actions";
 import { site } from "@/lib/site";
 import { canToggleDemoMode, isDemoMode } from "@/lib/demo-mode";
 import { getDemoModeCookie } from "@/app/actions/demo-mode";
+import { isAdminModeActive } from "@/app/actions/admin-mode";
 import type { Section } from "@/lib/types";
+import { AdminModeBanner } from "./AdminModeBanner";
+import { AdminModeToggle } from "./AdminModeToggle";
 import { DemoModeToggle } from "./DemoModeToggle";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { MobileMenu } from "./MobileMenu";
@@ -15,16 +18,20 @@ import { WorldClock } from "./WorldClock";
 import { IconSignIn, IconSignOut, IconUser } from "./icons";
 
 export async function SiteHeader() {
-  const [t, locale, { user, profile }, supabase, demoCookie] = await Promise.all([
+  const [t, locale, { user, profile }, supabase, demoCookie, adminMode] = await Promise.all([
     getTranslations("nav"),
     getLocale(),
     getSessionProfile(),
     createClient(),
     getDemoModeCookie(),
+    isAdminModeActive(),
   ]);
 
   const demoActive = isDemoMode(demoCookie);
   const showDemoToggle = canToggleDemoMode();
+  const isWriter = hasRole(profile, "writer");
+  const canAdminMode = isWriter;
+  const adminModeOn = adminMode && canAdminMode;
 
   const { data: sectionsData } = await supabase
     .from("sections")
@@ -46,10 +53,9 @@ export async function SiteHeader() {
     year: "numeric",
   }).format(new Date());
 
-  const isWriter = hasRole(profile, "writer");
-
   return (
     <header>
+      {adminModeOn && <AdminModeBanner />}
       {/* ── Mobile (NYT-style): menu · masthead · account ── */}
       <div className="sticky top-0 z-40 border-b border-rule bg-paper md:hidden">
         <div className="flex items-center justify-between gap-2 px-2 py-2">
@@ -57,6 +63,7 @@ export async function SiteHeader() {
             sections={sections}
             signedIn={!!user}
             isWriter={isWriter}
+            adminMode={adminModeOn}
             signOutAction={signOut}
           />
 
@@ -87,7 +94,10 @@ export async function SiteHeader() {
         </div>
 
         <div className="flex items-center justify-between gap-3 px-3 pb-2.5">
-          <DemoModeToggle active={demoActive} canToggle={showDemoToggle} />
+          <div className="flex items-center gap-2">
+            <AdminModeToggle canUse={canAdminMode} active={adminModeOn} />
+            <DemoModeToggle active={demoActive} canToggle={showDemoToggle} />
+          </div>
           <p className="min-w-0 truncate text-[11px] font-semibold text-ink">
             {todayShort}
           </p>
@@ -135,11 +145,12 @@ export async function SiteHeader() {
           </Link>
 
           <div className="flex items-center justify-end gap-4 text-xs">
+            <AdminModeToggle canUse={canAdminMode} active={adminModeOn} />
             <DemoModeToggle active={demoActive} canToggle={showDemoToggle} />
             <LanguageSwitcher />
             {user ? (
               <>
-                {isWriter && (
+                {adminModeOn && (
                   <Link
                     href="/admin"
                     className="font-semibold uppercase tracking-wider text-ink-soft hover:text-ink"

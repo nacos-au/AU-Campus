@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireMatchStaff } from "@/lib/auth/roles";
+import { requireAdmin } from "@/lib/auth/roles";
 import { softDeleteMatch, updateMatch } from "@/lib/data/repository";
 import type { MatchScope } from "@/lib/types/database";
 
@@ -7,7 +7,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const gate = await requireMatchStaff();
+  const gate = await requireAdmin();
   if ("error" in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status });
   }
@@ -33,7 +33,7 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const gate = await requireMatchStaff();
+  const gate = await requireAdmin();
   if ("error" in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status });
   }

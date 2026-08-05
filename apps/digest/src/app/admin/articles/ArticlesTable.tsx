@@ -196,9 +196,15 @@ export function ArticlesTable({
                   {isStaff && a.status === "submitted" && (
                     <>
                       <button
-                        onClick={() =>
-                          updateStatus.mutate({ id: a.id, status: "published" })
-                        }
+                        onClick={() => {
+                          if (
+                            !confirm(
+                              `Admin action: publish "${a.title}"?\n\nThis makes the article live on AU Digest.`
+                            )
+                          )
+                            return;
+                          updateStatus.mutate({ id: a.id, status: "published" });
+                        }}
                         className="bg-green-700 px-2.5 py-1 text-white hover:bg-green-800 transition-colors"
                       >
                         Publish
@@ -235,9 +241,15 @@ export function ArticlesTable({
                         {a.featured ? "Unfeature" : "Feature"}
                       </button>
                       <button
-                        onClick={() =>
-                          updateStatus.mutate({ id: a.id, status: "draft" })
-                        }
+                        onClick={() => {
+                          if (
+                            !confirm(
+                              `Admin action: unpublish "${a.title}"?\n\nReaders will no longer see this story.`
+                            )
+                          )
+                            return;
+                          updateStatus.mutate({ id: a.id, status: "draft" });
+                        }}
                         className="text-ink-soft underline hover:text-ink"
                       >
                         Unpublish
@@ -248,7 +260,7 @@ export function ArticlesTable({
                   {(isStaff || (a.author_id === userId && a.status === "draft")) && (
                     <button
                       onClick={() => {
-                        if (confirm(`Delete "${a.title}"?`)) remove.mutate(a.id);
+                        if (confirm(`Admin action: permanently delete "${a.title}"?`)) remove.mutate(a.id);
                       }}
                       className="text-red-700 underline hover:text-red-900"
                     >

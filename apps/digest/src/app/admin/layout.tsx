@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { hasRole } from "@/lib/auth";
 import { site } from "@/lib/site";
 import { Providers } from "@/components/Providers";
 import { signOut } from "@/app/(auth)/actions";
+import { exitAdminModeAction, isAdminModeActive } from "@/app/actions/admin-mode";
 
 export default async function AdminLayout({
   children,
@@ -13,10 +15,18 @@ export default async function AdminLayout({
   const { profile } = await requireRole("writer");
   const staff = hasRole(profile, "editor");
   const isAdmin = hasRole(profile, "admin");
+  const adminMode = await isAdminModeActive();
+
+  if (!adminMode) {
+    redirect("/?admin_mode=required");
+  }
 
   return (
     <Providers>
       <div className="flex min-h-screen flex-col">
+        <div className="border-b border-accent bg-accent px-4 py-2 text-center text-[11px] font-bold uppercase tracking-wider text-white">
+          Admin Mode — you are editing live Digest content
+        </div>
         <header className="border-b border-rule-dark bg-paper">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
             <div className="flex items-center gap-4">
@@ -58,6 +68,11 @@ export default async function AdminLayout({
                   ({profile.role})
                 </span>
               </span>
+              <form action={exitAdminModeAction}>
+                <button className="text-accent hover:underline" type="submit">
+                  Exit Admin Mode
+                </button>
+              </form>
               <form action={signOut}>
                 <button className="text-ink-soft hover:text-ink">
                   Sign out

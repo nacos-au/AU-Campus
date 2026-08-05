@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/auth/roles";
 import { getScoreDemoMode } from "@/lib/data/mode";
 import { createCompetition, type CreateCompetitionInput } from "@/lib/data/repository";
 
 export async function POST(request: Request) {
+  const gate = await requireAdmin();
+  if ("error" in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status });
+  }
+
   const body = (await request.json()) as CreateCompetitionInput;
 
   if (!body.name?.trim()) {

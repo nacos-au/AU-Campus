@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils/cn";
 
 const LOGO_SRC = "/AU Logo.webp";
 
-const subNavItems = [
+const baseNavItems: Array<{ href: string; label: string; featured?: boolean }> = [
   { href: "/", label: "Matches" },
   { href: "/standings", label: "Table" },
   { href: "/competition", label: "Competition" },
@@ -23,15 +23,18 @@ const subNavItems = [
   { href: PHANTOM_BRAND.path, label: PHANTOM_BRAND.name, featured: true },
   { href: "/demo", label: "Demo Links" },
   { href: "/keeper", label: "Record Keeper" },
-  { href: "/admin", label: "Admin" },
 ];
 
 /** Hamburger drawer — available on mobile and desktop. */
-export function SiteNav() {
+export function SiteNav({ adminMode = false }: { adminMode?: boolean }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const sport = parseSportParam(searchParams.get("sport") ?? undefined);
+
+  const subNavItems = adminMode
+    ? [...baseNavItems, { href: "/admin", label: "Admin" }]
+    : baseNavItems;
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";

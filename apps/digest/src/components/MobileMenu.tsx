@@ -19,6 +19,7 @@ type Props = {
   sections: Section[];
   signedIn: boolean;
   isWriter: boolean;
+  adminMode?: boolean;
   signOutAction: () => Promise<void>;
 };
 
@@ -26,6 +27,7 @@ export function MobileMenu({
   sections,
   signedIn,
   isWriter,
+  adminMode = false,
   signOutAction,
 }: Props) {
   const t = useTranslations("nav");
@@ -181,7 +183,7 @@ export function MobileMenu({
                 <div className="flex flex-col gap-1 border-t border-rule pt-4">
                   {signedIn ? (
                     <>
-                      {isWriter && (
+                      {isWriter && adminMode && (
                         <Link
                           href="/admin"
                           className="py-2 text-sm font-semibold uppercase tracking-wider"
