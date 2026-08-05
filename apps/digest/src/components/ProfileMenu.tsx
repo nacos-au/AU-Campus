@@ -36,6 +36,8 @@ type Props = {
   compact?: boolean;
 };
 
+const CLOSE_MS = 320;
+
 export function ProfileMenu({
   email,
   displayName,
@@ -43,30 +45,44 @@ export function ProfileMenu({
   signOutAction,
   compact = false,
 }: Props) {
-  const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [entered, setEntered] = useState(false);
   const titleId = useId();
   const greeting = `${timeGreeting()}, ${firstName(displayName, email)}.`;
 
+  function openDrawer() {
+    setMounted(true);
+  }
+
+  function closeDrawer() {
+    setEntered(false);
+    window.setTimeout(() => setMounted(false), CLOSE_MS);
+  }
+
   useEffect(() => {
-    if (!open) return;
+    if (!mounted) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setEntered(true));
+    });
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") closeDrawer();
     };
     window.addEventListener("keydown", onKey);
     return () => {
+      cancelAnimationFrame(id);
       document.body.style.overflow = prev;
       window.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [mounted]);
 
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
-        aria-expanded={open}
+        onClick={openDrawer}
+        aria-expanded={mounted}
         aria-haspopup="dialog"
         aria-label="Open account menu"
         className={
@@ -86,26 +102,30 @@ export function ProfileMenu({
         )}
       </button>
 
-      {open && (
+      {mounted && (
         <div className="fixed inset-0 z-[80]">
           <button
             type="button"
-            className="absolute inset-0 bg-ink/25"
+            className={`absolute inset-0 bg-ink/30 transition-opacity duration-300 ease-out ${
+              entered ? "opacity-100" : "opacity-0"
+            }`}
             aria-label="Close account menu"
-            onClick={() => setOpen(false)}
+            onClick={closeDrawer}
           />
 
           <aside
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
-            className="absolute right-0 top-0 flex h-full w-full max-w-[400px] flex-col bg-paper shadow-2xl"
+            className={`absolute right-0 top-0 flex h-full w-full max-w-[400px] flex-col bg-paper shadow-2xl transition-transform duration-300 ease-out will-change-transform ${
+              entered ? "translate-x-0" : "translate-x-full"
+            }`}
           >
             <div className="flex items-start justify-between gap-3 px-5 pb-2 pt-5">
               <p className="truncate text-[13px] text-ink">{email}</p>
               <button
                 type="button"
-                onClick={() => setOpen(false)}
+                onClick={closeDrawer}
                 className="flex h-8 w-8 shrink-0 items-center justify-center text-ink"
                 aria-label="Close"
               >
@@ -128,7 +148,7 @@ export function ProfileMenu({
                 )}
                 <Link
                   href="/account/settings"
-                  onClick={() => setOpen(false)}
+                  onClick={closeDrawer}
                   className="mt-3 text-[13px] text-[#326891] underline underline-offset-2 hover:text-ink"
                 >
                   Edit your profile
@@ -138,7 +158,7 @@ export function ProfileMenu({
               <nav className="mt-10">
                 <Link
                   href="/account/settings"
-                  onClick={() => setOpen(false)}
+                  onClick={closeDrawer}
                   className="flex items-center justify-between border-t border-rule py-4 text-[15px] text-ink hover:bg-accent-soft/40"
                 >
                   Account settings
@@ -150,7 +170,7 @@ export function ProfileMenu({
                 </p>
                 <Link
                   href="/account"
-                  onClick={() => setOpen(false)}
+                  onClick={closeDrawer}
                   className="flex items-center justify-between py-4 text-[15px] text-ink hover:bg-accent-soft/40"
                 >
                   Library
@@ -158,7 +178,7 @@ export function ProfileMenu({
                 </Link>
                 <Link
                   href="/account/newsletters"
-                  onClick={() => setOpen(false)}
+                  onClick={closeDrawer}
                   className="flex items-center justify-between border-t border-rule py-4 text-[15px] text-ink hover:bg-accent-soft/40"
                 >
                   Newsletters
@@ -170,7 +190,7 @@ export function ProfileMenu({
                 </p>
                 <Link
                   href="/help"
-                  onClick={() => setOpen(false)}
+                  onClick={closeDrawer}
                   className="flex items-center justify-between py-4 text-[15px] text-ink hover:bg-accent-soft/40"
                 >
                   Help Center
