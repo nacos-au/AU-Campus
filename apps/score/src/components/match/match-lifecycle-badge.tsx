@@ -1,6 +1,6 @@
 "use client";
 
-import { LiveBadge } from "@/components/layout/site-header";
+import { LiveBadge } from "@/components/layout/section-title";
 import { useMatchLifecycle } from "@/lib/match/use-match-lifecycle";
 
 export function MatchLifecycleBadge({

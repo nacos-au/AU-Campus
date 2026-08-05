@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import type { Match } from "@/lib/types/database";
 import { TeamCrest } from "@/components/ui/team-crest";
-import { LiveBadge } from "@/components/layout/site-header";
+import { LiveBadge } from "@/components/layout/section-title";
 import { getTrackResultsForMatch } from "@/lib/data/demo-match-details";
 import { scoreClass } from "@/lib/match/score-highlight";
 import { dbIdToSport, type SportId } from "@/lib/utils/sport";

@@ -3,7 +3,7 @@ import { StatLeaderCard } from "@/components/stats/stat-leader-card";
 import { StatsAwardsSection } from "@/components/stats/stats-awards-section";
 import { BrandedSection } from "@/components/layout/branded-section";
 import { PageContent } from "@/components/layout/page-content";
-import { SectionTitle } from "@/components/layout/site-header";
+import { SectionTitle } from "@/components/layout/section-title";
 import { StatsFilters } from "@/components/layout/filters-bar";
 import { getAwardsForSport } from "@/lib/data/demo-awards";
 import { getTournamentForSport } from "@/lib/data/demo-competition";

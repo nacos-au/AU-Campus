@@ -7,7 +7,7 @@ import { TeamCrest } from "@/components/ui/team-crest";
 import { useMatchLifecycle } from "@/lib/match/use-match-lifecycle";
 import { livePeriodLabel } from "@/lib/utils/sport-config";
 import type { SportId } from "@/lib/utils/sport";
-import { LiveBadge } from "@/components/layout/site-header";
+import { LiveBadge } from "@/components/layout/section-title";
 
 export function MatchPageLiveBlock({
   match,
