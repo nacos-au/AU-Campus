@@ -60,3 +60,7 @@ npm run build:digest
 npm run build:score
 npm run build:campus
 ```
+
+## Deploy (Vercel)
+
+**One Vercel project ≠ both apps.** Score and Digest each need their own Vercel project with Root Directory `apps/score` and `apps/digest`. See [docs/DEPLOY.md](docs/DEPLOY.md).

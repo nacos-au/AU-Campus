@@ -19,8 +19,10 @@ type Props = {
   signOutAction: () => Promise<void>;
 };
 
+const CLOSE_MS = 320;
+
 /**
- * Score profile drawer — PL-style dark header with green glow, Hello [Name], settings + log out.
+ * Score profile drawer — slides in from the right over a green wash (PL-style).
  */
 export function ProfileMenu({
   email,
@@ -28,30 +30,44 @@ export function ProfileMenu({
   showAdminRole,
   signOutAction,
 }: Props) {
-  const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [entered, setEntered] = useState(false);
   const titleId = useId();
   const name = firstName(displayName, email);
 
+  function openDrawer() {
+    setMounted(true);
+  }
+
+  function closeDrawer() {
+    setEntered(false);
+    window.setTimeout(() => setMounted(false), CLOSE_MS);
+  }
+
   useEffect(() => {
-    if (!open) return;
+    if (!mounted) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => setEntered(true));
+    });
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") closeDrawer();
     };
     window.addEventListener("keydown", onKey);
     return () => {
+      cancelAnimationFrame(id);
       document.body.style.overflow = prev;
       window.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [mounted]);
 
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
-        aria-expanded={open}
+        onClick={openDrawer}
+        aria-expanded={mounted}
         aria-haspopup="dialog"
         aria-label="Open account menu"
         className="interactive-btn inline-flex items-center gap-1.5 rounded-full border-2 border-accent px-3 py-1.5 font-display text-xs font-bold sm:px-4 sm:text-sm"
@@ -61,13 +77,22 @@ export function ProfileMenu({
         <ChevronDown className="h-3.5 w-3.5 opacity-70" />
       </button>
 
-      {open && (
+      {mounted && (
         <div className="fixed inset-0 z-[80]">
+          {/* Green atmospheric overlay (PL purple → AU green) */}
           <button
             type="button"
-            className="absolute inset-0 bg-black/45"
             aria-label="Close account menu"
-            onClick={() => setOpen(false)}
+            onClick={closeDrawer}
+            className={cn(
+              "absolute inset-0 transition-opacity duration-300 ease-out",
+              entered ? "opacity-100" : "opacity-0"
+            )}
+            style={{
+              background:
+                "linear-gradient(115deg, rgba(0,31,16,0.72) 0%, rgba(0,78,40,0.58) 45%, rgba(0,100,55,0.52) 100%)",
+              backdropFilter: "blur(2px)",
+            }}
           />
 
           <aside
@@ -75,10 +100,11 @@ export function ProfileMenu({
             aria-modal="true"
             aria-labelledby={titleId}
             className={cn(
-              "absolute right-3 top-3 bottom-3 flex w-[min(400px,calc(100%-1.5rem))] flex-col overflow-hidden rounded-3xl bg-[#f4f4f4] shadow-2xl"
+              "absolute right-3 top-3 bottom-3 flex w-[min(400px,calc(100%-1.5rem))] flex-col overflow-hidden rounded-3xl bg-[#f4f4f4] shadow-2xl transition-transform duration-300 ease-out will-change-transform",
+              entered ? "translate-x-0" : "translate-x-[110%]"
             )}
           >
-            {/* Dark header + green glow (PL-style) */}
+            {/* Dark header + green glow */}
             <div className="relative isolate overflow-hidden bg-[#00150c] px-5 pb-8 pt-4 text-white">
               <div
                 className="pointer-events-none absolute inset-x-0 top-0 h-28 opacity-80"
@@ -111,7 +137,7 @@ export function ProfileMenu({
                 <p className="truncate text-[12px] text-white/55">{email}</p>
                 <button
                   type="button"
-                  onClick={() => setOpen(false)}
+                  onClick={closeDrawer}
                   className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/80 hover:bg-white/10 hover:text-white"
                   aria-label="Close"
                 >
@@ -132,7 +158,7 @@ export function ProfileMenu({
 
                 <Link
                   href="/account/settings"
-                  onClick={() => setOpen(false)}
+                  onClick={closeDrawer}
                   className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-5 py-2.5 font-display text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/18"
                 >
                   <Settings className="h-4 w-4" />
@@ -145,7 +171,7 @@ export function ProfileMenu({
               <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
                 <Link
                   href="/account/settings"
-                  onClick={() => setOpen(false)}
+                  onClick={closeDrawer}
                   className="flex items-center justify-between px-4 py-4 font-display text-[15px] font-bold text-accent hover:bg-surface"
                 >
                   <span className="inline-flex items-center gap-2.5">
