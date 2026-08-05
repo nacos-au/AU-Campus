@@ -25,11 +25,24 @@ export async function getSessionProfile(): Promise<{
     .from("profiles")
     .select("*")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
+
+  const row = (profile as Profile | null) ?? null;
+  const metaName =
+    typeof user.user_metadata?.display_name === "string"
+      ? user.user_metadata.display_name
+      : "";
 
   return {
     user: { id: user.id, email: user.email ?? "" },
-    profile: (profile as Profile) ?? null,
+    profile: row
+      ? row
+      : ({
+          id: user.id,
+          display_name: metaName || (user.email?.split("@")[0] ?? ""),
+          role: "reader",
+          created_at: "",
+        } satisfies Profile),
   };
 }
 

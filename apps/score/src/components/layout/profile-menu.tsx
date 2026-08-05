@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
-import { User, X, ChevronRight, ChevronDown } from "lucide-react";
+import { User, X, ChevronRight, ChevronDown, Settings } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 function firstName(displayName: string, email: string): string {
@@ -20,7 +20,7 @@ type Props = {
 };
 
 /**
- * Score profile drawer — Hello [Name], role for admins, account settings + log out.
+ * Score profile drawer — PL-style dark header with green glow, Hello [Name], settings + log out.
  */
 export function ProfileMenu({
   email,
@@ -65,7 +65,7 @@ export function ProfileMenu({
         <div className="fixed inset-0 z-[80]">
           <button
             type="button"
-            className="absolute inset-0 bg-accent/30"
+            className="absolute inset-0 bg-black/45"
             aria-label="Close account menu"
             onClick={() => setOpen(false)}
           />
@@ -75,67 +75,99 @@ export function ProfileMenu({
             aria-modal="true"
             aria-labelledby={titleId}
             className={cn(
-              "absolute right-0 top-0 flex h-full w-full max-w-[380px] flex-col bg-white shadow-2xl"
+              "absolute right-3 top-3 bottom-3 flex w-[min(400px,calc(100%-1.5rem))] flex-col overflow-hidden rounded-3xl bg-[#f4f4f4] shadow-2xl"
             )}
           >
-            <div className="flex items-start justify-between gap-3 px-5 pb-2 pt-5">
-              <p className="truncate text-[13px] text-accent/70">{email}</p>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="flex h-8 w-8 shrink-0 items-center justify-center text-accent"
-                aria-label="Close"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+            {/* Dark header + green glow (PL-style) */}
+            <div className="relative isolate overflow-hidden bg-[#00150c] px-5 pb-8 pt-4 text-white">
+              <div
+                className="pointer-events-none absolute inset-x-0 top-0 h-28 opacity-80"
+                style={{
+                  background:
+                    "radial-gradient(ellipse 90% 80% at 85% -10%, rgba(0,200,83,0.55), transparent 70%), radial-gradient(ellipse 60% 50% at 20% 0%, rgba(0,78,40,0.45), transparent 65%)",
+                }}
+                aria-hidden
+              />
+              <div
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-20"
+                style={{
+                  background:
+                    "linear-gradient(90deg, transparent 0%, rgba(0,78,40,0.35) 35%, rgba(0,200,83,0.85) 100%)",
+                  filter: "blur(14px)",
+                  transform: "translateY(40%)",
+                }}
+                aria-hidden
+              />
+              <div
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-[3px]"
+                style={{
+                  background:
+                    "linear-gradient(90deg, #003d20 0%, #007842 45%, #00e676 100%)",
+                }}
+                aria-hidden
+              />
 
-            <div className="flex flex-1 flex-col overflow-y-auto px-5 pb-8">
-              <div className="flex flex-col items-center pt-6 text-center">
-                <span className="flex h-20 w-20 items-center justify-center rounded-full bg-surface text-accent/40">
-                  <User className="h-10 w-10" />
-                </span>
+              <div className="relative z-10 flex items-start justify-between gap-3">
+                <p className="truncate text-[12px] text-white/55">{email}</p>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/80 hover:bg-white/10 hover:text-white"
+                  aria-label="Close"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="relative z-10 mt-8 text-center">
                 <h2
                   id={titleId}
-                  className="mt-5 font-display text-2xl font-extrabold tracking-tight text-accent"
+                  className="font-display text-[1.85rem] font-extrabold tracking-tight text-white"
                 >
                   Hello {name}
                 </h2>
-                {showAdminRole && (
-                  <p className="mt-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-accent/60">
-                    Admin
-                  </p>
-                )}
+                <p className="mt-1.5 text-sm text-white/70">
+                  {showAdminRole ? "Admin · AU Score" : "AU Score account"}
+                </p>
+
                 <Link
                   href="/account/settings"
                   onClick={() => setOpen(false)}
-                  className="mt-3 text-[13px] font-semibold text-accent underline underline-offset-2"
+                  className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-5 py-2.5 font-display text-sm font-bold text-white backdrop-blur-sm transition hover:bg-white/18"
                 >
-                  Edit your profile
+                  <Settings className="h-4 w-4" />
+                  Account settings
+                </Link>
+              </div>
+            </div>
+
+            <div className="flex flex-1 flex-col overflow-y-auto px-4 py-5">
+              <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+                <Link
+                  href="/account/settings"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center justify-between px-4 py-4 font-display text-[15px] font-bold text-accent hover:bg-surface"
+                >
+                  <span className="inline-flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-surface text-accent/50">
+                      <User className="h-4 w-4" />
+                    </span>
+                    Edit profile
+                  </span>
+                  <ChevronRight className="h-4 w-4 opacity-40" />
                 </Link>
               </div>
 
-              <nav className="mt-10">
-                <Link
-                  href="/account/settings"
-                  onClick={() => setOpen(false)}
-                  className="flex items-center justify-between border-t border-rule py-4 font-display text-[15px] font-bold text-accent hover:bg-surface"
-                >
-                  Account settings
-                  <ChevronRight className="h-4 w-4 opacity-40" />
-                </Link>
-
-                <div className="border-t border-rule pt-5">
-                  <form action={signOutAction}>
-                    <button
-                      type="submit"
-                      className="font-display text-[15px] font-bold text-accent underline underline-offset-2"
-                    >
-                      Log out
-                    </button>
-                  </form>
-                </div>
-              </nav>
+              <div className="mt-auto border-t border-rule pt-5">
+                <form action={signOutAction}>
+                  <button
+                    type="submit"
+                    className="font-display text-[15px] font-bold text-accent underline underline-offset-2"
+                  >
+                    Log out
+                  </button>
+                </form>
+              </div>
             </div>
           </aside>
         </div>

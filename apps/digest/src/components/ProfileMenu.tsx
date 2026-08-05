@@ -72,7 +72,7 @@ export function ProfileMenu({
         className={
           compact
             ? "flex h-10 w-10 items-center justify-center text-ink"
-            : "inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider text-ink-soft transition-colors hover:text-ink"
+            : "inline-flex items-center gap-1.5 border border-ink px-3 py-1.5 font-semibold uppercase tracking-wider text-ink transition-colors hover:bg-ink hover:text-paper"
         }
       >
         <IconUser className={compact ? "h-6 w-6" : "h-3.5 w-3.5"} />
