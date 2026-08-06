@@ -3,9 +3,14 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/urls";
 import { signOut } from "@/app/actions/auth";
+import { getCampusStaff } from "@/lib/platform-roles";
+import { isOfficeModeActive } from "@/app/actions/admin-mode";
 
 export async function SiteHeader() {
   let email: string | null = null;
+  let isSuperAdmin = false;
+  let officeOn = false;
+
   if (hasSupabaseConfig()) {
     try {
       const supabase = await createClient();
@@ -13,6 +18,11 @@ export async function SiteHeader() {
         data: { user },
       } = await supabase.auth.getUser();
       email = user?.email ?? null;
+      if (user) {
+        const staff = await getCampusStaff();
+        isSuperAdmin = Boolean(staff?.isSuperAdmin);
+        officeOn = await isOfficeModeActive();
+      }
     } catch {
       email = null;
     }
@@ -37,6 +47,18 @@ export async function SiteHeader() {
       <nav className="flex items-center gap-2 sm:gap-3">
         {email ? (
           <>
+            {isSuperAdmin && (
+              <Link
+                href="/office"
+                className={`rounded-full px-3 py-1.5 text-xs font-bold sm:px-4 sm:text-sm ${
+                  officeOn
+                    ? "bg-ink text-white"
+                    : "border border-ink/20 text-ink transition hover:border-ink"
+                }`}
+              >
+                {officeOn ? "Office · live" : "Office"}
+              </Link>
+            )}
             <span className="hidden max-w-[12rem] truncate text-xs text-ink-soft sm:inline" title={email}>
               {email}
             </span>
@@ -50,12 +72,20 @@ export async function SiteHeader() {
             </form>
           </>
         ) : (
-          <Link
-            href="/signup"
-            className="rounded-full bg-accent px-3 py-1.5 text-xs font-bold text-white transition hover:bg-accent-hover sm:px-4 sm:text-sm"
-          >
-            Sign up
-          </Link>
+          <>
+            <Link
+              href="/signin"
+              className="rounded-full border border-ink/20 px-3 py-1.5 text-xs font-bold text-ink transition hover:border-ink sm:px-4 sm:text-sm"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/signup"
+              className="rounded-full bg-accent px-3 py-1.5 text-xs font-bold text-white transition hover:bg-accent-hover sm:px-4 sm:text-sm"
+            >
+              Sign up
+            </Link>
+          </>
         )}
       </nav>
     </header>

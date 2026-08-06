@@ -2,7 +2,13 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { DIGEST_URL, SCORE_URL } from "@/lib/urls";
 
-export default function CampusHomePage() {
+export default async function CampusHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ office?: string }>;
+}) {
+  const { office } = await searchParams;
+
   return (
     <div className="relative min-h-screen overflow-hidden">
       <div
@@ -17,6 +23,12 @@ export default function CampusHomePage() {
       <SiteHeader />
 
       <main className="relative z-10 mx-auto flex min-h-[calc(100vh-5.5rem)] w-full max-w-5xl flex-col px-4 pb-16 pt-10 sm:px-6 sm:pt-16">
+        {office === "denied" && (
+          <p className="mb-6 rounded-xl border border-accent/30 bg-white/80 px-4 py-3 text-sm font-semibold text-accent">
+            Campus Office is limited to the super admin account.
+          </p>
+        )}
+
         <section className="max-w-2xl">
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-green">
             Achievers University
@@ -80,8 +92,8 @@ export default function CampusHomePage() {
         </section>
 
         <footer className="mt-auto pt-16 text-xs text-ink-soft">
-          Create your account here on AU Campus. Sign in on AU Score (or Digest for editions) with
-          the same credentials.
+          Create your account here on AU Campus. Sign in on Campus for the Office, or on AU Score /
+          Digest with the same credentials.
         </footer>
       </main>
     </div>

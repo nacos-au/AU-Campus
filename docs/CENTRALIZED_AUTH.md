@@ -49,6 +49,15 @@ SET is_super_admin = true
 WHERE email = 'you@example.com';
 ```
 
+### Campus Office (super admin UI)
+
+1. Sign in on Campus → `/signin?next=/office`
+2. Open **Office** in the header (only visible to super admin)
+3. Confirm **Enter Office Mode** (second lock, ~12h)
+4. From `/office`: grant/revoke Campus · Digest · Score · Keeper · Super chips, see stats, launch Score/Digest admin desks
+
+Office actions require **both** `is_super_admin` and Office Mode. Sign-out clears Office Mode.
+
 ### Per-app admins (`app_roles`)
 
 | App | Allowed roles | Meaning |

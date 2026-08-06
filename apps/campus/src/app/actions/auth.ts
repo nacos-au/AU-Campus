@@ -132,6 +132,19 @@ export async function signOut(): Promise<void> {
       // ignore
     }
   }
+  try {
+    const { cookies } = await import("next/headers");
+    const { OFFICE_MODE_COOKIE, officeModeCookieOptions } = await import("@/lib/admin-mode");
+    const store = await cookies();
+    const opts = officeModeCookieOptions(false);
+    store.set(OFFICE_MODE_COOKIE, opts.value, {
+      path: opts.path,
+      maxAge: 0,
+      sameSite: opts.sameSite,
+    });
+  } catch {
+    // ignore
+  }
   revalidatePath("/", "layout");
   redirect("/");
 }
