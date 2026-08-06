@@ -11,6 +11,7 @@ import { DemoModeToggle } from "@/components/layout/demo-mode-toggle";
 import { AdminModeToggle } from "@/components/layout/admin-mode-toggle";
 import { AdminModeBanner } from "@/components/layout/admin-mode-banner";
 import { ProfileMenu } from "@/components/layout/profile-menu";
+import { AuthEntryButton } from "@/components/auth/auth-entry";
 import { SportNav } from "@/components/layout/sport-nav";
 import { PhantomIcon } from "@/components/phantom/phantom-icon";
 import { PHANTOM_BRAND } from "@/lib/phantom/types";
@@ -127,12 +128,9 @@ export async function SiteHeader() {
               signOutAction={signOut}
             />
           ) : (
-            <Link
-              href="/auth/login"
-              className="interactive-btn rounded-full border-2 border-accent px-3 py-1.5 font-display text-xs font-bold sm:px-5 sm:text-sm"
-            >
-              Sign in
-            </Link>
+            <Suspense fallback={null}>
+              <AuthEntryButton />
+            </Suspense>
           )}
         </div>
       </div>

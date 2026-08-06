@@ -36,12 +36,12 @@ export default function CampusHomePage() {
             >
               Create account
             </Link>
-            <Link
-              href="/login"
+            <a
+              href={SCORE_URL}
               className="rounded-full border border-ink/20 bg-white/70 px-6 py-3 font-display text-sm font-bold text-ink backdrop-blur transition hover:border-ink"
             >
-              Sign in
-            </Link>
+              Open AU Score
+            </a>
           </div>
         </section>
 
@@ -80,8 +80,8 @@ export default function CampusHomePage() {
         </section>
 
         <footer className="mt-auto pt-16 text-xs text-ink-soft">
-          Account creation happens only on AU Campus. Sign in on Campus or AU Score — Digest uses
-          the same credentials when you open the paper.
+          Create your account here on AU Campus. Sign in on AU Score (or Digest for editions) with
+          the same credentials.
         </footer>
       </main>
     </div>

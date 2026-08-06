@@ -17,7 +17,7 @@ const STATIC_PAGES = [
   { href: "/competition", label: "Competition Timeline & Bracket" },
   { href: "/keeper", label: "Record Keeper (sport picker)" },
   { href: "/admin", label: "Admin Dashboard" },
-  { href: "/auth/login", label: "Sign In (no account needed for demo)" },
+  { href: "/?auth=signin", label: "Sign In (modal)" },
 ];
 
 const FEATURED_MATCHES = [

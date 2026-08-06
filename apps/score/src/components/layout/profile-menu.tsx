@@ -172,7 +172,7 @@ export function ProfileMenu({
                 <Link
                   href="/account/settings"
                   onClick={closeDrawer}
-                  className="flex items-center justify-between px-4 py-4 font-display text-[15px] font-bold text-accent hover:bg-surface"
+                  className="flex items-center justify-between px-4 py-4 font-display text-[15px] font-bold text-accent transition hover:bg-surface"
                 >
                   <span className="inline-flex items-center gap-2.5">
                     <span className="flex h-9 w-9 items-center justify-center rounded-full bg-surface text-accent/50">
@@ -184,13 +184,13 @@ export function ProfileMenu({
                 </Link>
               </div>
 
-              <div className="mt-auto border-t border-rule pt-5">
-                <form action={signOutAction}>
+              <div className="mt-auto flex justify-center border-t border-rule pt-5">
+                <form action={signOutAction} className="w-full max-w-[240px]">
                   <button
                     type="submit"
-                    className="font-display text-[15px] font-bold text-accent underline underline-offset-2"
+                    className="w-full rounded-full border-2 border-accent bg-white px-5 py-2.5 font-display text-sm font-extrabold text-accent transition hover:bg-accent hover:text-white"
                   >
-                    Log out
+                    Log out of AU Score
                   </button>
                 </form>
               </div>

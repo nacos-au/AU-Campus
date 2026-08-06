@@ -37,14 +37,14 @@ async function createUntypedClient() {
 
 export default async function ScoreAccountSettingsPage() {
   if (!hasSupabaseConfig()) {
-    redirect("/auth/login?next=/account/settings");
+    redirect("/?auth=signin&next=/account/settings");
   }
 
   const supabase = await createUntypedClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/login?next=/account/settings");
+  if (!user) redirect("/?auth=signin&next=/account/settings");
 
   const staff = await getSessionStaff();
   const { data: profile } = await supabase

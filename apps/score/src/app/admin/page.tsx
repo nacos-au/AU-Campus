@@ -13,7 +13,7 @@ export default async function AdminPage() {
   const staff = await getSessionStaff();
 
   if (!staff || staff.isDemoBypass) {
-    redirect("/auth/login?next=/admin");
+    redirect("/?auth=signin&next=/admin");
   }
   if (!staff.isAdmin) {
     redirect("/?sport=football");

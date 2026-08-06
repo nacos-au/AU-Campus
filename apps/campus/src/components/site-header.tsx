@@ -50,20 +50,12 @@ export async function SiteHeader() {
             </form>
           </>
         ) : (
-          <>
-            <Link
-              href="/login"
-              className="rounded-full border border-rule px-3 py-1.5 text-xs font-bold text-ink transition hover:border-ink sm:px-4 sm:text-sm"
-            >
-              Sign in
-            </Link>
-            <Link
-              href="/signup"
-              className="rounded-full bg-accent px-3 py-1.5 text-xs font-bold text-white transition hover:bg-accent-hover sm:px-4 sm:text-sm"
-            >
-              Sign up
-            </Link>
-          </>
+          <Link
+            href="/signup"
+            className="rounded-full bg-accent px-3 py-1.5 text-xs font-bold text-white transition hover:bg-accent-hover sm:px-4 sm:text-sm"
+          >
+            Sign up
+          </Link>
         )}
       </nav>
     </header>

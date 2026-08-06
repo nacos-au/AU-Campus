@@ -52,9 +52,9 @@ export function SiteNav({
   function hrefWithSport(href: string) {
     if (
       href === "/admin" ||
-      href === "/auth/login" ||
       href === "/demo" ||
-      href === PHANTOM_BRAND.path
+      href === PHANTOM_BRAND.path ||
+      href.startsWith("/?auth=")
     ) {
       return href;
     }
@@ -114,12 +114,12 @@ export function SiteNav({
             </Link>
           ) : (
             <Link
-              href="/auth/login"
+              href="/?auth=signin"
               onClick={() => setOpen(false)}
               className="inline-flex items-center gap-2 rounded-full border-2 border-accent px-5 py-2 font-display text-sm font-bold text-accent"
             >
               <LogIn className="h-4 w-4" />
-              Login
+              Sign in
             </Link>
           )}
           <Link

@@ -39,7 +39,7 @@ export async function signIn(
   if (!hasSupabaseConfig()) {
     return {
       error:
-        "Score is missing Supabase keys. Copy NEXT_PUBLIC_SUPABASE_URL and ANON_KEY from Digest into apps/score/.env.local, then restart the Score dev server.",
+        "Score is missing Supabase keys. Add NEXT_PUBLIC_SUPABASE_URL and ANON_KEY to apps/score/.env.local, then restart the Score dev server.",
     };
   }
 
@@ -56,12 +56,52 @@ export async function signIn(
       return {
         error:
           error.message === "Invalid login credentials"
-            ? "Invalid email or password. Use the same account as AU Digest (create it on Digest if you have not already)."
+            ? "Invalid email or password."
             : error.message,
       };
     }
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Sign-in failed." };
+  }
+
+  revalidatePath("/", "layout");
+  redirect(safeNext(formData.get("next")));
+}
+
+export async function signUp(
+  _prev: AuthState,
+  formData: FormData
+): Promise<AuthState> {
+  if (!hasSupabaseConfig()) {
+    return {
+      error:
+        "Score is missing Supabase keys. Add NEXT_PUBLIC_SUPABASE_URL and ANON_KEY to apps/score/.env.local, then restart the Score dev server.",
+    };
+  }
+
+  const email = String(formData.get("email") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  const displayName = String(formData.get("display_name") ?? "").trim();
+  if (!email || !password) return { error: "Email and password are required." };
+  if (!displayName) return { error: "Full name is required." };
+  if (password.length < 8) return { error: "Password must be at least 8 characters." };
+
+  try {
+    const supabase = await createAuthClient();
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { display_name: displayName } },
+    });
+    if (error) return { error: error.message };
+    if (!data.session) {
+      return {
+        error:
+          "Account created, but email confirmation is still on in Supabase. Turn off “Confirm email” under Authentication → Providers → Email, or confirm your inbox.",
+      };
+    }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Sign-up failed." };
   }
 
   revalidatePath("/", "layout");
