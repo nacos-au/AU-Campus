@@ -18,6 +18,8 @@ export interface Database {
           email: string | null;
           full_name: string | null;
           role: string;
+          is_super_admin: boolean;
+          verification_level: "soft" | "verified";
           created_at: string;
           updated_at: string | null;
           avatar_url: string | null;
@@ -29,6 +31,8 @@ export interface Database {
           email?: string | null;
           full_name?: string | null;
           role?: string;
+          is_super_admin?: boolean;
+          verification_level?: "soft" | "verified";
         };
         Update: {
           display_name?: string;
@@ -36,8 +40,66 @@ export interface Database {
           email?: string | null;
           full_name?: string | null;
           role?: string;
+          is_super_admin?: boolean;
+          verification_level?: "soft" | "verified";
           avatar_url?: string | null;
           updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+      app_roles: {
+        Row: {
+          user_id: string;
+          app: "campus" | "digest" | "score";
+          role: string;
+          granted_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          app: "campus" | "digest" | "score";
+          role: string;
+          granted_by?: string | null;
+        };
+        Update: {
+          role?: string;
+          granted_by?: string | null;
+        };
+        Relationships: [];
+      };
+      score_user_roles: {
+        Row: {
+          user_id: string;
+          role: string;
+          assigned_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          role: string;
+          assigned_by?: string | null;
+        };
+        Update: {
+          role?: string;
+          assigned_by?: string | null;
+        };
+        Relationships: [];
+      };
+      score_admins: {
+        Row: {
+          user_id: string;
+          all_sports: boolean;
+          assigned_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          all_sports?: boolean;
+          assigned_by?: string | null;
+        };
+        Update: {
+          all_sports?: boolean;
+          assigned_by?: string | null;
         };
         Relationships: [];
       };

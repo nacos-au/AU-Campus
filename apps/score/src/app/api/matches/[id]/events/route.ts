@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createMatchEvent, fetchMatchEvents } from "@/lib/data/repository";
+import { requireMatchStaff } from "@/lib/auth/roles";
 
 export async function GET(
   _request: Request,
@@ -14,6 +15,11 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const gate = await requireMatchStaff();
+  if ("error" in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status });
+  }
+
   const { id } = await params;
   const body = await request.json();
 

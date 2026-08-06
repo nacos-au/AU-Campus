@@ -4,6 +4,7 @@ import type { CreatePhantomInput, PhantomSession } from "@/lib/phantom/types";
 import { getScoreDemoMode } from "@/lib/data/mode";
 import { hasSupabaseConfig } from "@/lib/demo-mode";
 import { createClient } from "@/lib/supabase/server";
+import { requireSignedIn } from "@/lib/auth/roles";
 
 export async function GET() {
   if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
@@ -24,6 +25,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const gate = await requireSignedIn();
+  if ("error" in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status });
+  }
+
   const body = (await request.json()) as CreatePhantomInput;
   if (!body.settings?.teams?.length) {
     return NextResponse.json({ error: "Teams are required" }, { status: 400 });
@@ -36,9 +42,6 @@ export async function POST(request: Request) {
 
   const session = memoryCreate(body);
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
   const { data, error } = await (supabase.from("phantom_sessions") as ReturnType<typeof supabase.from>)
     .insert({
@@ -52,13 +55,12 @@ export async function POST(request: Request) {
       standings: session.standings,
       active_match_id: session.active_match_id,
       created_at: session.created_at,
-      created_by: user?.id ?? null,
+      created_by: gate.userId,
     } as Record<string, unknown>)
     .select("*")
     .single() as { data: Record<string, unknown> | null; error: { message: string } | null };
 
   if (error) {
-    // Fall back to memory so the client flow never blocks
     memoryUpsert(session);
     return NextResponse.json({ session, warning: error.message }, { status: 201 });
   }

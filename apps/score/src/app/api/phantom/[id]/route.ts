@@ -4,6 +4,7 @@ import type { PhantomSession } from "@/lib/phantom/types";
 import { getScoreDemoMode } from "@/lib/data/mode";
 import { hasSupabaseConfig } from "@/lib/demo-mode";
 import { createClient } from "@/lib/supabase/server";
+import { requireSignedIn } from "@/lib/auth/roles";
 
 export async function GET(
   _request: Request,
@@ -37,6 +38,11 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const gate = await requireSignedIn();
+  if ("error" in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status });
+  }
+
   const { id } = await params;
   const body = (await request.json()) as { session?: PhantomSession };
   if (!body.session) {

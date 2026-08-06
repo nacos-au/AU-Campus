@@ -7,6 +7,9 @@ export interface Profile {
   display_name: string;
   username?: string | null;
   role: Role;
+  /** Cross-platform owner — treated as Digest admin everywhere */
+  is_super_admin?: boolean;
+  verification_level?: "soft" | "verified";
   created_at: string;
 }
 

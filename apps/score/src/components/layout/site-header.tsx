@@ -125,6 +125,7 @@ export async function SiteHeader() {
               email={signedIn.email}
               displayName={signedIn.displayName}
               showAdminRole={showAdminRole}
+              isSuperAdmin={Boolean(staff?.isSuperAdmin)}
               signOutAction={signOut}
             />
           ) : (

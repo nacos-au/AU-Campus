@@ -1,120 +1,156 @@
-# Centralized Authentication — AU Score + AU Digest
+# Centralized Authentication — AU Campus
 
-Both platforms share a **single Supabase Auth instance**. A student who signs into AU Digest is automatically recognized by AU Score (and vice versa) because they share the same `auth.users` table and `profiles` row.
-
-## Architecture
-
-```
-┌─────────────────┐     ┌─────────────────┐
-│   AU Digest     │     │    AU Score     │
-│  (Next.js App)  │     │  (Next.js App)  │
-└────────┬────────┘     └────────┬────────┘
-         │                       │
-         └───────────┬───────────┘
-                     ▼
-         ┌───────────────────────┐
-         │  Shared Supabase      │
-         │  Project              │
-         ├───────────────────────┤
-         │  auth.users           │  ← Single identity store
-         │  profiles             │  ← Shared university profile
-         │  (AU Score tables)    │  ← App-specific data
-         │  (AU Digest tables)   │  ← App-specific data
-         └───────────────────────┘
-```
-
-## Setup Steps
-
-### 1. Use One Supabase Project
-
-Pick **one** existing Supabase project (recommend the AU Digest project if it already has auth configured). AU Score connects to it via the same env vars:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=<shared-project-url>
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<shared-anon-key>
-```
-
-Both apps must point to identical values.
-
-### 2. Shared `profiles` Table
-
-The `profiles` table in `001_initial_schema.sql` extends `auth.users`:
-
-| Column | Purpose |
-|--------|---------|
-| `id` | FK to `auth.users(id)` — the universal user ID |
-| `email` | University email |
-| `matric_number` | Validated on signup (one account per student) |
-| `department_id` | Links to faculty |
-| `role` | `student` (default), `record_keeper`, `super_admin` |
-
-**If AU Digest already has a profiles table**, merge rather than duplicate:
-
-- Add AU Score-specific columns (`role`) to the existing table
-- Or use a `app_roles` junction table if roles differ per platform
-
-### 3. Matric Number Validation
-
-Enforce university identity at signup via a Supabase Auth Hook or Edge Function:
-
-```typescript
-// supabase/functions/validate-signup/index.ts
-// Reject signups where matric_number isn't in the university registry
-```
-
-Options for the registry:
-- CSV/API from the university student information system
-- Manual admin approval queue
-- Email domain restriction (`@university.edu.ng` only)
-
-### 4. Cross-App Session Sharing
-
-Supabase Auth cookies are domain-scoped. For seamless SSO:
-
-| Deployment | Cookie Domain | Result |
-|------------|---------------|--------|
-| `digest.university.edu` + `score.university.edu` | Set cookie domain to `.university.edu` | Shared session |
-| `university.edu/digest` + `university.edu/score` | Same origin | Automatic sharing |
-| `digest.vercel.app` + `score.vercel.app` | Different domains | Users sign in separately (same credentials) |
-
-For subdomains, configure in Supabase Dashboard → Authentication → URL Configuration:
+Campus, Digest, and Score share **one Supabase Auth project** (`auth.users` + `public.profiles`).  
+Same credentials everywhere. Sessions are still **per-origin cookies** until a shared parent domain is configured.
 
 ```
-Site URL: https://score.university.edu
-Additional Redirect URLs:
-  - https://digest.university.edu/**
-  - https://score.university.edu/**
+┌──────────┐  ┌──────────┐  ┌──────────┐
+│  Campus  │  │  Digest  │  │  Score   │
+└────┬─────┘  └────┬─────┘  └────┬─────┘
+     └─────────────┼─────────────┘
+                   ▼
+         Shared Supabase project
+         auth.users + profiles + app_roles
 ```
 
-### 5. Role Management
+---
 
-| Role | AU Score Permissions |
-|------|---------------------|
-| `student` | Read all public data, vote on matches |
-| `record_keeper` | Log events on assigned matches only |
-| `super_admin` | Full CRUD on departments, teams, fixtures |
+## 1. Identity model
 
-Promote roles via SQL (super admin only):
+| Field | Purpose |
+|-------|---------|
+| `profiles.id` | FK → `auth.users` |
+| `display_name` | Human name (not unique) |
+| `username` | Unique Instagram/X-style handle |
+| `email` | Login email |
+| `is_super_admin` | Cross-platform owner (usually one human) |
+| `verification_level` | `soft` (L1, default) \| `verified` (L2, future IRL) |
+| `matric_number` | Reserved for L2 IRL link — **not** required at signup |
+| `app_roles` | Per-app privilege rows (`campus` \| `digest` \| `score`) |
+
+Signup (Campus hub and Score Join modal) creates a **soft** account: name + username + email + password. No matric gate at signup.
+
+---
+
+## 2. Roles (coherent + scalable)
+
+### Super admin
+
+- `profiles.is_super_admin = true`
+- Full admin on **Campus + Digest + Score**
+- Only person who can grant/revoke `app_roles` (`grant_app_role` / `revoke_app_role`)
+- Prefer a single owner account
+
+Promote yourself (SQL editor, once):
 
 ```sql
-UPDATE profiles SET role = 'record_keeper' WHERE matric_number = 'AU/CS/2022/0142';
+UPDATE public.profiles
+SET is_super_admin = true
+WHERE email = 'you@example.com';
 ```
 
-### 6. AU Digest Integration Checklist
+### Per-app admins (`app_roles`)
 
-- [ ] Confirm AU Digest's Supabase project URL and keys
-- [ ] Audit existing `profiles` / user tables for conflicts
-- [ ] Run AU Score migration against the shared project
-- [ ] Add `role` column or `app_roles` table if missing
-- [ ] Configure shared cookie domain for production
-- [ ] Test: sign up on Digest → open Score → already authenticated
+| App | Allowed roles | Meaning |
+|-----|---------------|---------|
+| `campus` | `admin` | Future Campus hub ops |
+| `digest` | `admin` | Digest platform admin (Team, revenue, …) |
+| `score` | `admin`, `record_keeper` | Score ops / live match staff |
 
-## Alternative: External Identity Provider
+Grant (as super admin, signed in — or via service role SQL):
 
-If the university uses a central IdP (LDAP, Azure AD, Google Workspace):
+```sql
+SELECT public.grant_app_role('<user-uuid>', 'score', 'admin');
+SELECT public.grant_app_role('<user-uuid>', 'digest', 'admin');
+SELECT public.grant_app_role('<user-uuid>', 'campus', 'admin');
+SELECT public.grant_app_role('<user-uuid>', 'score', 'record_keeper');
+```
 
-1. Configure Supabase SAML/OAuth provider once
-2. Both apps use the same Supabase Auth with that provider
-3. No duplicate user stores anywhere
+Revoke:
 
-This is the enterprise-grade path if IT manages central identity.
+```sql
+SELECT public.revoke_app_role('<user-uuid>', 'score');
+```
+
+### Digest newsroom ladder (separate, stays on `profiles.role`)
+
+`reader` → `writer` → `editor` → `admin`
+
+- Used for article workflow only
+- **Digest `profiles.role = admin` does not grant Score admin**
+- Super admin and `app_roles (digest, admin)` elevate Digest capabilities without touching Score
+
+### Score privilege sources (in order)
+
+1. `is_super_admin`
+2. `app_roles` where `app = 'score'`
+3. Legacy `score_admins` / `score_user_roles` (still honored during transition)
+
+---
+
+## 3. Student verification (ship ASAP — no school registry)
+
+We are **not** validating matric numbers at scale for launch.  
+Accounts start at **L1**. There is **no L0 guest tier** in product.
+
+| Level | Code | Who | Guardrail |
+|-------|------|-----|-----------|
+| ~~L0~~ | — | Unused | Reserved; do not ship open anonymous consequential actions |
+| **L1 Soft** | `verification_level = 'soft'` | Everyone on signup | Normal campus account; browse + soft fan features |
+| **L2 Verified** | `verification_level = 'verified'` | IRL-linked later | Consequential student actions (gated voting, student pricing, roster claim, …) |
+
+### Future L2 (document only — no promotion UI yet)
+
+When ready:
+
+1. Trusted verifiers (super admin / designated captains) confirm identity **in person**
+2. Link claim → signed-in campus account:
+   - set `matric_number` (unique), `verification_level = 'verified'`, `verified_at`, `verified_by`
+   - optional `player_account_links` for roster athletes
+3. Gate high-stakes features on `verification_level = 'verified'`
+4. If university IT later offers email domain / SAML, treat that as an **alternate path into L2**, not a rewrite
+
+Until then: ship soft accounts freely; do not trust self-asserted matric.
+
+---
+
+## 4. Cross-app sessions (SSO reality)
+
+| Deploy | Session sharing |
+|--------|-----------------|
+| `localhost:3000/3001/3002` | Separate cookies — same password, re-sign-in per app |
+| `*.vercel.app` | Separate cookies |
+| `campus.example.edu` + `digest.` + `score.` under one parent | Set cookie `Domain=.example.edu` + shared Site URL / redirect allowlist in Supabase |
+
+Same credentials ≠ automatic SSO until a shared parent domain exists. Document this in onboarding UX.
+
+---
+
+## 5. Security baseline (ops checklist)
+
+- [ ] Run migrations: username (`20260806160000_…`) + platform roles (`20260806170000_…`)
+- [ ] Set `is_super_admin` on the owner email
+- [ ] Production: demo staff bypass and `?demo=1` are disabled
+- [ ] Match event POSTs require Score staff (app layer + RLS)
+- [ ] Club logo / player avatar uploads: Score admin only
+- [ ] Phantom create/update: authenticated; RLS owner/staff only
+- [ ] Never promote Digest newsroom admin expecting Score access — grant `app_roles` score explicitly
+
+---
+
+## 6. Env
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+
+NEXT_PUBLIC_CAMPUS_URL=
+NEXT_PUBLIC_DIGEST_URL=
+NEXT_PUBLIC_SCORE_URL=
+
+# Optional legacy seed helper
+PLATFORM_OWNER_EMAIL=
+```
+
+Point **all three apps** at the same Supabase project.

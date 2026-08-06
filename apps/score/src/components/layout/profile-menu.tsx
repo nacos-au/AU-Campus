@@ -16,6 +16,7 @@ type Props = {
   email: string;
   displayName: string;
   showAdminRole: boolean;
+  isSuperAdmin?: boolean;
   signOutAction: () => Promise<void>;
 };
 
@@ -28,6 +29,7 @@ export function ProfileMenu({
   email,
   displayName,
   showAdminRole,
+  isSuperAdmin = false,
   signOutAction,
 }: Props) {
   const [mounted, setMounted] = useState(false);
@@ -153,7 +155,11 @@ export function ProfileMenu({
                   Hello {name}
                 </h2>
                 <p className="mt-1.5 text-sm text-white/70">
-                  {showAdminRole ? "Admin · AU Score" : "AU Score account"}
+                  {showAdminRole
+                    ? isSuperAdmin
+                      ? "Super admin · all platforms"
+                      : "Admin · AU Score"
+                    : "AU Score account"}
                 </p>
 
                 <Link

@@ -10,6 +10,15 @@ export function hasSupabaseConfig(): boolean {
   return true;
 }
 
+/** True on Vercel production / NODE_ENV=production — demo staff bypass must stay off. */
+export function isProductionRuntime(): boolean {
+  if (process.env.VERCEL_ENV === "production") return true;
+  if (process.env.NODE_ENV === "production" && process.env.VERCEL_ENV !== "preview") {
+    return true;
+  }
+  return false;
+}
+
 function parseDemoCookie(value?: string | null): boolean | null {
   if (value === "on") return true;
   if (value === "off") return false;
@@ -17,11 +26,16 @@ function parseDemoCookie(value?: string | null): boolean | null {
 }
 
 export function canToggleDemoMode(): boolean {
+  if (isProductionRuntime()) return false;
   return hasSupabaseConfig();
 }
 
-/** Score still serves fixture data in pages until live queries are wired. */
+/** Score fixture/live data mode. Production never enables demo via cookie or ?demo=. */
 export function isDemoMode(cookieValue?: string | null): boolean {
+  if (isProductionRuntime()) {
+    return process.env.DEMO_MODE === "true";
+  }
+
   if (!hasSupabaseConfig()) return true;
 
   const override = parseDemoCookie(cookieValue);
