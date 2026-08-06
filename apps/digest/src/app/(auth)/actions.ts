@@ -70,38 +70,10 @@ export async function signIn(
 
 export async function signUp(
   _prev: AuthState,
-  formData: FormData
+  _formData: FormData
 ): Promise<AuthState> {
-  if (!hasSupabaseConfig()) {
-    return {
-      error:
-        "Digest is missing Supabase keys. Add NEXT_PUBLIC_SUPABASE_URL and ANON_KEY to apps/digest/.env.local, then restart the dev server.",
-    };
-  }
-
-  try {
-    const supabase = await createAuthClient();
-    const { data, error } = await supabase.auth.signUp({
-      email: String(formData.get("email") ?? "").trim(),
-      password: String(formData.get("password") ?? ""),
-      options: {
-        data: { display_name: String(formData.get("display_name") ?? "") },
-      },
-    });
-    if (error) return { error: error.message };
-
-    if (!data.session) {
-      return {
-        error:
-          "Account created, but email confirmation is still on in Supabase. Turn off “Confirm email” under Authentication → Providers → Email, or confirm your inbox.",
-      };
-    }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "Sign-up failed." };
-  }
-
-  revalidatePath("/", "layout");
-  redirect(safeNext(formData.get("next")));
+  const campus = process.env.NEXT_PUBLIC_CAMPUS_URL ?? "http://localhost:3000";
+  redirect(`${campus}/signup`);
 }
 
 export async function signOut() {

@@ -20,6 +20,10 @@ const SOCIALS = [
   { label: "TikTok", href: "#", Icon: IconTikTok },
 ] as const;
 
+const CAMPUS_SIGNUP =
+  (process.env.NEXT_PUBLIC_CAMPUS_URL ?? "http://localhost:3000").replace(/\/$/, "") +
+  "/signup";
+
 function Column({
   heading,
   children,
@@ -134,7 +138,7 @@ export async function SiteFooter() {
 
           <Column heading={t("account")}>
             <FooterLink href="/login">{t("signIn")}</FooterLink>
-            <FooterLink href="/signup">{t("createAccount")}</FooterLink>
+            <FooterLink href={CAMPUS_SIGNUP}>{t("createAccount")}</FooterLink>
             <FooterLink href="/account">{t("yourLibrary")}</FooterLink>
           </Column>
         </nav>

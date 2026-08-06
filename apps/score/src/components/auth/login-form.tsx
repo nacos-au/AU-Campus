@@ -5,8 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { signIn, type AuthState } from "@/app/auth/actions";
 import { PasswordInput } from "@/components/ui/password-input";
 
-const DIGEST_URL =
-  process.env.NEXT_PUBLIC_DIGEST_URL ?? "http://localhost:3001";
+const CAMPUS_URL =
+  process.env.NEXT_PUBLIC_CAMPUS_URL ?? "http://localhost:3000";
 
 export function LoginForm() {
   const searchParams = useSearchParams();
@@ -19,7 +19,7 @@ export function LoginForm() {
   return (
     <div className="mx-auto w-full max-w-md">
       <p className="mb-6 text-center text-sm opacity-70">
-        Same campus account as AU Digest. Sign up on Digest if you do not have an account yet.
+        Same campus account across AU apps. Create your account on AU Campus, then sign in here.
         After signing in, open <span className="font-semibold">Account</span> in the header.
       </p>
 
@@ -70,10 +70,10 @@ export function LoginForm() {
       <p className="mt-6 text-center text-sm opacity-60">
         New here?{" "}
         <a
-          href={`${DIGEST_URL}/signup`}
+          href={`${CAMPUS_URL}/signup`}
           className="font-semibold text-accent underline underline-offset-2"
         >
-          Create an account
+          Create an account on AU Campus
         </a>
       </p>
     </div>

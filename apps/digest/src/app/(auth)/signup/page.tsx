@@ -1,13 +1,15 @@
-import { Suspense } from "react";
-import type { Metadata } from "next";
-import { AuthForm } from "../AuthForm";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Create account" };
+const CAMPUS_URL = process.env.NEXT_PUBLIC_CAMPUS_URL ?? "http://localhost:3000";
 
-export default function SignupPage() {
-  return (
-    <Suspense>
-      <AuthForm mode="signup" />
-    </Suspense>
-  );
+/** Account creation is only on AU Campus. */
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
+  const url = new URL("/signup", CAMPUS_URL);
+  if (next) url.searchParams.set("next", next);
+  redirect(url.toString());
 }

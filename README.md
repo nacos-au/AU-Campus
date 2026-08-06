@@ -23,15 +23,17 @@ npm install
 npm run dev
 
 # Or individually
-npm run dev:campus   # :3000
+npm run dev:campus   # :3000  — hub + account creation
 npm run dev:digest   # :3001
 npm run dev:score    # :3002
 ```
 
-**No Supabase required for preview:**
-- **Digest** — set `DEMO_MODE=true` in `apps/digest/.env.local` (or copy from `.env.example`)
-- **Score** — uses built-in demo data automatically
-- **Campus** — static hub linking to both apps
+**Accounts:** Sign up only on **AU Campus** (`:3000`). Sign in on Campus or AU Score (Digest sign-in uses the same credentials for editions).
+
+**No Supabase required for Digest/Score content preview:**
+- **Digest** — set `DEMO_MODE=true` in `apps/digest/.env.local` when needed
+- **Score** — uses built-in demo data when keys are missing
+- **Campus** — needs Supabase keys for signup/login
 
 ## Environment
 
