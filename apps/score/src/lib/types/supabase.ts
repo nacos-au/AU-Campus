@@ -9,9 +9,41 @@ export type Json =
 
 export interface Database {
   public: {
-    Tables: Record<string, unknown>;
-    Views: Record<string, unknown>;
-    Functions: Record<string, unknown>;
-    Enums: Record<string, unknown>;
+    Tables: {
+      profiles: {
+        Row: {
+          id: string;
+          display_name: string;
+          username: string | null;
+          email: string | null;
+          full_name: string | null;
+          role: string;
+          created_at: string;
+          updated_at: string | null;
+          avatar_url: string | null;
+        };
+        Insert: {
+          id: string;
+          display_name?: string;
+          username?: string | null;
+          email?: string | null;
+          full_name?: string | null;
+          role?: string;
+        };
+        Update: {
+          display_name?: string;
+          username?: string | null;
+          email?: string | null;
+          full_name?: string | null;
+          role?: string;
+          avatar_url?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [];
+      };
+    };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
   };
 }

@@ -5,6 +5,7 @@ export type AdSlot = "leaderboard" | "sidebar" | "infeed";
 export interface Profile {
   id: string;
   display_name: string;
+  username?: string | null;
   role: Role;
   created_at: string;
 }

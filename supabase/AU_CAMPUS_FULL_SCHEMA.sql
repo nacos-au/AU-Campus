@@ -34,6 +34,7 @@ ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS matric_number TEXT,
   ADD COLUMN IF NOT EXISTS department_id UUID,
   ADD COLUMN IF NOT EXISTS avatar_url TEXT,
+  ADD COLUMN IF NOT EXISTS username TEXT,
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -45,7 +46,7 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 BEGIN
-  INSERT INTO public.profiles (id, display_name, email, full_name)
+  INSERT INTO public.profiles (id, display_name, email, full_name, username)
   VALUES (
     NEW.id,
     COALESCE(
@@ -54,12 +55,14 @@ BEGIN
       split_part(NEW.email, '@', 1)
     ),
     NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email)
+    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email),
+    lower(nullif(trim(NEW.raw_user_meta_data->>'username'), ''))
   )
   ON CONFLICT (id) DO UPDATE SET
     email = COALESCE(EXCLUDED.email, public.profiles.email),
     full_name = COALESCE(public.profiles.full_name, EXCLUDED.full_name),
-    display_name = COALESCE(NULLIF(public.profiles.display_name, ''), EXCLUDED.display_name);
+    display_name = COALESCE(NULLIF(public.profiles.display_name, ''), EXCLUDED.display_name),
+    username = COALESCE(public.profiles.username, EXCLUDED.username);
   RETURN NEW;
 END;
 $$;
@@ -459,6 +462,7 @@ ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS matric_number TEXT,
   ADD COLUMN IF NOT EXISTS department_id UUID,
   ADD COLUMN IF NOT EXISTS avatar_url TEXT,
+  ADD COLUMN IF NOT EXISTS username TEXT,
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
 
 DO $$ BEGIN
@@ -468,6 +472,10 @@ DO $$ BEGIN
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS profiles_username_unique
+  ON public.profiles (lower(username))
+  WHERE username IS NOT NULL;
 
 CREATE UNIQUE INDEX IF NOT EXISTS profiles_matric_number_key
   ON public.profiles (matric_number)
@@ -1129,16 +1137,19 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 BEGIN
-  INSERT INTO public.profiles (id, display_name, email, full_name)
+  INSERT INTO public.profiles (id, display_name, email, full_name, username)
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'display_name', NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
     NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email)
+    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email),
+    lower(nullif(trim(NEW.raw_user_meta_data->>'username'), ''))
   )
   ON CONFLICT (id) DO UPDATE SET
     email = COALESCE(EXCLUDED.email, public.profiles.email),
-    full_name = COALESCE(public.profiles.full_name, EXCLUDED.full_name);
+    full_name = COALESCE(public.profiles.full_name, EXCLUDED.full_name),
+    display_name = COALESCE(NULLIF(public.profiles.display_name, ''), EXCLUDED.display_name),
+    username = COALESCE(public.profiles.username, EXCLUDED.username);
   RETURN NEW;
 END;
 $$;

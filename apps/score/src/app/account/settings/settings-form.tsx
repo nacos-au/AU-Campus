@@ -2,19 +2,22 @@
 
 import { useActionState } from "react";
 import {
-  updateScoreDisplayName,
+  updateScoreProfile,
   type ProfileSettingsState,
 } from "../actions";
+import { USERNAME_HINT, USERNAME_MAX } from "@/lib/username";
 
 export function ScoreProfileSettingsForm({
   displayName,
+  username,
   email,
 }: {
   displayName: string;
+  username: string;
   email: string;
 }) {
   const [state, formAction, pending] = useActionState<ProfileSettingsState, FormData>(
-    updateScoreDisplayName,
+    updateScoreProfile,
     null
   );
 
@@ -32,6 +35,28 @@ export function ScoreProfileSettingsForm({
           autoComplete="name"
           className="mt-1 w-full border border-rule px-4 py-3 focus:border-accent focus:outline-none"
         />
+      </label>
+
+      <label className="block">
+        <span className="text-xs font-bold uppercase tracking-wide opacity-60">
+          Username
+        </span>
+        <div className="relative mt-1">
+          <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm opacity-50">
+            @
+          </span>
+          <input
+            name="username"
+            defaultValue={username}
+            required
+            spellCheck={false}
+            autoComplete="username"
+            minLength={3}
+            maxLength={USERNAME_MAX}
+            className="w-full border border-rule py-3 pl-8 pr-4 focus:border-accent focus:outline-none"
+          />
+        </div>
+        <span className="mt-1 block text-xs opacity-60">{USERNAME_HINT}</span>
       </label>
 
       <label className="block">

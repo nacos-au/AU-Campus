@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
 import { signUp, type AuthState } from "@/app/actions/auth";
 import { SCORE_URL } from "@/lib/urls";
+import { USERNAME_HINT, USERNAME_MAX } from "@/lib/username";
 
 /** Campus is signup-only — sign in happens on AU Score. */
 export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
@@ -55,6 +56,28 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
             autoComplete="name"
             className="mt-1 w-full border border-rule bg-white px-4 py-3 text-sm text-ink focus:border-accent focus:outline-none"
           />
+        </label>
+
+        <label className="block">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
+            Username
+          </span>
+          <div className="relative mt-1">
+            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-ink-soft">
+              @
+            </span>
+            <input
+              name="username"
+              required
+              autoComplete="username"
+              spellCheck={false}
+              minLength={3}
+              maxLength={USERNAME_MAX}
+              placeholder="your.handle"
+              className="w-full border border-rule bg-white py-3 pl-8 pr-4 text-sm text-ink focus:border-accent focus:outline-none"
+            />
+          </div>
+          <span className="mt-1 block text-xs text-ink-soft">{USERNAME_HINT}</span>
         </label>
 
         <label className="block">

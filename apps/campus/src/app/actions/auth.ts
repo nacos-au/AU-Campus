@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig, CAMPUS_URL, DIGEST_URL, SCORE_URL } from "@/lib/urls";
+import { validateUsername } from "@/lib/username";
 
 export type AuthState = { error: string } | null;
 
@@ -37,23 +38,48 @@ export async function signUp(
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const displayName = String(formData.get("display_name") ?? "").trim();
+  const parsed = validateUsername(String(formData.get("username") ?? ""));
+
   if (!email || !password) return { error: "Email and password are required." };
   if (!displayName) return { error: "Full name is required." };
+  if (!parsed.ok) return { error: parsed.error };
   if (password.length < 8) return { error: "Password must be at least 8 characters." };
 
   try {
     const supabase = await createClient();
+    const { data: existing, error: lookupError } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("username", parsed.username)
+      .maybeSingle();
+    if (lookupError) return { error: lookupError.message };
+    if (existing) return { error: "That username is already taken." };
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { display_name: displayName } },
+      options: {
+        data: { display_name: displayName, username: parsed.username },
+      },
     });
-    if (error) return { error: error.message };
+    if (error) {
+      if (/duplicate|unique|username/i.test(error.message)) {
+        return { error: "That username is already taken." };
+      }
+      return { error: error.message };
+    }
     if (!data.session) {
       return {
         error:
           "Account created, but email confirmation is still on in Supabase. Turn off “Confirm email” under Authentication → Providers → Email, or confirm your inbox.",
       };
+    }
+
+    if (data.user) {
+      await supabase
+        .from("profiles")
+        .update({ username: parsed.username, display_name: displayName })
+        .eq("id", data.user.id);
     }
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Sign-up failed." };

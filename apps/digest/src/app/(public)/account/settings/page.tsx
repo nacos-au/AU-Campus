@@ -23,7 +23,7 @@ export default async function AccountSettingsPage() {
         </p>
         <h1 className="mt-2 font-serif text-4xl font-bold">Account settings</h1>
         <p className="mt-2 text-sm text-ink-soft">
-          {profile?.display_name || user.email}
+          {profile?.username ? `@${profile.username}` : profile?.display_name || user.email}
           {isAdmin && (
             <>
               {" "}
@@ -35,6 +35,7 @@ export default async function AccountSettingsPage() {
 
       <ProfileSettingsForm
         displayName={profile?.display_name ?? ""}
+        username={profile?.username ?? ""}
         email={user.email}
       />
     </div>

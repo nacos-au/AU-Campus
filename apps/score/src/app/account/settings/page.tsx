@@ -49,12 +49,19 @@ export default async function ScoreAccountSettingsPage() {
   const staff = await getSessionStaff();
   const { data: profile } = await supabase
     .from("profiles")
-    .select("display_name")
+    .select("display_name, username")
     .eq("id", user.id)
     .maybeSingle();
 
-  const profileRow = profile as { display_name?: string | null } | null;
+  const profileRow = profile as {
+    display_name?: string | null;
+    username?: string | null;
+  } | null;
   const displayName = profileRow?.display_name?.trim() || user.email?.split("@")[0] || "";
+  const username =
+    profileRow?.username?.trim() ||
+    (typeof user.user_metadata?.username === "string" ? user.user_metadata.username : "") ||
+    "";
   const showAdmin = Boolean(staff?.isAdmin && !staff.isDemoBypass);
 
   return (
@@ -72,7 +79,7 @@ export default async function ScoreAccountSettingsPage() {
             Account settings
           </h1>
           <p className="mt-2 text-sm opacity-70">
-            {displayName}
+            {username ? `@${username}` : displayName}
             {showAdmin && (
               <>
                 {" "}
@@ -83,6 +90,7 @@ export default async function ScoreAccountSettingsPage() {
 
           <ScoreProfileSettingsForm
             displayName={displayName}
+            username={username}
             email={user.email ?? ""}
           />
         </div>
