@@ -134,7 +134,7 @@ export function AdminMatchManager() {
 
       {selected && (
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <VenueSelect value={venueId} onChange={setVenueId} />
+          <VenueSelect value={venueId} onChange={setVenueId} sportSlug={selected.sport} />
           <label className="block text-sm">
             <span className="font-semibold">Status</span>
             <select

@@ -19,11 +19,19 @@ npm run db:reset
 
 ## 3. Hosted setup
 
-In Supabase **SQL Editor**, run migrations in order:
+In Supabase **SQL Editor**, run migrations in order (oldest → newest under `supabase/migrations/`).
+
+Minimum baseline:
 
 1. `supabase/migrations/20260715130113_initial_schema.sql` (Digest)
 2. `supabase/migrations/20260715153500_newsroom_staff_publish.sql` (Digest)
 3. `supabase/migrations/20260716100000_score_initial_schema.sql` (Score)
+
+Then apply every later file in timestamp order, including:
+
+- `20260806160000_profiles_username.sql`
+- `20260806170000_platform_roles_verification.sql`
+- `20260807120000_names_and_venues.sql` (first/last name + sport-scoped venues)
 
 Then run `supabase/seed.sql` for Digest demo content.
 

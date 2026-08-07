@@ -154,6 +154,8 @@ export interface Venue {
   location: string;
   is_active: boolean;
   deleted_at: string | null;
+  /** football | basketball | tennis | track | volleyball */
+  sport_slug?: string | null;
   created_at?: string;
   updated_at?: string;
 }

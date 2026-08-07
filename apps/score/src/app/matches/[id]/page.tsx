@@ -38,10 +38,20 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   if (!match) return { title: "Match" };
   const sport = dbIdToSport(match.sport_id);
   const config = getSportConfig(sport);
-  if (config.isEventSport) {
-    return { title: match.home_team?.name ?? "Event" };
-  }
-  return { title: `${match.home_team?.name} vs ${match.away_team?.name}` };
+  const title = config.isEventSport
+    ? (match.home_team?.name ?? "Event")
+    : `${match.home_team?.name} vs ${match.away_team?.name}`;
+  return {
+    title,
+    openGraph: {
+      title,
+      images: [{ url: `/matches/${id}/opengraph-image` }],
+    },
+    twitter: {
+      card: "summary_large_image" as const,
+      title,
+    },
+  };
 }
 
 export default async function MatchPage({

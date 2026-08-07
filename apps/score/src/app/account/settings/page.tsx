@@ -66,7 +66,7 @@ export default async function ScoreAccountSettingsPage() {
 
   return (
     <>
-      <BrandedSection title="Account" activeSport="football" />
+      <BrandedSection title="Account" showSubNav={false} />
       <PageContent>
         <div className="mx-auto max-w-xl px-4 py-10 sm:px-6">
           <p className="font-display text-xs font-bold uppercase tracking-wide opacity-50">

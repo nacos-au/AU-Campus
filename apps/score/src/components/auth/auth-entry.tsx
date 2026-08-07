@@ -4,8 +4,12 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AuthModal } from "@/components/auth/auth-modal";
 
+const CAMPUS =
+  process.env.NEXT_PUBLIC_CAMPUS_URL?.replace(/\/$/, "") || "http://localhost:3000";
+
 /**
- * Header Sign in control + optional ?auth=signin|signup deep-link.
+ * Header Sign in control + ?auth=signin deep-link.
+ * ?auth=signup redirects to AU Campus (accounts are created there).
  */
 export function AuthEntryButton() {
   const router = useRouter();
@@ -15,11 +19,13 @@ export function AuthEntryButton() {
   const nextParam = searchParams.get("next") ?? "/";
 
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
 
   useEffect(() => {
-    if (authParam === "signin" || authParam === "signup" || authParam === "1") {
-      setMode(authParam === "signup" ? "signup" : "signin");
+    if (authParam === "signup") {
+      window.location.href = `${CAMPUS}/signup`;
+      return;
+    }
+    if (authParam === "signin" || authParam === "1") {
       setOpen(true);
     }
   }, [authParam]);
@@ -27,7 +33,6 @@ export function AuthEntryButton() {
   function clearAuthQuery() {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("auth");
-    // keep next only if still useful for other flows
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }
@@ -36,17 +41,13 @@ export function AuthEntryButton() {
     <>
       <button
         type="button"
-        onClick={() => {
-          setMode("signin");
-          setOpen(true);
-        }}
+        onClick={() => setOpen(true)}
         className="interactive-btn rounded-full border-2 border-accent px-3 py-1.5 font-display text-xs font-bold transition hover:bg-accent hover:text-white sm:px-5 sm:text-sm"
       >
         Sign in
       </button>
       <AuthModal
         open={open}
-        initialMode={mode}
         next={nextParam.startsWith("/") ? nextParam : "/"}
         onClose={() => {
           setOpen(false);
@@ -57,15 +58,12 @@ export function AuthEntryButton() {
   );
 }
 
-/** Used by voting / gated actions — opens the same branded auth modal. */
 export function useAuthModal() {
   const [open, setOpen] = useState(false);
   return {
     open,
     openAuth: () => setOpen(true),
     closeAuth: () => setOpen(false),
-    AuthModalSlot: (
-      <AuthModal open={open} onClose={() => setOpen(false)} initialMode="signin" />
-    ),
+    AuthModalSlot: <AuthModal open={open} onClose={() => setOpen(false)} />,
   };
 }

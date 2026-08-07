@@ -10,20 +10,20 @@ import {
   Vote,
   X,
 } from "lucide-react";
-import { signIn, signUp, type AuthState } from "@/app/auth/actions";
+import { signIn, type AuthState } from "@/app/auth/actions";
 import { PasswordInput } from "@/components/ui/password-input";
-import { USERNAME_HINT, USERNAME_MAX } from "@/lib/username";
 import { cn } from "@/lib/utils/cn";
 
 const CLOSE_MS = 280;
 const LOGO_SRC = "/AU Logo.webp";
-
-type Mode = "signin" | "signup";
+const CAMPUS_SIGNUP =
+  process.env.NEXT_PUBLIC_CAMPUS_URL?.replace(/\/$/, "") || "http://localhost:3000";
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  initialMode?: Mode;
+  /** @deprecated Signup is Campus-only — ignored */
+  initialMode?: "signin" | "signup";
   next?: string;
 };
 
@@ -50,38 +50,28 @@ const FEATURES = [
   },
 ] as const;
 
-/**
- * Centered PL-inspired auth modal — dark AU maroon shell, split form + features.
- * Email/password only (no social providers).
- */
+/** Centered auth modal — Sign in only. Create accounts on AU Campus. */
 export function AuthModal({
   open,
   onClose,
-  initialMode = "signin",
   next = "/",
 }: Props) {
   const router = useRouter();
   const titleId = useId();
   const [mounted, setMounted] = useState(false);
   const [entered, setEntered] = useState(false);
-  const [mode, setMode] = useState<Mode>(initialMode);
 
-  const action = mode === "signup" ? signUp : signIn;
-  const [state, formAction, pending] = useActionState<AuthState, FormData>(
-    action,
-    null
-  );
+  const [state, formAction, pending] = useActionState<AuthState, FormData>(signIn, null);
 
   useEffect(() => {
     if (open) {
-      setMode(initialMode);
       setMounted(true);
     } else if (mounted) {
       setEntered(false);
       const t = window.setTimeout(() => setMounted(false), CLOSE_MS);
       return () => window.clearTimeout(t);
     }
-  }, [open, initialMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!mounted) return;
@@ -145,7 +135,6 @@ export function AuthModal({
             "radial-gradient(ellipse 80% 60% at 10% 0%, rgba(122,31,43,0.55), transparent 55%), #1a0508",
         }}
       >
-        {/* Left — auth form */}
         <div className="relative flex flex-col px-5 py-5 text-white sm:px-8 sm:py-7">
           <div className="mb-5 flex items-start justify-between gap-3">
             <div className="flex items-center gap-2.5">
@@ -156,9 +145,7 @@ export function AuthModal({
                 height={36}
                 className="h-9 w-9 object-contain"
               />
-              <span className="font-display text-lg font-extrabold tracking-tight">
-                AU Score
-              </span>
+              <span className="font-display text-lg font-extrabold tracking-tight">AU Score</span>
             </div>
             <button
               type="button"
@@ -170,86 +157,16 @@ export function AuthModal({
             </button>
           </div>
 
-          <div
-            className="inline-flex w-fit rounded-full border border-white/25 p-1"
-            role="tablist"
-            aria-label="Account mode"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "signin"}
-              onClick={() => setMode("signin")}
-              className={cn(
-                "rounded-full px-4 py-1.5 font-display text-sm font-bold transition",
-                mode === "signin"
-                  ? "bg-white text-[#1a0508]"
-                  : "text-white/80 hover:text-white"
-              )}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mode === "signup"}
-              onClick={() => setMode("signup")}
-              className={cn(
-                "rounded-full px-4 py-1.5 font-display text-sm font-bold transition",
-                mode === "signup"
-                  ? "bg-white text-[#1a0508]"
-                  : "text-white/80 hover:text-white"
-              )}
-            >
-              Join AU Score
-            </button>
-          </div>
-
           <h2
             id={titleId}
-            className="mt-7 font-display text-3xl font-extrabold tracking-tight sm:text-[2.15rem]"
+            className="mt-2 font-display text-3xl font-extrabold tracking-tight sm:text-[2.15rem]"
           >
-            {mode === "signup" ? "Join AU Score" : "Sign in"}
+            Sign in
           </h2>
+          <p className="mt-2 text-sm text-white/65">Welcome back to AU Score</p>
 
           <form action={formAction} className="mt-6 flex flex-1 flex-col gap-4">
             <input type="hidden" name="next" value={next} />
-
-            {mode === "signup" && (
-              <>
-                <label className="block">
-                  <span className="text-sm font-medium text-white/90">Full name</span>
-                  <input
-                    name="display_name"
-                    required
-                    autoComplete="name"
-                    placeholder="Your name"
-                    className={fieldClass}
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="text-sm font-medium text-white/90">Username</span>
-                  <div className="relative mt-1.5">
-                    <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-white/45">
-                      @
-                    </span>
-                    <input
-                      name="username"
-                      required
-                      autoComplete="username"
-                      spellCheck={false}
-                      minLength={3}
-                      maxLength={USERNAME_MAX}
-                      placeholder="your.handle"
-                      title={USERNAME_HINT}
-                      className={cn(fieldClass, "mt-0 pl-8")}
-                    />
-                  </div>
-                  <span className="mt-1.5 block text-xs text-white/45">{USERNAME_HINT}</span>
-                </label>
-              </>
-            )}
 
             <label className="block">
               <span className="text-sm font-medium text-white/90">Email Address</span>
@@ -264,14 +181,12 @@ export function AuthModal({
             </label>
 
             <label className="block">
-              <span className="text-sm font-medium text-white/90">
-                {mode === "signup" ? "Password" : "Account password"}
-              </span>
+              <span className="text-sm font-medium text-white/90">Account password</span>
               <PasswordInput
                 name="password"
                 required
                 minLength={8}
-                autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                autoComplete="current-password"
                 placeholder="Enter password"
                 tone="dark"
                 className={fieldClass}
@@ -289,18 +204,21 @@ export function AuthModal({
               disabled={pending}
               className="mt-2 w-full rounded-full bg-white py-3.5 font-display text-sm font-extrabold text-[#1a0508] transition hover:bg-white/90 disabled:opacity-50"
             >
-              {pending
-                ? mode === "signup"
-                  ? "Creating…"
-                  : "Signing in…"
-                : mode === "signup"
-                  ? "Create account"
-                  : "Sign In"}
+              {pending ? "Signing in…" : "Sign In"}
             </button>
           </form>
+
+          <p className="mt-5 text-center text-sm text-white/60">
+            New here?{" "}
+            <a
+              href={`${CAMPUS_SIGNUP}/signup`}
+              className="font-display font-bold text-white underline underline-offset-2"
+            >
+              Create an account on AU Campus
+            </a>
+          </p>
         </div>
 
-        {/* Right — feature panel */}
         <div className="relative hidden flex-col border-t border-white/10 p-5 sm:p-7 lg:flex lg:border-l lg:border-t-0">
           <button
             type="button"
@@ -343,13 +261,9 @@ export function AuthModal({
           </div>
         </div>
 
-        {/* Mobile feature strip */}
         <div className="border-t border-white/10 px-5 py-5 lg:hidden">
           <p className="font-display text-sm font-bold text-white">
             Live scores · tables · voting · Phantom
-          </p>
-          <p className="mt-1 text-xs text-white/50">
-            One campus account for AU Score and AU Digest.
           </p>
         </div>
       </div>

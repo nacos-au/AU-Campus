@@ -8,20 +8,30 @@ export function VenueSelect({
   onChange,
   label = "Venue",
   required = false,
+  sportSlug,
 }: {
   value: string;
   onChange: (venueId: string) => void;
   label?: string;
   required?: boolean;
+  /** When set, only venues for this sport appear */
+  sportSlug?: string | null;
 }) {
   const [venues, setVenues] = useState<Venue[]>([]);
 
   useEffect(() => {
-    fetch("/api/venues")
+    const qs = sportSlug ? `?sport=${encodeURIComponent(sportSlug)}` : "";
+    fetch(`/api/venues${qs}`)
       .then((r) => r.json())
       .then((json: { venues?: Venue[] }) => setVenues(json.venues ?? []))
       .catch(() => setVenues([]));
-  }, []);
+  }, [sportSlug]);
+
+  useEffect(() => {
+    if (value && venues.length > 0 && !venues.some((v) => v.id === value)) {
+      onChange("");
+    }
+  }, [venues, value, onChange]);
 
   return (
     <label className="block text-sm">
@@ -32,7 +42,9 @@ export function VenueSelect({
         required={required}
         onChange={(e) => onChange(e.target.value)}
       >
-        <option value="">Select venue</option>
+        <option value="">
+          {sportSlug ? `Select ${sportSlug} venue` : "Select venue"}
+        </option>
         {venues
           .filter((v) => v.is_active)
           .map((v) => (
@@ -41,6 +53,11 @@ export function VenueSelect({
             </option>
           ))}
       </select>
+      {sportSlug && venues.filter((v) => v.is_active).length === 0 && (
+        <span className="mt-1 block text-xs font-semibold text-accent">
+          No venues for this sport yet — add them in Admin → Venues.
+        </span>
+      )}
     </label>
   );
 }

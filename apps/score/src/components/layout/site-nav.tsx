@@ -14,15 +14,20 @@ import { cn } from "@/lib/utils/cn";
 
 const LOGO_SRC = "/AU Logo.webp";
 
-const baseNavItems: Array<{ href: string; label: string; featured?: boolean }> = [
+/** Sport-scoped sections (get ?sport=). */
+const sportSectionItems: Array<{ href: string; label: string }> = [
   { href: "/", label: "Matches" },
   { href: "/standings", label: "Table" },
   { href: "/competition", label: "Competition" },
   { href: "/stats", label: "Statistics" },
   { href: "/teams", label: "Clubs" },
+];
+
+/** Standalone tools — not nested under sports. */
+const standaloneItems: Array<{ href: string; label: string; featured?: boolean }> = [
   { href: PHANTOM_BRAND.path, label: PHANTOM_BRAND.name, featured: true },
-  { href: "/demo", label: "Demo Links" },
   { href: "/keeper", label: "Record Keeper" },
+  { href: "/demo", label: "Demo Links" },
 ];
 
 /** Hamburger drawer — available on mobile and desktop. */
@@ -38,9 +43,9 @@ export function SiteNav({
   const searchParams = useSearchParams();
   const sport = parseSportParam(searchParams.get("sport") ?? undefined);
 
-  const subNavItems = adminMode
-    ? [...baseNavItems, { href: "/admin", label: "Admin" }]
-    : baseNavItems;
+  const toolItems = adminMode
+    ? [...standaloneItems, { href: "/admin", label: "Admin" }]
+    : standaloneItems;
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -160,16 +165,32 @@ export function SiteNav({
           })}
 
           <p className="px-3 pb-2 pt-6 font-display text-xs font-bold uppercase tracking-wide text-accent/50">
-            Sections
+            For {sport}
           </p>
-          {subNavItems.map(({ href, label, featured }) => (
+          {sportSectionItems.map(({ href, label }) => (
+            <Link
+              key={href}
+              href={hrefWithSport(href)}
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-between rounded-xl px-3 py-3.5 font-display text-lg font-bold text-accent hover:bg-surface"
+            >
+              {label}
+              <ChevronRight className="h-5 w-5 text-accent/30" />
+            </Link>
+          ))}
+
+          <p className="px-3 pb-2 pt-6 font-display text-xs font-bold uppercase tracking-wide text-accent/50">
+            Tools
+          </p>
+          {toolItems.map(({ href, label, featured }) => (
             <Link
               key={href}
               href={hrefWithSport(href)}
               onClick={() => setOpen(false)}
               className={cn(
                 "flex items-center justify-between rounded-xl px-3 py-3.5 font-display text-lg font-bold text-accent hover:bg-surface",
-                featured && "bg-surface"
+                featured && "bg-surface",
+                pathname.startsWith(href) && href !== "/" && "bg-surface"
               )}
             >
               <span className="flex items-center gap-2">

@@ -24,7 +24,7 @@ export default async function AdminPage() {
 
   return (
     <>
-      <BrandedSection title="Admin" activeSport="football" />
+      <BrandedSection title="Admin" showSubNav={false} />
       <PageContent>
         <div className="mb-4 rounded-lg border border-accent/30 bg-accent/[0.06] px-4 py-3 font-display text-sm font-semibold text-accent">
           You are in Admin Mode. Changes here affect live Score data.

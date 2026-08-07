@@ -8,7 +8,7 @@ export const metadata = { title: "Record Keeper" };
 export default function KeeperPage() {
   return (
     <>
-      <BrandedSection title="Record Keeper" activeSport="football" />
+      <BrandedSection title="Record Keeper" showSubNav={false} />
       <PageContent>
         <Suspense fallback={<p className="p-8 text-center opacity-70">Loading keeper…</p>}>
           <KeeperClient />

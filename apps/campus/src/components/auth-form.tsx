@@ -48,12 +48,24 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
 
         <label className="block">
           <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
-            Full name
+            First name
           </span>
           <input
-            name="display_name"
+            name="first_name"
             required
-            autoComplete="name"
+            autoComplete="given-name"
+            className="mt-1 w-full border border-rule bg-white px-4 py-3 text-sm text-ink focus:border-accent focus:outline-none"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
+            Last name
+          </span>
+          <input
+            name="last_name"
+            required
+            autoComplete="family-name"
             className="mt-1 w-full border border-rule bg-white px-4 py-3 text-sm text-ink focus:border-accent focus:outline-none"
           />
         </label>

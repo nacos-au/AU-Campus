@@ -10,6 +10,7 @@ export function AdminVenueManager() {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [name, setName] = useState("");
   const [location, setLocation] = useState("Achievers University, Owo");
+  const [sportSlug, setSportSlug] = useState("football");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -39,20 +40,21 @@ export function AdminVenueManager() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(
         editingId
-          ? { id: editingId, name, location }
-          : { name, location }
+          ? { id: editingId, name, location, sport_slug: sportSlug }
+          : { name, location, sport_slug: sportSlug }
       ),
     });
     const json = (await res.json()) as { error?: string };
     setBusy(false);
 
     if (!res.ok) {
-      setError(json.error ?? "Save failed");
+      setError(json.error ?? "Save failed — check the name is unique and sport is set.");
       return;
     }
 
     setName("");
     setLocation("Achievers University, Owo");
+    setSportSlug("football");
     setEditingId(null);
     await load();
   }
@@ -74,6 +76,7 @@ export function AdminVenueManager() {
     setEditingId(venue.id);
     setName(venue.name);
     setLocation(venue.location);
+    setSportSlug(venue.sport_slug ?? "football");
   }
 
   const active = venues.filter((v) => !v.deleted_at);
@@ -86,14 +89,14 @@ export function AdminVenueManager() {
         Admin presets only. Soft-deleted venues stay on past matches but leave the dropdown.
       </p>
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <label className="block text-sm">
           <span className="font-semibold">Name</span>
           <input
             className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Joked Field"
+            placeholder="e.g. Basketball Court A"
           />
         </label>
         <label className="block text-sm">
@@ -103,6 +106,20 @@ export function AdminVenueManager() {
             value={location}
             onChange={(e) => setLocation(e.target.value)}
           />
+        </label>
+        <label className="block text-sm">
+          <span className="font-semibold">Sport</span>
+          <select
+            className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
+            value={sportSlug}
+            onChange={(e) => setSportSlug(e.target.value)}
+          >
+            <option value="football">Football</option>
+            <option value="basketball">Basketball</option>
+            <option value="tennis">Tennis</option>
+            <option value="track">Track</option>
+            <option value="volleyball">Volleyball</option>
+          </select>
         </label>
       </div>
 
@@ -122,6 +139,7 @@ export function AdminVenueManager() {
               setEditingId(null);
               setName("");
               setLocation("Achievers University, Owo");
+              setSportSlug("football");
             }}
             className="rounded-lg border border-rule px-4 py-2 font-display text-sm font-bold"
           >
@@ -137,7 +155,9 @@ export function AdminVenueManager() {
           <li key={v.id} className="flex items-center justify-between gap-3 py-3">
             <div className="min-w-0">
               <p className="truncate font-display text-sm font-bold">{v.name}</p>
-              <p className="truncate text-xs opacity-60">{v.location}</p>
+              <p className="truncate text-xs opacity-60">
+                {v.sport_slug ?? "—"} · {v.location}
+              </p>
             </div>
             <div className="flex shrink-0 gap-2">
               <button

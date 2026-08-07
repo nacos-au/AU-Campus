@@ -23,6 +23,19 @@ export const metadata: Metadata = {
   },
   description:
     "Campus sports matches, league tables, and player statistics for university athletics.",
+  openGraph: {
+    title: "AU Score — Campus Sports",
+    description:
+      "Campus sports matches, league tables, and player statistics for university athletics.",
+    siteName: "AU Score",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AU Score — Campus Sports",
+    description:
+      "Campus sports matches, league tables, and player statistics for university athletics.",
+  },
 };
 
 export const dynamic = "force-dynamic";

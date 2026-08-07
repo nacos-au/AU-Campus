@@ -36,6 +36,7 @@ export function AdminPostResultTool() {
   useEffect(() => {
     setHomeTeamId("");
     setAwayTeamId("");
+    setVenueId("");
     setPublishState("idle");
     fetch(`/api/guest-teams?sport=${sport}`)
       .then((r) => r.json())
@@ -155,7 +156,7 @@ export function AdminPostResultTool() {
             onChange={(e) => setScheduledAt(e.target.value)}
           />
         </label>
-        <VenueSelect value={venueId} onChange={setVenueId} required />
+        <VenueSelect value={venueId} onChange={setVenueId} required sportSlug={sport} />
         <label className="block text-sm">
           <span className="font-semibold">Match type</span>
           <select

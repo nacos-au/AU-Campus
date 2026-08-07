@@ -37,11 +37,14 @@ export async function signUp(
 
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const displayName = String(formData.get("display_name") ?? "").trim();
+  const firstName = String(formData.get("first_name") ?? "").trim();
+  const lastName = String(formData.get("last_name") ?? "").trim();
+  const displayName = `${firstName} ${lastName}`.trim();
   const parsed = validateUsername(String(formData.get("username") ?? ""));
 
   if (!email || !password) return { error: "Email and password are required." };
-  if (!displayName) return { error: "Full name is required." };
+  if (!firstName) return { error: "First name is required." };
+  if (!lastName) return { error: "Last name is required." };
   if (!parsed.ok) return { error: parsed.error };
   if (password.length < 8) return { error: "Password must be at least 8 characters." };
 
@@ -59,7 +62,12 @@ export async function signUp(
       email,
       password,
       options: {
-        data: { display_name: displayName, username: parsed.username },
+        data: {
+          display_name: displayName,
+          first_name: firstName,
+          last_name: lastName,
+          username: parsed.username,
+        },
       },
     });
     if (error) {
@@ -78,7 +86,12 @@ export async function signUp(
     if (data.user) {
       await supabase
         .from("profiles")
-        .update({ username: parsed.username, display_name: displayName })
+        .update({
+          username: parsed.username,
+          display_name: displayName,
+          first_name: firstName,
+          last_name: lastName,
+        })
         .eq("id", data.user.id);
     }
   } catch (err) {

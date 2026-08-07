@@ -690,15 +690,24 @@ export async function updateMatchStatus(
 
 // ─── Venues ─────────────────────────────────────────────────────────────────
 
-export async function fetchVenues(opts?: { includeDeleted?: boolean }): Promise<Venue[]> {
+export async function fetchVenues(opts?: {
+  includeDeleted?: boolean;
+  sportSlug?: string | null;
+}): Promise<Venue[]> {
   if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
-    return listDemoVenues({ includeDeleted: opts?.includeDeleted });
+    return listDemoVenues({
+      includeDeleted: opts?.includeDeleted,
+      sportSlug: opts?.sportSlug,
+    });
   }
 
   const supabase = await createClient();
   let query = supabase.from("venues").select("*").order("name");
   if (!opts?.includeDeleted) {
     query = query.is("deleted_at", null);
+  }
+  if (opts?.sportSlug) {
+    query = query.eq("sport_slug", opts.sportSlug);
   }
   const { data } = await query as { data: Venue[] | null };
   return data ?? [];
@@ -707,6 +716,7 @@ export async function fetchVenues(opts?: { includeDeleted?: boolean }): Promise<
 export async function createVenue(input: {
   name: string;
   location?: string;
+  sport_slug?: string | null;
 }): Promise<{ venue: Venue } | { error: string }> {
   if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
     return { venue: createDemoVenue(input) };
@@ -717,6 +727,7 @@ export async function createVenue(input: {
     .insert({
       name: input.name.trim(),
       location: (input.location ?? "Achievers University, Owo").trim(),
+      sport_slug: input.sport_slug ?? null,
     } as Record<string, unknown>)
     .select("*")
     .single() as { data: Venue | null; error: { message: string } | null };
@@ -728,7 +739,12 @@ export async function createVenue(input: {
 
 export async function updateVenue(
   id: string,
-  patch: { name?: string; location?: string; is_active?: boolean }
+  patch: {
+    name?: string;
+    location?: string;
+    is_active?: boolean;
+    sport_slug?: string | null;
+  }
 ): Promise<{ venue: Venue } | { error: string }> {
   if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
     const venue = updateDemoVenue(id, patch);

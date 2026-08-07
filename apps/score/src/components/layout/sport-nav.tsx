@@ -7,10 +7,18 @@ import { SportIcon } from "@/components/ui/sport-icon";
 import { parseSportParam } from "@/lib/utils/sport";
 import { cn } from "@/lib/utils/cn";
 
+/** Routes where sport chips should not appear “active” (standalone surfaces). */
+const STANDALONE_PREFIXES = ["/phantom", "/keeper", "/admin", "/account", "/demo", "/auth"];
+
 export function SportNav() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const activeSport = parseSportParam(searchParams.get("sport") ?? undefined);
+  const sportFromQuery = parseSportParam(searchParams.get("sport") ?? undefined);
+  const onStandalone = STANDALONE_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`)
+  );
+  /** No sport is “active” on Phantom, Keeper, Admin, etc. */
+  const activeSport = onStandalone ? null : sportFromQuery;
 
   return (
     <nav className="branded-sport-nav border-b border-[#003d20]">
@@ -19,8 +27,10 @@ export function SportNav() {
           const isActive = activeSport === id;
           const params = new URLSearchParams(searchParams.toString());
           params.set("sport", id);
+          // From standalone pages, sport chips jump to Matches for that sport
+          const basePath = onStandalone ? "/" : pathname;
           const qs = params.toString();
-          const href = qs ? `${pathname}?${qs}` : `${pathname}?sport=${id}`;
+          const href = qs ? `${basePath}?${qs}` : `${basePath}?sport=${id}`;
 
           return (
             <Link

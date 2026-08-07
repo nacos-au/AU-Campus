@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Check, Copy, Share2 } from "lucide-react";
+import { Share2 } from "lucide-react";
 import { PhantomIcon } from "@/components/phantom/phantom-icon";
 import {
   advancePeriod,
@@ -11,8 +11,17 @@ import {
   logGoal,
   logPenalty,
   teamName,
-  winSet,
 } from "@/lib/phantom/engine";
+import {
+  flushPhantomClock,
+  livePhantomElapsed,
+  pausePhantomClock,
+  readPhantomClock,
+  resetPhantomClock,
+  startPhantomClock,
+  writePhantomClock,
+  type PhantomClockState,
+} from "@/lib/phantom/clock";
 import {
   getPhantomSessionLocal,
   savePhantomSessionLocal,
@@ -26,9 +35,12 @@ export function PhantomSessionClient({ sessionId }: { sessionId: string }) {
   const [scorerTeamId, setScorerTeamId] = useState<string | null>(null);
   const [playerName, setPlayerName] = useState("");
   const [assistName, setAssistName] = useState("");
-  const [elapsed, setElapsed] = useState(0);
-  const [clockOn, setClockOn] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [clock, setClock] = useState<PhantomClockState>(() => readPhantomClock(sessionId));
+  const [deviceOnlySave, setDeviceOnlySave] = useState(false);
+  const [, setTick] = useState(0);
+
+  const elapsed = livePhantomElapsed(clock);
+  const clockOn = clock.clockOn;
 
   useEffect(() => {
     let cancelled = false;
@@ -37,6 +49,7 @@ export function PhantomSessionClient({ sessionId }: { sessionId: string }) {
       if (local) {
         if (!cancelled) {
           setSession(local);
+          setClock(readPhantomClock(sessionId));
           setLoading(false);
         }
       }
@@ -65,32 +78,81 @@ export function PhantomSessionClient({ sessionId }: { sessionId: string }) {
   }, [sessionId]);
 
   const activeMatch = useMemo(
-    () => session?.matches.find((m) => m.id === session.active_match_id) ?? session?.matches.find((m) => m.status === "live"),
+    () =>
+      session?.matches.find((m) => m.id === session.active_match_id) ??
+      session?.matches.find((m) => m.status === "live"),
     [session]
   );
 
-  useEffect(() => {
-    if (!clockOn || !session || session.settings.scoring_mode !== "timed") return;
-    const id = setInterval(() => setElapsed((e) => e + 1), 1000);
-    return () => clearInterval(id);
-  }, [clockOn, session]);
+  const needsClock =
+    session?.settings.scoring_mode === "timed" || session?.settings.format === "sets";
+  const paused = Boolean(needsClock && !clockOn && session && session.status !== "completed");
 
   const persist = useCallback(async (next: PhantomSession) => {
     setSession(next);
     savePhantomSessionLocal(next);
     try {
-      await fetch(`/api/phantom/${next.id}`, {
+      const res = await fetch(`/api/phantom/${next.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ session: next }),
       });
+      if (!res.ok) {
+        setDeviceOnlySave(true);
+        return;
+      }
+      setDeviceOnlySave(false);
     } catch {
-      /* local is enough for play */
+      setDeviceOnlySave(true);
     }
   }, []);
 
+  const setClockState = useCallback(
+    (next: PhantomClockState) => {
+      setClock(next);
+      writePhantomClock(sessionId, next);
+    },
+    [sessionId]
+  );
+
+  useEffect(() => {
+    if (!clockOn || !session || !needsClock) return;
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [clockOn, session, needsClock]);
+
+  useEffect(() => {
+    if (!session || session.settings.format !== "sets" || !activeMatch || !clockOn) return;
+    const limit = (session.settings.set_duration_minutes ?? 10) * 60;
+    if (elapsed >= limit) {
+      setClockState(resetPhantomClock());
+      void persist(advancePeriod(session, activeMatch.id));
+    }
+  }, [elapsed, session, activeMatch, clockOn, persist, setClockState]);
+
+  useEffect(() => {
+    const flush = () => {
+      setClock((prev) => {
+        const next = flushPhantomClock(prev);
+        writePhantomClock(sessionId, next);
+        const local = getPhantomSessionLocal(sessionId);
+        if (local) savePhantomSessionLocal(local);
+        return next;
+      });
+    };
+    const onVis = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("pagehide", flush);
+    };
+  }, [sessionId]);
+
   function clockLabel() {
-    if (!session || session.settings.scoring_mode !== "timed") return "—";
+    if (!session || !needsClock) return "—";
     const m = Math.floor(elapsed / 60);
     const s = elapsed % 60;
     return `${m}:${s.toString().padStart(2, "0")}`;
@@ -98,6 +160,7 @@ export function PhantomSessionClient({ sessionId }: { sessionId: string }) {
 
   async function handleGoal() {
     if (!session || !activeMatch || !scorerTeamId || !playerName.trim()) return;
+    if (needsClock && !clockOn) return;
     const next = logGoal(
       session,
       activeMatch.id,
@@ -109,25 +172,13 @@ export function PhantomSessionClient({ sessionId }: { sessionId: string }) {
     setPlayerName("");
     setAssistName("");
     setScorerTeamId(null);
+    setClockState(resetPhantomClock());
     await persist(next);
   }
 
-  async function share() {
+  function share() {
     if (!session) return;
-    const url = `${window.location.origin}${PHANTOM_BRAND.path}/${session.id}`;
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: session.title, text: PHANTOM_BRAND.tagline, url });
-      } else {
-        await navigator.clipboard.writeText(url);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1600);
-      }
-    } catch {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    }
+    window.location.href = `${PHANTOM_BRAND.path}/${session.id}/share`;
   }
 
   if (loading) {
@@ -172,13 +223,19 @@ export function PhantomSessionClient({ sessionId }: { sessionId: string }) {
           onClick={share}
           className="inline-flex items-center gap-2 rounded-full border border-rule px-4 py-2 font-display text-xs font-bold"
         >
-          {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
-          {copied ? "Copied" : "Share"}
+          <Share2 className="h-4 w-4" />
+          Share
         </button>
       </div>
 
+      {deviceOnlySave && (
+        <p className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+          Saved on this device. Cloud sync failed — keep this browser open or check your connection before sharing across phones.
+        </p>
+      )}
+
       {concluded ? (
-        <ResultsView session={session} onCopy={share} copied={copied} />
+        <ResultsView session={session} />
       ) : activeMatch ? (
         <div className="space-y-6">
           <div className="rounded-2xl border border-rule bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
@@ -198,30 +255,63 @@ export function PhantomSessionClient({ sessionId }: { sessionId: string }) {
               <p className="font-display text-4xl font-extrabold tabular-nums">
                 {session.settings.scoring_mode === "penalties"
                   ? `${activeMatch.home_penalties ?? 0}–${activeMatch.away_penalties ?? 0}`
-                  : session.settings.scoring_mode === "sets"
-                    ? `${activeMatch.home_sets}–${activeMatch.away_sets}`
-                    : `${activeMatch.home_score}–${activeMatch.away_score}`}
+                  : `${activeMatch.home_score}–${activeMatch.away_score}`}
               </p>
               <p className="truncate font-display text-lg font-extrabold">{away}</p>
             </div>
 
-            {session.settings.scoring_mode === "timed" && (
-              <div className="mt-4 flex items-center justify-center gap-3">
-                <p className="font-display text-2xl font-extrabold tabular-nums">{clockLabel()}</p>
-                <button
-                  type="button"
-                  onClick={() => setClockOn((v) => !v)}
-                  className="rounded-lg border border-rule px-3 py-1.5 text-xs font-bold"
+            {session.settings.format === "sets" && (
+              <p className="mt-2 text-center text-xs font-bold uppercase tracking-wide text-accent/50">
+                Set {activeMatch.set_number ?? activeMatch.index + 1} · table = sets won
+              </p>
+            )}
+
+            {needsClock && (
+              <div
+                className={cn(
+                  "mt-4 rounded-xl px-4 py-4 text-center",
+                  paused ? "bg-accent text-white" : "bg-surface"
+                )}
+              >
+                <p
+                  className={cn(
+                    "font-display tabular-nums font-extrabold",
+                    paused ? "btn-filled text-5xl text-white" : "text-3xl text-accent"
+                  )}
                 >
-                  {clockOn ? "Pause" : "Start clock"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setElapsed(0)}
-                  className="rounded-lg border border-rule px-3 py-1.5 text-xs font-bold"
-                >
-                  Reset
-                </button>
+                  {clockLabel()}
+                </p>
+                {paused && (
+                  <p className="btn-filled mt-2 font-display text-sm font-extrabold uppercase tracking-[0.2em] text-white">
+                    Paused — resume before logging goals
+                  </p>
+                )}
+                <div className="mt-3 flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setClockState(clockOn ? pausePhantomClock(clock) : startPhantomClock(clock))
+                    }
+                    className={cn(
+                      "rounded-lg px-4 py-2 text-xs font-bold",
+                      paused
+                        ? "btn-filled bg-white text-accent"
+                        : "border border-rule bg-white"
+                    )}
+                  >
+                    {clockOn ? "Pause" : "Resume / Start clock"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setClockState(resetPhantomClock())}
+                    className={cn(
+                      "rounded-lg border px-3 py-2 text-xs font-bold",
+                      paused ? "border-white/40 text-white" : "border-rule"
+                    )}
+                  >
+                    Reset
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -236,26 +326,16 @@ export function PhantomSessionClient({ sessionId }: { sessionId: string }) {
                 await persist(logPenalty(session, activeMatch.id, teamId, name, scored));
               }}
             />
-          ) : session.settings.scoring_mode === "sets" ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                className="btn-primary rounded-xl py-4 font-display font-extrabold text-white"
-                onClick={() => persist(winSet(session, activeMatch.id, activeMatch.home_team_id))}
-              >
-                {home} wins {session.settings.period_label.toLowerCase()}
-              </button>
-              <button
-                type="button"
-                className="btn-primary rounded-xl py-4 font-display font-extrabold text-white"
-                onClick={() => persist(winSet(session, activeMatch.id, activeMatch.away_team_id))}
-              >
-                {away} wins {session.settings.period_label.toLowerCase()}
-              </button>
-            </div>
           ) : (
             <div className="rounded-2xl border border-rule bg-white p-5">
-              <p className="mb-3 font-display text-sm font-extrabold">Log goal</p>
+              <p className="mb-3 font-display text-sm font-extrabold">
+                {session.settings.format === "sets" ? "Log goal (ends set at target)" : "Log goal"}
+              </p>
+              {paused && (
+                <p className="mb-3 rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-xs font-semibold text-accent">
+                  Clock is paused. Resume the clock before logging goals.
+                </p>
+              )}
               <div className="mb-3 flex gap-2">
                 {[
                   { id: activeMatch.home_team_id, label: home },
@@ -264,10 +344,13 @@ export function PhantomSessionClient({ sessionId }: { sessionId: string }) {
                   <button
                     key={t.id}
                     type="button"
+                    disabled={paused}
                     onClick={() => setScorerTeamId(t.id)}
                     className={cn(
-                      "flex-1 rounded-lg border px-3 py-2 font-display text-sm font-bold",
-                      scorerTeamId === t.id ? "border-accent bg-accent text-white" : "border-rule"
+                      "flex-1 rounded-lg border px-3 py-2 font-display text-sm font-bold disabled:opacity-40",
+                      scorerTeamId === t.id
+                        ? "btn-filled border-accent bg-accent text-white"
+                        : "border-rule"
                     )}
                   >
                     {t.label}
@@ -278,8 +361,9 @@ export function PhantomSessionClient({ sessionId }: { sessionId: string }) {
                 <label className="block text-sm">
                   <span className="font-semibold">Scorer</span>
                   <input
-                    className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
+                    className="mt-1 w-full rounded-lg border border-rule px-3 py-2 disabled:opacity-40"
                     value={playerName}
+                    disabled={paused}
                     onChange={(e) => setPlayerName(e.target.value)}
                     placeholder="Name"
                   />
@@ -288,8 +372,9 @@ export function PhantomSessionClient({ sessionId }: { sessionId: string }) {
                   <label className="block text-sm">
                     <span className="font-semibold">Assist</span>
                     <input
-                      className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
+                      className="mt-1 w-full rounded-lg border border-rule px-3 py-2 disabled:opacity-40"
                       value={assistName}
+                      disabled={paused}
                       onChange={(e) => setAssistName(e.target.value)}
                       placeholder="Optional"
                     />
@@ -298,7 +383,7 @@ export function PhantomSessionClient({ sessionId }: { sessionId: string }) {
               </div>
               <button
                 type="button"
-                disabled={!scorerTeamId || !playerName.trim()}
+                disabled={paused || !scorerTeamId || !playerName.trim()}
                 onClick={handleGoal}
                 className="btn-primary mt-4 w-full rounded-xl py-3 font-display font-extrabold text-white disabled:opacity-40"
               >
@@ -308,12 +393,23 @@ export function PhantomSessionClient({ sessionId }: { sessionId: string }) {
           )}
 
           <div className="flex flex-wrap gap-2">
-            {session.settings.scoring_mode === "timed" && (
+            {session.settings.format === "sets" && (
               <button
                 type="button"
                 onClick={() => {
-                  setElapsed(0);
-                  setClockOn(false);
+                  setClockState(resetPhantomClock());
+                  void persist(advancePeriod(session, activeMatch.id));
+                }}
+                className="rounded-lg border border-rule px-4 py-2 text-sm font-bold"
+              >
+                Time draw — both leave
+              </button>
+            )}
+            {session.settings.scoring_mode === "timed" && session.settings.format !== "sets" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setClockState(resetPhantomClock());
                   void persist(advancePeriod(session, activeMatch.id));
                 }}
                 className="rounded-lg border border-rule px-4 py-2 text-sm font-bold"
@@ -321,13 +417,18 @@ export function PhantomSessionClient({ sessionId }: { sessionId: string }) {
                 End {session.settings.period_label.toLowerCase()}
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => persist(completeMatch(session, activeMatch.id))}
-              className="rounded-lg border border-rule px-4 py-2 text-sm font-bold"
-            >
-              End match
-            </button>
+            {session.settings.format !== "sets" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setClockState(resetPhantomClock());
+                  void persist(completeMatch(session, activeMatch.id));
+                }}
+                className="rounded-lg border border-rule px-4 py-2 text-sm font-bold"
+              >
+                End match
+              </button>
+            )}
             <button
               type="button"
               onClick={() => persist(concludeSession(session))}
@@ -340,7 +441,7 @@ export function PhantomSessionClient({ sessionId }: { sessionId: string }) {
           <EventFeed session={session} />
         </div>
       ) : (
-        <ResultsView session={session} onCopy={share} copied={copied} />
+        <ResultsView session={session} />
       )}
     </div>
   );
@@ -376,7 +477,7 @@ function PenaltyPad({
             onClick={() => setTeamId(t.id)}
             className={cn(
               "flex-1 rounded-lg border px-3 py-2 font-display text-sm font-bold",
-              teamId === t.id ? "border-accent bg-accent text-white" : "border-rule"
+              teamId === t.id ? "btn-filled border-accent bg-accent text-white" : "border-rule"
             )}
           >
             {t.label}
@@ -392,7 +493,7 @@ function PenaltyPad({
       <div className="grid grid-cols-2 gap-3">
         <button
           type="button"
-          className="rounded-xl bg-accent py-3 font-display font-extrabold text-white"
+          className="btn-filled rounded-xl bg-accent py-3 font-display font-extrabold text-white"
           onClick={() => {
             onKick(teamId, true, name || "Unknown");
             setName("");
@@ -441,15 +542,7 @@ function EventFeed({ session }: { session: PhantomSession }) {
   );
 }
 
-function ResultsView({
-  session,
-  onCopy,
-  copied,
-}: {
-  session: PhantomSession;
-  onCopy: () => void;
-  copied: boolean;
-}) {
+function ResultsView({ session }: { session: PhantomSession }) {
   return (
     <div className="space-y-6">
       <div className="rounded-2xl border border-rule bg-white p-6 text-center">
@@ -458,14 +551,13 @@ function ResultsView({
         </p>
         <h2 className="mt-2 font-display text-2xl font-extrabold">{session.title}</h2>
         <p className="mt-1 text-sm opacity-60">Share code {session.code}</p>
-        <button
-          type="button"
-          onClick={onCopy}
-          className="mt-4 inline-flex items-center gap-2 rounded-full border border-rule px-4 py-2 text-sm font-bold"
+        <Link
+          href={`${PHANTOM_BRAND.path}/${session.id}/share`}
+          className="btn-filled mt-4 inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-bold text-white"
         >
-          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-          {copied ? "Link copied" : "Copy share link"}
-        </button>
+          <Share2 className="h-4 w-4" />
+          Open share preview
+        </Link>
       </div>
 
       <div>

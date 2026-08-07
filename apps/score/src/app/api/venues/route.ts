@@ -19,7 +19,10 @@ export async function GET(request: Request) {
     }
   }
 
-  const venues = await fetchVenues({ includeDeleted });
+  const venues = await fetchVenues({
+    includeDeleted,
+    sportSlug: searchParams.get("sport"),
+  });
   return NextResponse.json({ venues });
 }
 
@@ -29,12 +32,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: admin.error }, { status: admin.status });
   }
 
-  const body = (await request.json()) as { name?: string; location?: string };
+  const body = (await request.json()) as {
+    name?: string;
+    location?: string;
+    sport_slug?: string;
+  };
   if (!body.name?.trim()) {
     return NextResponse.json({ error: "Venue name is required" }, { status: 400 });
   }
+  if (!body.sport_slug?.trim()) {
+    return NextResponse.json(
+      { error: "Sport is required — pick football, basketball, tennis, track, or volleyball." },
+      { status: 400 }
+    );
+  }
 
-  const result = await createVenue({ name: body.name, location: body.location });
+  const result = await createVenue({
+    name: body.name,
+    location: body.location,
+    sport_slug: body.sport_slug,
+  });
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
@@ -52,6 +69,7 @@ export async function PATCH(request: Request) {
     name?: string;
     location?: string;
     is_active?: boolean;
+    sport_slug?: string | null;
   };
   if (!body.id) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
@@ -61,6 +79,7 @@ export async function PATCH(request: Request) {
     name: body.name,
     location: body.location,
     is_active: body.is_active,
+    sport_slug: body.sport_slug,
   });
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });

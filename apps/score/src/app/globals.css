@@ -163,17 +163,21 @@ body {
   background-color: var(--surface);
 }
 
-/* Filled accent control (tabs, clock toggles) */
-.btn-filled {
+/* Filled accent control (tabs, clock toggles) — beat .page-content inheritance */
+.btn-filled,
+.page-content button.btn-filled,
+.page-content a.btn-filled {
   background-color: var(--accent);
-  color: #ffffff;
+  color: #ffffff !important;
   border-color: var(--accent);
   transition: opacity 0.15s ease, background-color 0.15s ease;
 }
 
 .btn-filled:hover,
-.btn-filled:active {
-  color: #ffffff;
+.btn-filled:active,
+.page-content button.btn-filled:hover,
+.page-content button.btn-filled:active {
+  color: #ffffff !important;
   opacity: 0.92;
 }
 

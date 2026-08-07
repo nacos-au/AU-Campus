@@ -7,19 +7,65 @@ import { PhantomIcon } from "@/components/phantom/phantom-icon";
 import {
   PHANTOM_FORMATS,
   defaultSettings,
-  formatBestOfLabel,
   periodLabelFor,
+  suggestMiniLeagueStructure,
+  validatePhantomSettings,
 } from "@/lib/phantom/formats";
 import {
   createPhantomSessionLocal,
   listPhantomSessionsLocal,
   savePhantomSessionLocal,
 } from "@/lib/phantom/store";
-import { PHANTOM_BRAND, type PhantomFormat, type PhantomSession, type PhantomSettings } from "@/lib/phantom/types";
+import {
+  PHANTOM_BRAND,
+  type PhantomFormat,
+  type PhantomSession,
+  type PhantomSettings,
+} from "@/lib/phantom/types";
 import { SPORT_LABELS, type SportId } from "@/lib/utils/sport";
 import { cn } from "@/lib/utils/cn";
-
 const SPORTS: SportId[] = ["football", "basketball", "volleyball", "tennis"];
+
+function Stepper({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (n: number) => void;
+}) {
+  return (
+    <label className="block text-sm">
+      <span className="font-semibold">{label}</span>
+      <div className="mt-1 flex items-center gap-2">
+        <button
+          type="button"
+          className="btn-filled flex h-10 w-10 items-center justify-center rounded-lg border border-rule bg-white font-display text-lg font-bold text-accent"
+          onClick={() => onChange(Math.max(min, value - 1))}
+          aria-label={`Decrease ${label}`}
+        >
+          −
+        </button>
+        <span className="min-w-[3rem] text-center font-display text-lg font-extrabold text-accent">
+          {value}
+        </span>
+        <button
+          type="button"
+          className="btn-filled flex h-10 w-10 items-center justify-center rounded-lg border border-rule bg-white font-display text-lg font-bold text-accent"
+          onClick={() => onChange(Math.min(max, value + 1))}
+          aria-label={`Increase ${label}`}
+        >
+          +
+        </button>
+      </div>
+    </label>
+  );
+}
 
 export function PhantomHub() {
   const router = useRouter();
@@ -29,12 +75,16 @@ export function PhantomHub() {
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const recent = useMemo(() => listPhantomSessionsLocal().filter((s) => s.status === "completed").slice(0, 6), []);
+  const recent = useMemo(
+    () => listPhantomSessionsLocal().filter((s) => s.status === "completed").slice(0, 6),
+    []
+  );
 
   function pickFormat(id: PhantomFormat) {
-    const sport: SportId = "football";
+    const sport: SportId = id === "penalties" ? "football" : "football";
     setFormat(id);
     setSettings(defaultSettings(sport, id));
+    setError("");
     setStep("settings");
   }
 
@@ -42,9 +92,14 @@ export function PhantomHub() {
     if (!settings) return;
     const teams = names.map((name, i) => ({
       id: `team-${i + 1}`,
-      name: name.trim() || `Side ${i + 1}`,
+      name: name.trim() || "",
     }));
-    setSettings({ ...settings, teams });
+    const structure =
+      settings.format === "mini_league"
+        ? suggestMiniLeagueStructure(teams.filter((t) => t.name).length) ??
+          settings.mini_league_structure
+        : settings.mini_league_structure;
+    setSettings({ ...settings, teams, mini_league_structure: structure ?? undefined });
   }
 
   async function startSession() {
@@ -52,27 +107,74 @@ export function PhantomHub() {
     setBusy(true);
     setError("");
 
+    const prepared: PhantomSettings = {
+      ...settings,
+      teams: settings.teams
+        .map((t, i) => ({ ...t, name: t.name.trim() || `Side ${i + 1}`, id: t.id || `team-${i + 1}` }))
+        .filter((t) => t.name),
+    };
+
+    // Re-trim empty: validation wants explicit empty detection before fill
+    const rawNames = settings.teams.map((t) => t.name.trim());
+    const checkSettings: PhantomSettings = {
+      ...settings,
+      teams: settings.teams.map((t, i) => ({ ...t, name: rawNames[i] ?? "" })),
+    };
+    const validation = validatePhantomSettings(checkSettings);
+    if (validation) {
+      setError(validation);
+      setBusy(false);
+      return;
+    }
+
+    const finalSettings: PhantomSettings = {
+      ...prepared,
+      sport: format === "penalties" ? "football" : prepared.sport,
+      teams: checkSettings.teams.map((t, i) => ({
+        ...t,
+        name: t.name.trim(),
+        id: t.id || `team-${i + 1}`,
+      })),
+    };
+
     try {
       const res = await fetch("/api/phantom", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: title.trim() || undefined, settings }),
+        body: JSON.stringify({ title: title.trim() || undefined, settings: finalSettings }),
       });
-      const json = (await res.json()) as { session?: PhantomSession; error?: string };
-      if (res.ok && json.session) {
+      const json = (await res.json()) as {
+        session?: PhantomSession;
+        error?: string;
+        warning?: string;
+      };
+      if (!res.ok) {
+        setError(json.error ?? `Could not start Phantom (${res.status}).`);
+        return;
+      }
+      if (json.session) {
         savePhantomSessionLocal(json.session);
+        if (json.warning) {
+          // Still proceed — session is local; surface warning briefly via query not needed
+        }
         router.push(`${PHANTOM_BRAND.path}/${json.session.id}`);
         return;
       }
-      setError(json.error ?? "Could not start Phantom");
-    } catch {
-      const local = createPhantomSessionLocal({ title, settings });
+      setError(json.error ?? "Could not start Phantom — no session returned.");
+    } catch (err) {
+      const local = createPhantomSessionLocal({ title, settings: finalSettings });
+      savePhantomSessionLocal(local);
       router.push(`${PHANTOM_BRAND.path}/${local.id}`);
-      return;
+      // If offline path used, still ok — but note if unexpected
+      if (err) {
+        // local fallback succeeded
+      }
     } finally {
       setBusy(false);
     }
   }
+
+  const hideSportPicker = format === "penalties";
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
@@ -123,7 +225,7 @@ export function PhantomHub() {
                         <span className="text-xs opacity-50">Code {s.code}</span>
                       </span>
                       <span className="text-xs font-bold uppercase tracking-wide text-accent/50">
-                        Share
+                        Open
                       </span>
                     </Link>
                   </li>
@@ -138,7 +240,10 @@ export function PhantomHub() {
         <section className="space-y-6">
           <button
             type="button"
-            onClick={() => setStep("format")}
+            onClick={() => {
+              setStep("format");
+              setError("");
+            }}
             className="text-sm font-bold text-accent/60 hover:text-accent"
           >
             ← Change format
@@ -148,42 +253,48 @@ export function PhantomHub() {
             <h2 className="font-display text-lg font-extrabold">
               {PHANTOM_FORMATS.find((f) => f.id === format)?.title} settings
             </h2>
-            <p className="text-sm text-accent/65">Tune the session, then start the first match.</p>
+            <p className="text-sm text-accent/65">Tune the session, then start.</p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block text-sm">
-              <span className="font-semibold">Sport</span>
-              <select
-                className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
-                value={settings.sport}
-                onChange={(e) => {
-                  const sport = e.target.value as SportId;
-                  setSettings({
-                    ...defaultSettings(sport, format),
-                    teams: settings.teams,
-                    track_assists: sport === "football",
-                    period_label: periodLabelFor(sport, format),
-                  });
-                }}
-              >
-                {SPORTS.filter((s) =>
-                  PHANTOM_FORMATS.find((f) => f.id === format)?.sports.includes(s)
-                ).map((s) => (
-                  <option key={s} value={s}>
-                    {SPORT_LABELS[s]}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {!hideSportPicker && (
+              <label className="block text-sm">
+                <span className="font-semibold">Sport</span>
+                <select
+                  className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
+                  value={settings.sport}
+                  onChange={(e) => {
+                    const sport = e.target.value as SportId;
+                    setSettings({
+                      ...defaultSettings(sport, format),
+                      teams: settings.teams,
+                      track_assists: sport === "football",
+                      period_label: periodLabelFor(sport, format),
+                      set_duration_minutes: settings.set_duration_minutes,
+                      first_set_goals_to_win: settings.first_set_goals_to_win,
+                      subsequent_set_goals_to_win: settings.subsequent_set_goals_to_win,
+                      one_goal_throughout: settings.one_goal_throughout,
+                    });
+                  }}
+                >
+                  {SPORTS.filter((s) =>
+                    PHANTOM_FORMATS.find((f) => f.id === format)?.sports.includes(s)
+                  ).map((s) => (
+                    <option key={s} value={s}>
+                      {SPORT_LABELS[s]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
 
-            <label className="block text-sm">
+            <label className={cn("block text-sm", hideSportPicker && "sm:col-span-2")}>
               <span className="font-semibold">Session title</span>
               <input
                 className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="Optional — e.g. Hostel night"
+                placeholder="Optional — e.g. Beatrice Cup"
               />
             </label>
 
@@ -209,76 +320,96 @@ export function PhantomHub() {
               </label>
             )}
 
-            {settings.scoring_mode === "timed" && (
+            {settings.scoring_mode === "timed" && format !== "sets" && (
               <>
-                <label className="block text-sm">
-                  <span className="font-semibold">
-                    {settings.period_label} length (min)
-                  </span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={90}
-                    className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
-                    value={settings.period_minutes}
-                    onChange={(e) =>
-                      setSettings({ ...settings, period_minutes: Number(e.target.value) || 0 })
-                    }
-                  />
-                </label>
-                <label className="block text-sm">
-                  <span className="font-semibold">Number of {settings.period_label.toLowerCase()}s</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={6}
-                    className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
-                    value={settings.period_count}
-                    onChange={(e) =>
-                      setSettings({ ...settings, period_count: Number(e.target.value) || 1 })
-                    }
-                  />
-                </label>
+                <Stepper
+                  label={`${settings.period_label} length (min)`}
+                  value={settings.period_minutes}
+                  min={1}
+                  max={90}
+                  onChange={(period_minutes) => setSettings({ ...settings, period_minutes })}
+                />
+                <Stepper
+                  label={`Number of ${settings.period_label.toLowerCase()}s`}
+                  value={settings.period_count}
+                  min={1}
+                  max={6}
+                  onChange={(period_count) => setSettings({ ...settings, period_count })}
+                />
               </>
             )}
 
             {settings.scoring_mode === "goals_only" && (
-              <label className="block text-sm">
-                <span className="font-semibold">First to</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={50}
-                  className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
-                  value={settings.goal_target ?? 5}
-                  onChange={(e) =>
-                    setSettings({ ...settings, goal_target: Number(e.target.value) || 1 })
-                  }
-                />
-              </label>
+              <Stepper
+                label="First to (goals)"
+                value={settings.goal_target ?? 5}
+                min={1}
+                max={50}
+                onChange={(goal_target) => setSettings({ ...settings, goal_target })}
+              />
             )}
 
             {format === "sets" && (
-              <label className="block text-sm">
-                <span className="font-semibold">
-                  {formatBestOfLabel(settings.best_of, settings.period_label)}
-                </span>
-                <select
-                  className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
-                  value={settings.best_of}
-                  onChange={(e) =>
+              <>
+                <Stepper
+                  label="Set duration (min)"
+                  value={settings.set_duration_minutes ?? 10}
+                  min={1}
+                  max={60}
+                  onChange={(set_duration_minutes) =>
                     setSettings({
                       ...settings,
-                      best_of: Number(e.target.value),
+                      set_duration_minutes,
+                      period_minutes: set_duration_minutes,
                       scoring_mode: "sets",
                     })
                   }
-                >
-                  <option value={1}>Single {settings.period_label.toLowerCase()}</option>
-                  <option value={3}>Best of 3</option>
-                  <option value={5}>Best of 5</option>
-                </select>
-              </label>
+                />
+                <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(settings.one_goal_throughout)}
+                    onChange={(e) =>
+                      setSettings({ ...settings, one_goal_throughout: e.target.checked })
+                    }
+                  />
+                  <span className="font-semibold">One goal wins every set</span>
+                </label>
+                {!settings.one_goal_throughout && (
+                  <>
+                    <Stepper
+                      label="First set — goals to win"
+                      value={settings.first_set_goals_to_win ?? 2}
+                      min={1}
+                      max={10}
+                      onChange={(first_set_goals_to_win) =>
+                        setSettings({ ...settings, first_set_goals_to_win })
+                      }
+                    />
+                    <Stepper
+                      label="Later sets — goals to win"
+                      value={settings.subsequent_set_goals_to_win ?? 1}
+                      min={1}
+                      max={10}
+                      onChange={(subsequent_set_goals_to_win) =>
+                        setSettings({ ...settings, subsequent_set_goals_to_win })
+                      }
+                    />
+                  </>
+                )}
+                <p className="text-xs text-accent/60 sm:col-span-2">
+                  Winner stays; loser is replaced by the next side in pick order. On a time draw,
+                  both leave and the next two in sequence play.
+                </p>
+              </>
+            )}
+
+            {format === "mini_league" && (
+              <p className="text-xs text-accent/60 sm:col-span-2">
+                {settings.teams.filter((t) => t.name.trim()).length <= 8
+                  ? "3–8 teams → single round-robin table (W3 D1 L0 for football)."
+                  : "12–32 (multiple of 4) → World Cup–style groups of 4."}
+              </p>
             )}
 
             {settings.sport === "football" && format !== "penalties" && (
@@ -302,14 +433,16 @@ export function PhantomHub() {
           <button
             type="button"
             disabled={busy}
-            onClick={startSession}
-            className={cn(
-              "btn-primary w-full rounded-xl px-4 py-3 font-display text-base font-extrabold text-white disabled:opacity-40 sm:w-auto"
-            )}
+            onClick={() => void startSession()}
+            className="btn-primary w-full rounded-xl px-4 py-3 font-display text-base font-extrabold text-white disabled:opacity-40 sm:w-auto"
           >
             {busy ? "Starting…" : "Start first match"}
           </button>
-          {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
+          {error && (
+            <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+              {error}
+            </p>
+          )}
         </section>
       )}
     </div>
@@ -325,19 +458,21 @@ function TeamFields({
   teams: string[];
   onChange: (names: string[]) => void;
 }) {
-  const min = format === "mini_league" ? 3 : 2;
-  const max = format === "mini_league" ? 6 : 2;
+  const min = format === "mini_league" || format === "sets" ? (format === "sets" ? 3 : 3) : 2;
+  const max = format === "mini_league" ? 32 : format === "sets" ? 16 : 2;
   const names = teams.length >= min ? teams : [...teams, ...Array(min - teams.length).fill("")];
 
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="font-display text-base font-extrabold">Teams</h3>
-        {format === "mini_league" && names.length < max && (
+        <h3 className="font-display text-base font-extrabold">
+          {format === "sets" ? "Rotation queue (pick order)" : "Teams"}
+        </h3>
+        {(format === "mini_league" || format === "sets") && names.length < max && (
           <button
             type="button"
             className="text-sm font-bold text-accent hover:underline"
-            onClick={() => onChange([...names, `Side ${names.length + 1}`])}
+            onClick={() => onChange([...names, ""])}
           >
             + Add team
           </button>
@@ -350,6 +485,7 @@ function TeamFields({
             <input
               className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
               value={name}
+              placeholder={`Side ${i + 1}`}
               onChange={(e) => {
                 const next = [...names];
                 next[i] = e.target.value;
@@ -359,6 +495,9 @@ function TeamFields({
           </label>
         ))}
       </div>
+      {format === "mini_league" && names.length > max && (
+        <p className="mt-2 text-xs font-semibold text-red-600">Maximum {max} teams.</p>
+      )}
     </div>
   );
 }

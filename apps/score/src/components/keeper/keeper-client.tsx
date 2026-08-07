@@ -36,7 +36,9 @@ export function KeeperClient() {
           type="button"
           onClick={() => setMode("live")}
           className={`rounded-lg px-3 py-1.5 font-display text-sm font-bold ${
-            mode === "live" ? "bg-accent text-white" : "border border-rule"
+            mode === "live"
+              ? "btn-filled bg-accent text-white"
+              : "border border-rule"
           }`}
         >
           Live keeper
@@ -45,7 +47,9 @@ export function KeeperClient() {
           type="button"
           onClick={() => setMode("manual")}
           className={`rounded-lg px-3 py-1.5 font-display text-sm font-bold ${
-            mode === "manual" ? "bg-accent text-white" : "border border-rule"
+            mode === "manual"
+              ? "btn-filled bg-accent text-white"
+              : "border border-rule"
           }`}
         >
           Post result
