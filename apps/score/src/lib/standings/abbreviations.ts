@@ -8,7 +8,7 @@ export function standingsAbbreviations(sport: SportId): Array<{ abbr: string; me
         { abbr: "W", meaning: "Wins" },
         { abbr: "L", meaning: "Losses" },
         { abbr: "WIN%", meaning: "Winning percentage (.xxx)" },
-        { abbr: "GD", meaning: "Point differential (points for − points against)" },
+        { abbr: "PD", meaning: "Point differential (points for − points against)" },
         { abbr: "Streak", meaning: "Current run of wins or losses" },
         { abbr: "Next", meaning: "Next scheduled opponent" },
       ];

@@ -81,8 +81,8 @@ function basketballColumns(sport: SportId, showNextMatch: boolean): Column[] {
       render: (r) => winPctDot(r.won, r.played),
     },
     {
-      key: "gd",
-      label: "GD",
+      key: "pd",
+      label: "PD",
       align: "center",
       render: (r) => (r.goal_difference > 0 ? `+${r.goal_difference}` : r.goal_difference),
     },
