@@ -39,7 +39,7 @@ Keepers are **assigned**, not independent: admin builds the **keeper calendar**,
 
 ## Tables / stats spot-check
 
-- [ ] Basketball table: Team (inline rank), W, L, WIN% (`.xxx`), GD, Streak, Next — no PF/PA.
+- [ ] Basketball table: Team (inline rank), W, L, WIN% (`.xxx`), PD, Streak, Next — no PF/PA.
 - [ ] All sports: no Pos column; ranks are `1`, `2`, …
 - [ ] Abbreviation legend under each table.
 - [ ] Basketball stats: PPG/RPG/3PG/FG%/APG; Advanced totals link.
