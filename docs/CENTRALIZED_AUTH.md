@@ -163,3 +163,18 @@ PLATFORM_OWNER_EMAIL=
 ```
 
 Point **all three apps** at the same Supabase project.
+
+---
+
+## 7. Session expiration (security)
+
+Score and Campus enforce a **2-hour absolute session**:
+
+| Layer | Setting |
+|-------|---------|
+| Local CLI | `supabase/config.toml` → `[auth.sessions] timebox = "2h"` (+ inactivity 2h) |
+| Hosted | Dashboard → Authentication → Sessions → timebox **2 hours** |
+| App | Cookie `au_auth_session_started` on sign-in; middleware signs out after 2h |
+
+Expired sessions redirect to sign-in with `reason=session_expired`.
+

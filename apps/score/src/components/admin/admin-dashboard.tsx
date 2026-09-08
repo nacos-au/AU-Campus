@@ -5,6 +5,7 @@ import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { AdminAwardsManager } from "@/components/admin/admin-awards-manager";
 import { AdminCompetitionWizard } from "@/components/admin/admin-competition-wizard";
 import { AdminGuestTeamManager } from "@/components/admin/admin-guest-team-manager";
+import { AdminKeeperCalendar } from "@/components/admin/admin-keeper-calendar";
 import { AdminMatchManager } from "@/components/admin/admin-match-manager";
 import { AdminPostResultTool } from "@/components/admin/admin-post-result-tool";
 import { AdminVenueManager } from "@/components/admin/admin-venue-manager";
@@ -14,10 +15,12 @@ export function AdminDashboard() {
   return (
     <div className="mx-auto max-w-[1200px] space-y-8 px-4 py-8 sm:px-6">
       <p className="text-sm opacity-70">
-        Admin tools for venues, guest opponents, manual results, and match edits.
-        Match posting is also available to record keepers. Production writes go to Supabase;
+        Admin tools for calendar assignment, venues, guest opponents, manual results, and match edits.
+        Keepers only access events you assign. Production writes go to Supabase;
         demo mode uses a session overlay so you can verify flows locally.
       </p>
+
+      <AdminKeeperCalendar />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="table-card p-6">

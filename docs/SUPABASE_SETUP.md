@@ -32,6 +32,9 @@ Then apply every later file in timestamp order, including:
 - `20260806160000_profiles_username.sql`
 - `20260806170000_platform_roles_verification.sql`
 - `20260807120000_names_and_venues.sql` (first/last name + sport-scoped venues)
+- `20260908140000_keeper_events_calendar.sql` (keeper calendar + assignments)
+
+Also set hosted Auth **session timebox to 2 hours** (Dashboard → Authentication → Sessions).
 
 Then run `supabase/seed.sql` for Digest demo content.
 

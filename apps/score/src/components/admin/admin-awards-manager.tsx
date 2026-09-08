@@ -21,6 +21,7 @@ export function AdminAwardsManager() {
   const [sport, setSport] = useState<SportId>("football");
   const [overrides, setOverrides] = useState<SeasonAward[]>([]);
   const [awardType, setAwardType] = useState<AwardType>("player_of_season");
+  const [customTitle, setCustomTitle] = useState("");
   const [playerId, setPlayerId] = useState("");
   const [teamId, setTeamId] = useState("");
   const [week, setWeek] = useState("9");
@@ -84,12 +85,18 @@ export function AdminAwardsManager() {
   async function handlePublish() {
     const player = players.find((p) => p.id === playerId);
     const team = teams.find((t) => t.id === teamId);
-    const label =
-      player
-        ? `${player.first_name} ${player.last_name}`
-        : team?.name ?? awardType;
+    if (awardType === "custom" && !customTitle.trim()) {
+      window.alert("Custom award title is empty — enter a name for this award.");
+      return;
+    }
+    const display =
+      awardType === "custom"
+        ? customTitle.trim()
+        : player
+          ? `${player.first_name} ${player.last_name}`
+          : team?.name ?? awardType;
     const ok = window.confirm(
-      `Publish this award as Admin?\n\n${awardType.replaceAll("_", " ")} → ${label}\n\nThis updates the public awards board.`
+      `Publish this award as Admin?\n\n${display}\n\nThis updates the public awards board.`
     );
     if (!ok) return;
 
@@ -105,14 +112,12 @@ export function AdminAwardsManager() {
       player_name: player ? `${player.first_name} ${player.last_name}` : null,
       team_name: team?.name ?? null,
       value: parsedValue != null && !Number.isNaN(parsedValue) ? parsedValue : null,
+      label: awardType === "custom" ? customTitle.trim() : null,
       lineup: isLineupAward && lineup.length > 0 ? lineup : null,
       published: true,
       published_at: new Date().toISOString(),
     };
-    const filtered = overrides.filter(
-      (a) =>
-        !(a.sport_id === sportDbId && a.award_type === awardType && (a.week_number ?? 0) === (entry.week_number ?? 0))
-    );
+    const filtered = overrides.filter((a) => a.id !== entry.id);
     persist([...filtered, entry]);
 
     try {
@@ -135,8 +140,8 @@ export function AdminAwardsManager() {
     <div className="table-card p-6">
       <h2 className="font-display text-lg font-extrabold">Season Awards</h2>
       <p className="mt-1 text-sm opacity-70">
-        Set top scorer, Player of the Season, Team of the Season, and Team of the Week. Saved locally for demo; production uses{" "}
-        <code className="text-xs">season_awards</code> table.
+        Curate season awards per sport — presets or a custom title. No automatic top scorer.
+        Saved locally for demo; production uses <code className="text-xs">season_awards</code>.
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -171,6 +176,17 @@ export function AdminAwardsManager() {
             ))}
           </select>
         </label>
+        {awardType === "custom" && (
+          <label className="block text-sm">
+            <span className="font-semibold">Custom title</span>
+            <input
+              className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
+              value={customTitle}
+              onChange={(e) => setCustomTitle(e.target.value)}
+              placeholder="e.g. Defensive Player of the Year"
+            />
+          </label>
+        )}
         {awardType === "team_of_week" && (
           <label className="block text-sm">
             <span className="font-semibold">Matchweek</span>
@@ -220,7 +236,7 @@ export function AdminAwardsManager() {
             className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
             value={statValue}
             onChange={(e) => setStatValue(e.target.value)}
-            placeholder={awardType === "top_scorer" ? "Goals / points" : "—"}
+            placeholder="Optional note / value"
           />
         </label>
       </div>
@@ -289,7 +305,9 @@ export function AdminAwardsManager() {
       <ul className="mt-6 space-y-2 border-t border-rule pt-4 text-sm">
         {awards.map((a) => (
           <li key={a.id} className="flex justify-between gap-2">
-            <span className="font-display font-bold">{awardTypeLabel(a.award_type)}</span>
+            <span className="font-display font-bold">
+              {awardTypeLabel(a.award_type, a.label)}
+            </span>
             <span className="text-right opacity-80">
               {a.player_name && `${a.player_name} · `}
               {a.team_name}

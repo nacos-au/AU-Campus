@@ -1,8 +1,7 @@
-import { DEMO_STAT_LEADERS_FOOTBALL } from "@/lib/data/demo";
 import { playerAvatarForId, logoForSportId } from "@/lib/utils/sport-assets";
 
 export type AwardType =
-  | "top_scorer"
+  | "custom"
   | "player_of_season"
   | "team_of_season"
   | "team_of_week";
@@ -42,13 +41,14 @@ export interface SeasonAward {
 }
 
 const AWARD_LABELS: Record<AwardType, string> = {
-  top_scorer: "Top Goal Scorer",
+  custom: "Custom award",
   player_of_season: "Player of the Season",
   team_of_season: "Team of the Season",
   team_of_week: "Team of the Week",
 };
 
-export function awardTypeLabel(type: AwardType): string {
+export function awardTypeLabel(type: AwardType, customLabel?: string | null): string {
+  if (type === "custom" && customLabel?.trim()) return customLabel.trim();
   return AWARD_LABELS[type];
 }
 
@@ -58,8 +58,10 @@ export function awardTypeLabel(type: AwardType): string {
  */
 export function awardTypeLabelFor(
   type: AwardType,
-  competitionType: "league" | "cup" = "league"
+  competitionType: "league" | "cup" = "league",
+  customLabel?: string | null
 ): string {
+  if (type === "custom" && customLabel?.trim()) return customLabel.trim();
   if (competitionType === "cup") {
     if (type === "team_of_season") return "Team of the Tournament";
     if (type === "player_of_season") return "Player of the Tournament";
@@ -135,8 +137,8 @@ const DEMO_FOOTBALL_TOTS_LINEUP: AwardLineupPlayer[] = [
 
 export const DEMO_SEASON_AWARDS: SeasonAward[] = [
   {
-    id: "aw-ts-1",
-    award_type: "top_scorer",
+    id: "aw-custom-fb",
+    award_type: "custom",
     season: "2025/26",
     sport_id: "sport-football",
     player_id: "pl-1",
@@ -183,8 +185,8 @@ export const DEMO_SEASON_AWARDS: SeasonAward[] = [
     published_at: "2026-07-20",
   },
   {
-    id: "aw-ts-bb",
-    award_type: "top_scorer",
+    id: "aw-custom-bb",
+    award_type: "custom",
     season: "2025/26",
     sport_id: "sport-basketball",
     player_id: "pl-9",
@@ -192,6 +194,7 @@ export const DEMO_SEASON_AWARDS: SeasonAward[] = [
     team_id: "team-med-court",
     team_name: "Med Court Kings",
     value: 284,
+    label: "Most Valuable Player",
     published: true,
   },
   {
@@ -206,24 +209,6 @@ export const DEMO_SEASON_AWARDS: SeasonAward[] = [
     published: true,
   },
 ];
-
-export function computeTopScorerFromLeaders(sportId: string): SeasonAward | null {
-  if (sportId !== "sport-football") return null;
-  const top = DEMO_STAT_LEADERS_FOOTBALL.goals[0];
-  if (!top) return null;
-  return {
-    id: "computed-top-scorer",
-    award_type: "top_scorer",
-    season: "2025/26",
-    sport_id: sportId,
-    player_id: top.player.id,
-    player_name: `${top.player.first_name} ${top.player.last_name}`,
-    team_id: null,
-    team_name: top.teamName,
-    value: top.value,
-    published: true,
-  };
-}
 
 export function roleFromPosition(position: string | null | undefined): LineupRole {
   const p = (position ?? "").toLowerCase();
@@ -255,8 +240,14 @@ export function getAwardsForSport(
   return base;
 }
 
-export const AWARD_TYPE_OPTIONS: { id: AwardType; label: string; needsPlayer: boolean; needsTeam: boolean; needsWeek: boolean }[] = [
-  { id: "top_scorer", label: "Top Goal Scorer", needsPlayer: true, needsTeam: true, needsWeek: false },
+export const AWARD_TYPE_OPTIONS: {
+  id: AwardType;
+  label: string;
+  needsPlayer: boolean;
+  needsTeam: boolean;
+  needsWeek: boolean;
+}[] = [
+  { id: "custom", label: "Custom award…", needsPlayer: true, needsTeam: true, needsWeek: false },
   { id: "player_of_season", label: "Player of the Season", needsPlayer: true, needsTeam: true, needsWeek: false },
   { id: "team_of_season", label: "Team of the Season", needsPlayer: false, needsTeam: true, needsWeek: false },
   { id: "team_of_week", label: "Team of the Week", needsPlayer: false, needsTeam: true, needsWeek: true },

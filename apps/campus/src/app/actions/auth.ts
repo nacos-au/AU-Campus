@@ -128,6 +128,14 @@ export async function signIn(
             : error.message,
       };
     }
+    const { cookies } = await import("next/headers");
+    const store = await cookies();
+    store.set("au_auth_session_started", String(Date.now()), {
+      path: "/",
+      maxAge: 60 * 60 * 2,
+      sameSite: "lax",
+      httpOnly: true,
+    });
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Sign-in failed." };
   }
@@ -155,6 +163,7 @@ export async function signOut(): Promise<void> {
       maxAge: 0,
       sameSite: opts.sameSite,
     });
+    store.set("au_auth_session_started", "", { path: "/", maxAge: 0 });
   } catch {
     // ignore
   }

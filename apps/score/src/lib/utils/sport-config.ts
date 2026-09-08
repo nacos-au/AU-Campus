@@ -58,9 +58,11 @@ export const SPORT_CONFIG: Record<SportId, SportConfig> = {
     competitionFormat: "team_vs_team",
     playerStats: [
       { label: "Games", value: () => 10 },
-      { label: "Points", value: (p) => (p === "Guard" ? 284 : 195) },
-      { label: "Rebounds", value: (p) => (p === "Guard" ? 48 : 72) },
-      { label: "Assists", value: (p) => (p === "Guard" ? 89 : 58) },
+      { label: "PPG", value: (p) => (p === "Guard" ? 28.4 : 19.5) },
+      { label: "RPG", value: (p) => (p === "Guard" ? 4.8 : 7.2) },
+      { label: "APG", value: (p) => (p === "Guard" ? 8.9 : 5.8) },
+      { label: "3PG", value: (p) => (p === "Guard" ? 3.1 : 1.4) },
+      { label: "FG%", value: () => 0.462 },
     ],
   },
   tennis: {

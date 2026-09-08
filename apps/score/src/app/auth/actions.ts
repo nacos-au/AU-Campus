@@ -76,6 +76,15 @@ export async function signIn(
             : error.message,
       };
     }
+    const { cookies } = await import("next/headers");
+    const { AUTH_SESSION_STARTED_COOKIE } = await import("@/lib/auth/session-policy");
+    const store = await cookies();
+    store.set(AUTH_SESSION_STARTED_COOKIE, String(Date.now()), {
+      path: "/",
+      maxAge: 60 * 60 * 2,
+      sameSite: "lax",
+      httpOnly: true,
+    });
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Sign-in failed." };
   }
@@ -162,6 +171,7 @@ export async function signOut(): Promise<void> {
   try {
     const { cookies } = await import("next/headers");
     const { ADMIN_MODE_COOKIE, adminModeCookieOptions } = await import("@/lib/admin-mode");
+    const { AUTH_SESSION_STARTED_COOKIE } = await import("@/lib/auth/session-policy");
     const store = await cookies();
     const opts = adminModeCookieOptions(false);
     store.set(ADMIN_MODE_COOKIE, opts.value, {
@@ -169,6 +179,7 @@ export async function signOut(): Promise<void> {
       maxAge: 0,
       sameSite: opts.sameSite,
     });
+    store.set(AUTH_SESSION_STARTED_COOKIE, "", { path: "/", maxAge: 0 });
   } catch {
     // ignore
   }

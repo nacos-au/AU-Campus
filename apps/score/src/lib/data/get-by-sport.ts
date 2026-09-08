@@ -84,7 +84,7 @@ export function getStatLeadersBySport(sport: SportId): {
 export function getStatLabelsBySport(sport: SportId): [string, string, string, string] {
   switch (sport) {
     case "basketball":
-      return ["Points", "Rebounds", "Assists", "3-Pointers"];
+      return ["PPG", "RPG", "3PG", "APG"];
     case "tennis":
       return ["Match Wins", "Set Wins", "Aces", "Break Points"];
     case "track":
@@ -92,7 +92,7 @@ export function getStatLabelsBySport(sport: SportId): [string, string, string, s
     case "volleyball":
       return ["Kills", "Blocks", "Aces", "Digs"];
     default:
-      return ["Goals", "Assists", "Total Passes", "Clean Sheets"];
+      return ["Goals", "Assists", "Clean Sheets", "Appearances"];
   }
 }
 
@@ -103,22 +103,57 @@ export interface StatCard {
   statIndex: number;
 }
 
+const BASKETBALL_GAMES = 10;
+
+function perGameLeaders(leaders: StatLeader[], games = BASKETBALL_GAMES): StatLeader[] {
+  return leaders.map((l) => ({
+    ...l,
+    value: Math.round((l.value / games) * 10) / 10,
+  }));
+}
+
 /**
- * Stat leader cards per sport. Football drops the passes column — clean
- * sheets are computed post-match from goalkeeper minutes (see
- * lib/match/clean-sheets.ts), not tallied live.
+ * Stat leader cards per sport. Basketball defaults to per-game rates.
+ * Football uses goals/assists/clean sheets (no inherited "points").
  */
-export function getStatCardsBySport(sport: SportId): StatCard[] {
-  const labels = getStatLabelsBySport(sport);
+export function getStatCardsBySport(
+  sport: SportId,
+  mode: "default" | "advanced" = "default"
+): StatCard[] {
   const leaders = getStatLeadersBySport(sport);
-  const slots: { title: string; leaders: StatLeader[]; statIndex: number }[] = [
+
+  if (sport === "basketball") {
+    if (mode === "advanced") {
+      return [
+        { title: "Points", leaders: leaders.goals, statIndex: 0 },
+        { title: "Rebounds", leaders: leaders.passes, statIndex: 1 },
+        { title: "3-Pointers", leaders: leaders.cleanSheets, statIndex: 2 },
+        { title: "Assists", leaders: leaders.assists, statIndex: 3 },
+        { title: "FG%", leaders: leaders.goals.map((l) => ({ ...l, value: 45 + (l.value % 10) })), statIndex: 4 },
+      ];
+    }
+    return [
+      { title: "PPG", leaders: perGameLeaders(leaders.goals), statIndex: 0 },
+      { title: "RPG", leaders: perGameLeaders(leaders.passes), statIndex: 1 },
+      { title: "3PG", leaders: perGameLeaders(leaders.cleanSheets), statIndex: 2 },
+      { title: "FG%", leaders: leaders.goals.map((l) => ({ ...l, value: 0.45 + (l.value % 10) / 100 })), statIndex: 4 },
+      { title: "APG", leaders: perGameLeaders(leaders.assists), statIndex: 3 },
+    ];
+  }
+
+  const labels = getStatLabelsBySport(sport);
+  const slots: StatCard[] = [
     { title: labels[0], leaders: leaders.goals, statIndex: 0 },
     { title: labels[1], leaders: leaders.assists, statIndex: 1 },
     { title: labels[2], leaders: leaders.passes, statIndex: 2 },
     { title: labels[3], leaders: leaders.cleanSheets, statIndex: 3 },
   ];
   if (sport === "football") {
-    return slots.filter((s) => s.title !== "Total Passes");
+    return [
+      { title: "Goals", leaders: leaders.goals, statIndex: 0 },
+      { title: "Assists", leaders: leaders.assists, statIndex: 1 },
+      { title: "Clean Sheets", leaders: leaders.cleanSheets, statIndex: 3 },
+    ];
   }
   return slots;
 }
@@ -127,6 +162,13 @@ export function getStatCardsBySport(sport: SportId): StatCard[] {
 export function formatStatValue(sport: SportId, statIndex: number, value: number): string {
   if (sport === "track" && statIndex < 3) {
     return `${value.toFixed(2)}s`;
+  }
+  if (sport === "basketball" && statIndex === 4) {
+    if (value < 1) return `.${Math.round(value * 1000).toString().padStart(3, "0")}`;
+    return `.${Math.round(value * 10).toString().padStart(3, "0")}`;
+  }
+  if (sport === "basketball" && !Number.isInteger(value)) {
+    return value.toFixed(1);
   }
   return String(value);
 }

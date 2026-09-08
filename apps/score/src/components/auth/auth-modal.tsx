@@ -25,6 +25,7 @@ type Props = {
   /** @deprecated Signup is Campus-only — ignored */
   initialMode?: "signin" | "signup";
   next?: string;
+  sessionExpired?: boolean;
 };
 
 const FEATURES = [
@@ -55,6 +56,7 @@ export function AuthModal({
   open,
   onClose,
   next = "/",
+  sessionExpired = false,
 }: Props) {
   const router = useRouter();
   const titleId = useId();
@@ -192,6 +194,12 @@ export function AuthModal({
                 className={fieldClass}
               />
             </label>
+
+            {sessionExpired && !state?.error && (
+              <p className="rounded-lg border border-amber-200/40 bg-amber-500/20 px-3 py-2 text-sm font-semibold text-white">
+                Your session expired after 2 hours. Sign in again to continue.
+              </p>
+            )}
 
             {state?.error && (
               <p className="rounded-lg border border-white/25 bg-white/10 px-3 py-2 text-sm font-semibold text-white">

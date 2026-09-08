@@ -27,7 +27,7 @@ export function AwardsShowcase({
           {cardAwards.map((a) => (
             <div key={a.id} className="table-card p-4">
               <p className="font-display text-xs font-extrabold uppercase tracking-wide text-accent">
-                {awardTypeLabelFor(a.award_type, competitionType)}
+                {awardTypeLabelFor(a.award_type, competitionType, a.label)}
                 {a.week_number ? ` · MW ${a.week_number}` : ""}
               </p>
               {a.player_id ? (
@@ -53,7 +53,7 @@ export function AwardsShowcase({
           {lineupAwards.map((a) => (
             <AwardLineupPitch
               key={a.id}
-              title={awardTypeLabelFor(a.award_type, competitionType)}
+              title={awardTypeLabelFor(a.award_type, competitionType, a.label)}
               subtitle={a.week_number ? `Matchweek ${a.week_number}` : a.season}
               lineup={a.lineup!}
               sport={sport}

@@ -23,12 +23,13 @@ const statsTabs = [
 export default async function StatsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sport?: string; competition?: string }>;
+  searchParams: Promise<{ sport?: string; competition?: string; view?: string }>;
 }) {
-  const { sport, competition } = await searchParams;
+  const { sport, competition, view } = await searchParams;
   const activeSport = parseSportParam(sport);
   const sportDbId = sportToDbId(activeSport);
-  const statCards = getStatCardsBySport(activeSport);
+  const mode = activeSport === "basketball" && view === "advanced" ? "advanced" : "default";
+  const statCards = getStatCardsBySport(activeSport, mode);
   const tournament = getTournamentForSport(sportDbId, competition);
   const awards = getAwardsForSport(sportDbId, undefined, tournament?.id);
 
@@ -58,6 +59,28 @@ export default async function StatsPage({
           <SectionTitle>
             {tournament ? `${tournament.name} ${tournament.season}` : `${SPORT_LABELS[activeSport]} 2025/26`} Player Stats
           </SectionTitle>
+          {activeSport === "basketball" && (
+            <p className="mt-2 text-sm opacity-70">
+              {mode === "advanced" ? (
+                <>
+                  Season totals.{" "}
+                  <Link href={`/stats?sport=basketball`} className="font-bold text-accent underline">
+                    Back to per-game
+                  </Link>
+                </>
+              ) : (
+                <>
+                  Per-game rates (PPG, RPG, 3PG, FG%, APG).{" "}
+                  <Link
+                    href={`/stats?sport=basketball&view=advanced`}
+                    className="font-bold text-accent underline"
+                  >
+                    Advanced totals
+                  </Link>
+                </>
+              )}
+            </p>
+          )}
           <div className="scroll-snap-x -mx-4 mt-6 flex gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4">
             {statCards.map((card) => (
               <div key={card.title} className="w-[260px] shrink-0 sm:w-auto">

@@ -116,10 +116,13 @@ export function GroupTables({
                   </tr>
                 </thead>
                 <tbody>
-                  {groupRows.map((row) => (
+                  {groupRows.map((row, i) => (
                     <tr key={`${row.group_id}-${row.team_id}`} className="border-b border-rule last:border-0">
                       <td className="min-w-[140px] px-5 py-3">
                         <Link href={`/teams/${row.team_id}?sport=${sport}`} className="flex items-center gap-2 hover:underline">
+                          <span className="w-4 shrink-0 text-center font-display text-sm font-extrabold tabular-nums opacity-50">
+                            {i + 1}
+                          </span>
                           <TeamCrest code={row.short_code} logoUrl={row.logo_url} sport={sport} alt={row.team_name} size="sm" />
                           <span className="font-display text-sm font-bold">{row.team_name}</span>
                         </Link>
@@ -136,6 +139,9 @@ export function GroupTables({
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div className="border-t border-rule px-5 py-2 text-[10px] opacity-60">
+              Pl played · W wins · D draws · L losses · GD goal/point difference · Pts points
             </div>
           </div>
         );

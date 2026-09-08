@@ -30,10 +30,14 @@ export default async function PlayerPage({
     (t) => t.department_id === player.department_id && t.sport_id === sportToDbId(activeSport)
   );
 
-  const stats = config.playerStats.map((s) => ({
-    label: s.label,
-    value: s.value(player.position ?? ""),
-  }));
+  const stats = config.playerStats.map((s) => {
+    const raw = s.value(player.position ?? "");
+    const value =
+      s.label === "FG%" && typeof raw === "number" && raw < 1
+        ? `.${Math.round(raw * 1000).toString().padStart(3, "0")}`
+        : raw;
+    return { label: s.label, value };
+  });
 
   return (
     <>

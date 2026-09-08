@@ -16,9 +16,11 @@ export function AuthEntryButton() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const authParam = searchParams.get("auth");
+  const reasonParam = searchParams.get("reason");
   const nextParam = searchParams.get("next") ?? "/";
 
   const [open, setOpen] = useState(false);
+  const [expiredNotice, setExpiredNotice] = useState(false);
 
   useEffect(() => {
     if (authParam === "signup") {
@@ -27,14 +29,17 @@ export function AuthEntryButton() {
     }
     if (authParam === "signin" || authParam === "1") {
       setOpen(true);
+      if (reasonParam === "session_expired") setExpiredNotice(true);
     }
-  }, [authParam]);
+  }, [authParam, reasonParam]);
 
   function clearAuthQuery() {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("auth");
+    params.delete("reason");
     const qs = params.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    setExpiredNotice(false);
   }
 
   return (
@@ -46,9 +51,13 @@ export function AuthEntryButton() {
       >
         Sign in
       </button>
+      {expiredNotice && open && (
+        <p className="sr-only">Your session expired after 2 hours. Sign in again.</p>
+      )}
       <AuthModal
         open={open}
         next={nextParam.startsWith("/") ? nextParam : "/"}
+        sessionExpired={expiredNotice}
         onClose={() => {
           setOpen(false);
           if (authParam) clearAuthQuery();
