@@ -1,0 +1,91 @@
+{
+  "nav": {
+    "home": "Início",
+    "editions": "Edições impressas",
+    "talent": "Talento",
+    "forum": "Fórum",
+    "account": "Conta",
+    "admin": "Redação",
+    "signIn": "Entrar",
+    "signOut": "Sair",
+    "subscribe": "Comprar a edição desta semana",
+    "subscribeShort": "Comprar edição"
+  },
+  "home": {
+    "latestNews": "Últimas notícias",
+    "topNews": "Destaques",
+    "opinion": "Opinião",
+    "moreIn": "Mais em",
+    "editionsPromo": "A edição impressa, online",
+    "editionsPromoBody": "Cada número do jornal, página a página, como saiu da tipografia. Compre uma vez, leia para sempre.",
+    "browseEditions": "Ver edições",
+    "advertisement": "Publicidade",
+    "minRead": "{minutes} min de leitura",
+    "by": "Por {name}"
+  },
+  "editions": {
+    "title": "Edições impressas",
+    "subtitle": "Réplicas digitais completas do jornal impresso. As compras desbloqueiam de imediato e ficam na sua conta.",
+    "buy": "Comprar · {price}",
+    "read": "Ler edição",
+    "owned": "Na sua biblioteca",
+    "signInToBuy": "Entre para comprar",
+    "comingSoon": "Em breve"
+  },
+  "reader": {
+    "protectedNotice": "Esta edição está licenciada a {email}. Copiar, imprimir e redistribuir estão desativados.",
+    "loading": "A preparar a sua edição segura…",
+    "page": "Página {current} de {total}",
+    "notAvailable": "O ficheiro desta edição ainda não foi carregado."
+  },
+  "auth": {
+    "signIn": "Entrar",
+    "signUp": "Criar conta",
+    "email": "Endereço de e-mail",
+    "password": "Palavra-passe",
+    "displayName": "Nome completo",
+    "haveAccount": "Já tem conta?",
+    "noAccount": "Novo por aqui?",
+    "signInCta": "Entrar",
+    "signUpCta": "Criar conta"
+  },
+  "account": {
+    "title": "A sua conta",
+    "library": "A sua biblioteca",
+    "libraryEmpty": "Ainda não comprou nenhuma edição.",
+    "purchasedOn": "Comprado em {date}",
+    "settings": "Definições da conta",
+    "newsletters": "Newsletters",
+    "editProfile": "Editar o seu perfil",
+    "logOut": "Sair",
+    "yourContent": "O seu conteúdo",
+    "getSupport": "Obter apoio",
+    "helpCenter": "Centro de ajuda"
+  },
+  "footer": {
+    "rights": "Todos os direitos reservados.",
+    "tagline": "O jornal estudantil independente de {university}.",
+    "sections": "Secções",
+    "newsroom": "A redação",
+    "talent": "Talento",
+    "forum": "Fórum",
+    "editionsHeading": "Edições",
+    "account": "Conta",
+    "follow": "Siga-nos",
+    "about": "Sobre nós",
+    "editorialBoard": "Conselho editorial",
+    "join": "Junte-se à redação",
+    "ethics": "Ética e correções",
+    "advertise": "Anuncie connosco",
+    "contact": "Contacto",
+    "printEditions": "Edições impressas",
+    "latestIssue": "Última edição",
+    "buyIssue": "Comprar uma edição",
+    "signIn": "Entrar",
+    "createAccount": "Criar conta",
+    "yourLibrary": "A sua biblioteca",
+    "privacy": "Política de privacidade",
+    "terms": "Termos de utilização",
+    "sitemap": "Mapa do site"
+  }
+}

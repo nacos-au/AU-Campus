@@ -1,0 +1,91 @@
+{
+  "nav": {
+    "home": "Ilé",
+    "editions": "Àwọn ẹ̀dà títẹ̀",
+    "talent": "Ẹ̀bùn",
+    "forum": "Àpéjọ",
+    "account": "Àkọọ́lẹ̀",
+    "admin": "Ilé ìwé ìròyìn",
+    "signIn": "Wọlé",
+    "signOut": "Jáde",
+    "subscribe": "Ra ẹ̀dà ọ̀sẹ̀ yìí",
+    "subscribeShort": "Ra ẹ̀dà"
+  },
+  "home": {
+    "latestNews": "Ìròyìn tuntun",
+    "topNews": "Ìròyìn pàtàkì",
+    "opinion": "Èrò",
+    "moreIn": "Síwájú sí i nínú",
+    "editionsPromo": "Ẹ̀dà títẹ̀, lórí ayélujára",
+    "editionsPromoBody": "Gbogbo ẹ̀dà ìwé ìròyìn, ojúewé lé ojúewé, bí a ṣe tẹ̀ ẹ́. Ra lẹ́ẹ̀kan, ka láé.",
+    "browseEditions": "Wo àwọn ẹ̀dà",
+    "advertisement": "Ìpolówó",
+    "minRead": "Ìṣẹ́jú {minutes} láti kà",
+    "by": "Láti ọwọ́ {name}"
+  },
+  "editions": {
+    "title": "Àwọn ẹ̀dà títẹ̀",
+    "subtitle": "Àwọn ẹ̀dà oni-nọ́mbà pípé ti ìwé ìròyìn. Ohun tí o rà á ṣí lẹ́sẹ̀kẹsẹ̀, yóò sì wà nínú àkọọ́lẹ̀ rẹ.",
+    "buy": "Ra · {price}",
+    "read": "Ka ẹ̀dà",
+    "owned": "Nínú ilé-ìkàwé rẹ",
+    "signInToBuy": "Wọlé láti ra",
+    "comingSoon": "Ń bọ̀ láìpẹ́"
+  },
+  "reader": {
+    "protectedNotice": "Ẹ̀dà yìí jẹ́ ti {email}. Kíkọ, títẹ̀ àti pípín kò ṣiṣẹ́.",
+    "loading": "Ń ṣètò ẹ̀dà ààbò rẹ…",
+    "page": "Ojúewé {current} nínú {total}",
+    "notAvailable": "A kò tíì gbé fáìlì ẹ̀dà yìí sókè."
+  },
+  "auth": {
+    "signIn": "Wọlé",
+    "signUp": "Ṣẹ̀dá àkọọ́lẹ̀",
+    "email": "Àdírẹ́sì ímeèlì",
+    "password": "Ọ̀rọ̀ ìgbaniwọlé",
+    "displayName": "Orúkọ kikun",
+    "haveAccount": "Ṣé o ní àkọọ́lẹ̀ tẹ́lẹ̀?",
+    "noAccount": "Tuntun níbí?",
+    "signInCta": "Wọlé",
+    "signUpCta": "Ṣẹ̀dá àkọọ́lẹ̀"
+  },
+  "account": {
+    "title": "Àkọọ́lẹ̀ rẹ",
+    "library": "Ilé-ìkàwé rẹ",
+    "libraryEmpty": "O kò tíì ra ẹ̀dà kankan.",
+    "purchasedOn": "A rà ní {date}",
+    "settings": "Ètò àkọọ́lẹ̀",
+    "newsletters": "Àwọn ìwé ìròyìn",
+    "editProfile": "Ṣàtúnṣe prófáìlì rẹ",
+    "logOut": "Jáde",
+    "yourContent": "Àkóónú rẹ",
+    "getSupport": "Gba ìrànlọ́wọ́",
+    "helpCenter": "Ilé ìrànlọ́wọ́"
+  },
+  "footer": {
+    "rights": "Gbogbo ẹ̀tọ́ wà ní pamọ́.",
+    "tagline": "Ìwé ìròyìn akẹ́kọ̀ọ́ òmìnira ti {university}.",
+    "sections": "Àwọn abala",
+    "newsroom": "Ilé ìwé ìròyìn",
+    "talent": "Ẹ̀bùn",
+    "forum": "Àpéjọ",
+    "editionsHeading": "Àwọn ẹ̀dà",
+    "account": "Àkọọ́lẹ̀",
+    "follow": "Tẹ̀lé wa",
+    "about": "Nípa wa",
+    "editorialBoard": "Ìgbìmọ̀ olóòtú",
+    "join": "Darapọ̀ mọ́ ilé ìwé ìròyìn",
+    "ethics": "Ìwà rere àti àtúnṣe",
+    "advertise": "Polówó pẹ̀lú wa",
+    "contact": "Kàn sí wa",
+    "printEditions": "Àwọn ẹ̀dà títẹ̀",
+    "latestIssue": "Ẹ̀dà tuntun",
+    "buyIssue": "Ra ẹ̀dà kan",
+    "signIn": "Wọlé",
+    "createAccount": "Ṣẹ̀dá àkọọ́lẹ̀",
+    "yourLibrary": "Ilé-ìkàwé rẹ",
+    "privacy": "Ètò àṣírí",
+    "terms": "Àwọn òfin lílo",
+    "sitemap": "Máàpù ibi ayélujára"
+  }
+}

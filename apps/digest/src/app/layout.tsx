@@ -6,6 +6,7 @@ import {
 } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
+import { isRtlLocale } from "@/i18n/locales";
 import { site } from "@/lib/site";
 import "./globals.css";
 
@@ -41,6 +42,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
+      dir={isRtlLocale(locale) ? "rtl" : "ltr"}
       className={`${franklin.variable} ${sourceSerif.variable} ${masthead.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">

@@ -81,7 +81,7 @@ Higher roles inherit everything below them. Enforced in the UI **and** in Postgr
 | Write & edit own drafts, submit for review, upload covers | | ✓ | ✓ | ✓ |
 | Delete own drafts | | ✓ | ✓ | ✓ |
 | Edit any article, publish / unpublish / feature / reject | | | ✓ | ✓ |
-| Publish directly (skip the queue) | | | ✓ | ✓ |
+| Approve an article assigned to them (never their own) | | | ✓ | ✓ |
 | Manage sections, paid editions, ads | | | ✓ | ✓ |
 | Preview paid PDFs without buying | | | ✓ | ✓ |
 | Assign roles (Team page) | | | | ✓ |
@@ -96,7 +96,7 @@ Newsroom desks map roughly to an NYT desk: writers are reporters; editors are de
 ### Editorial workflow (zero-maintenance CMS)
 
 1. **Writers** sign in and open the **Newsroom** (`/admin`) to draft articles in a rich-text editor, upload a cover, and *Submit for review*.
-2. **Editors** see the review queue, then *Publish* or *Reject* (with the option to *Feature* a story as the front-page lead). Editors can also *Publish now* from the article form, and manage **Sections**, **Editions**, and **Ads**.
+2. **Editors** see articles assigned to them, then *Publish* or *Reject* (with the option to *Feature* a story as the front-page lead). An editor who writes must assign a different editor. Editors also manage **Sections**, **Editions**, **Ads**, **Talent**, and the **Forum**.
 3. **Admins** do everything an editor can, plus assign roles on **Team** and see sales totals.
 4. Published stories appear on the front page and section pages automatically.
 

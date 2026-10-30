@@ -6,6 +6,7 @@ export default async function AdminArticlesPage() {
   return (
     <ArticlesTable
       isStaff={hasRole(profile, "editor")}
+      isAdmin={hasRole(profile, "admin")}
       userId={profile.id}
     />
   );

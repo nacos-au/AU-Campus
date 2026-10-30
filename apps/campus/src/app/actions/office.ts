@@ -263,6 +263,30 @@ export async function setAppRole(input: {
   }
 }
 
+export async function setMemberVerification(input: {
+  userId: string;
+  verified: boolean;
+  matric?: string;
+}): Promise<OfficeActionState> {
+  const gate = await requireElevatedSuperAdmin();
+  if ("error" in gate) return { error: gate.error };
+  if (!input.userId) return { error: "Missing user." };
+
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("set_member_verification", {
+      target_user_id: input.userId,
+      p_verified: input.verified,
+      p_matric: input.matric ?? null,
+    });
+    if (error) return { error: error.message };
+    revalidatePath("/office");
+    return { ok: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Update failed." };
+  }
+}
+
 export async function setSuperAdminFlag(input: {
   userId: string;
   enabled: boolean;

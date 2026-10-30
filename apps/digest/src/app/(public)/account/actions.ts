@@ -16,6 +16,7 @@ export async function updateDisplayName(
   }
 
   const displayName = String(formData.get("display_name") ?? "").trim();
+  const bio = String(formData.get("bio") ?? "").trim();
   const parsed = validateUsername(String(formData.get("username") ?? ""));
 
   if (!displayName) {
@@ -23,6 +24,9 @@ export async function updateDisplayName(
   }
   if (displayName.length > 80) {
     return { error: "Display name must be 80 characters or fewer." };
+  }
+  if (bio.length > 500) {
+    return { error: "Bio must be 500 characters or fewer." };
   }
   if (!parsed.ok) return { error: parsed.error };
 
@@ -42,7 +46,11 @@ export async function updateDisplayName(
 
   const { error } = await supabase
     .from("profiles")
-    .update({ display_name: displayName, username: parsed.username })
+    .update({
+      display_name: displayName,
+      username: parsed.username,
+      bio: bio || null,
+    })
     .eq("id", user.id);
 
   if (error) {

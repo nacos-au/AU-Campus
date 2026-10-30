@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import {
   searchDirectory,
   setAppRole,
+  setMemberVerification,
   setSuperAdminFlag,
 } from "@/app/actions/office";
 import type { DirectoryUser } from "@/lib/platform-roles";
@@ -78,6 +79,34 @@ function UserRow({
     });
   }
 
+  function verifyMember() {
+    if (user.verification_level === "verified") {
+      const ok = window.confirm(`Revoke verification for ${user.email || user.display_name}?`);
+      if (!ok) return;
+      start(async () => {
+        setError(null);
+        const res = await setMemberVerification({ userId: user.id, verified: false });
+        if (res?.error) setError(res.error);
+        else router.refresh();
+      });
+      return;
+    }
+    const matric = window.prompt(
+      "Member ID to link this account (checked in person). At least 3 characters."
+    );
+    if (!matric || matric.trim().length < 3) return;
+    start(async () => {
+      setError(null);
+      const res = await setMemberVerification({
+        userId: user.id,
+        verified: true,
+        matric: matric.trim(),
+      });
+      if (res?.error) setError(res.error);
+      else router.refresh();
+    });
+  }
+
   function toggleSuper() {
     const enabled = !user.is_super_admin;
     if (enabled) {
@@ -145,6 +174,13 @@ function UserRow({
             tone="green"
             pending={pending}
             onClick={() => toggle("score", "record_keeper")}
+          />
+          <RoleChip
+            active={user.verification_level === "verified"}
+            label={user.verification_level === "verified" ? "Verified" : "Verify"}
+            tone="ink"
+            pending={pending}
+            onClick={verifyMember}
           />
           <RoleChip
             active={user.is_super_admin}

@@ -6,10 +6,15 @@ export interface Profile {
   id: string;
   display_name: string;
   username?: string | null;
+  bio?: string | null;
   role: Role;
   /** Cross-platform owner — treated as Digest admin everywhere */
   is_super_admin?: boolean;
   verification_level?: "soft" | "verified";
+  forum_karma?: number;
+  matric_number?: string | null;
+  verified_at?: string | null;
+  verified_by?: string | null;
   created_at: string;
 }
 
@@ -33,6 +38,7 @@ export interface Article {
   status: ArticleStatus;
   featured: boolean;
   editor_note: string | null;
+  assigned_editor_id?: string | null;
   published_at: string | null;
   created_at: string;
   updated_at: string;
@@ -40,7 +46,62 @@ export interface Article {
 
 export interface ArticleWithMeta extends Article {
   sections: Pick<Section, "slug" | "name"> | null;
-  profiles: Pick<Profile, "display_name"> | null;
+  profiles: Pick<Profile, "display_name" | "username"> | null;
+  assignee?: Pick<Profile, "display_name"> | null;
+}
+
+export type TalentDiscipline =
+  | "design"
+  | "development"
+  | "writing"
+  | "debate"
+  | "other";
+
+export interface TalentSpotlight {
+  id: string;
+  profile_id: string;
+  discipline: TalentDiscipline;
+  headline: string;
+  blurb: string | null;
+  published: boolean;
+  created_at: string;
+  profiles?: Pick<Profile, "display_name" | "username" | "bio"> | null;
+}
+
+export type ForumStatus = "visible" | "hidden" | "removed";
+
+export interface ForumCategory {
+  id: number;
+  slug: string;
+  name: string;
+  description: string | null;
+  position: number;
+}
+
+export interface ForumThread {
+  id: string;
+  category_id: number;
+  author_id: string;
+  title: string;
+  body: string;
+  status: ForumStatus;
+  score: number;
+  reply_count: number;
+  created_at: string;
+  updated_at: string;
+  profiles?: Pick<Profile, "display_name" | "username"> | null;
+  forum_categories?: Pick<ForumCategory, "slug" | "name"> | null;
+}
+
+export interface ForumPost {
+  id: string;
+  thread_id: string;
+  author_id: string;
+  body: string;
+  status: ForumStatus;
+  score: number;
+  created_at: string;
+  profiles?: Pick<Profile, "display_name" | "username"> | null;
 }
 
 export interface Edition {

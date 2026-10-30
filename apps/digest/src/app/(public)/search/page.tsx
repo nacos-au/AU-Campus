@@ -19,7 +19,9 @@ export default async function SearchPage({
     // Demo client has no `.ilike` — fall back to client-side filter on a fetch.
     const { data } = await supabase
       .from("articles")
-      .select("*, sections(slug, name), profiles(display_name)")
+      .select(
+        "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username)"
+      )
       .eq("status", "published")
       .order("published_at", { ascending: false })
       .limit(60);

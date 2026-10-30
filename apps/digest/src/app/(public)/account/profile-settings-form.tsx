@@ -11,10 +11,12 @@ export function ProfileSettingsForm({
   displayName,
   username,
   email,
+  bio,
 }: {
   displayName: string;
   username: string;
   email: string;
+  bio: string;
 }) {
   const [state, formAction, pending] = useActionState<ProfileSettingsState, FormData>(
     updateDisplayName,
@@ -57,6 +59,22 @@ export function ProfileSettingsForm({
           />
         </div>
         <span className="mt-1 block text-[12px] text-ink-soft">{USERNAME_HINT}</span>
+      </label>
+
+      <label className="block">
+        <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+          Bio
+        </span>
+        <textarea
+          name="bio"
+          defaultValue={bio}
+          maxLength={500}
+          rows={4}
+          className="mt-1 w-full border border-rule-dark px-3 py-2.5 text-sm focus:border-ink focus:outline-none"
+        />
+        <span className="mt-1 block text-[12px] text-ink-soft">
+          Shown on your public author page.
+        </span>
       </label>
 
       <label className="block">

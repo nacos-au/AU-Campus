@@ -37,6 +37,7 @@ export default async function AccountSettingsPage() {
         displayName={profile?.display_name ?? ""}
         username={profile?.username ?? ""}
         email={user.email}
+        bio={profile?.bio ?? ""}
       />
     </div>
   );

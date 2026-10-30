@@ -1,0 +1,91 @@
+{
+  "nav": {
+    "home": "Inicio",
+    "editions": "Ediciones impresas",
+    "talent": "Talento",
+    "forum": "Foro",
+    "account": "Cuenta",
+    "admin": "Redacción",
+    "signIn": "Iniciar sesión",
+    "signOut": "Cerrar sesión",
+    "subscribe": "Comprar el número de esta semana",
+    "subscribeShort": "Comprar edición"
+  },
+  "home": {
+    "latestNews": "Últimas noticias",
+    "topNews": "Lo más leído",
+    "opinion": "Opinión",
+    "moreIn": "Más en",
+    "editionsPromo": "La edición impresa, en línea",
+    "editionsPromoBody": "Cada número del periódico, página a página, tal como salió a imprenta. Compra una vez, léelo siempre.",
+    "browseEditions": "Ver ediciones",
+    "advertisement": "Publicidad",
+    "minRead": "{minutes} min de lectura",
+    "by": "Por {name}"
+  },
+  "editions": {
+    "title": "Ediciones impresas",
+    "subtitle": "Réplicas digitales completas del periódico impreso. Las compras se desbloquean al instante y quedan en tu cuenta.",
+    "buy": "Comprar · {price}",
+    "read": "Leer número",
+    "owned": "En tu biblioteca",
+    "signInToBuy": "Inicia sesión para comprar",
+    "comingSoon": "Próximamente"
+  },
+  "reader": {
+    "protectedNotice": "Esta edición está licenciada a {email}. Copiar, imprimir y redistribuir están desactivados.",
+    "loading": "Preparando tu edición segura…",
+    "page": "Página {current} de {total}",
+    "notAvailable": "El archivo de esta edición aún no se ha subido."
+  },
+  "auth": {
+    "signIn": "Iniciar sesión",
+    "signUp": "Crear cuenta",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "displayName": "Nombre completo",
+    "haveAccount": "¿Ya tienes cuenta?",
+    "noAccount": "¿Nuevo aquí?",
+    "signInCta": "Iniciar sesión",
+    "signUpCta": "Crear cuenta"
+  },
+  "account": {
+    "title": "Tu cuenta",
+    "library": "Tu biblioteca",
+    "libraryEmpty": "Aún no has comprado ninguna edición.",
+    "purchasedOn": "Comprado el {date}",
+    "settings": "Ajustes de la cuenta",
+    "newsletters": "Boletines",
+    "editProfile": "Editar tu perfil",
+    "logOut": "Cerrar sesión",
+    "yourContent": "Tu contenido",
+    "getSupport": "Obtener ayuda",
+    "helpCenter": "Centro de ayuda"
+  },
+  "footer": {
+    "rights": "Todos los derechos reservados.",
+    "tagline": "El periódico estudiantil independiente de {university}.",
+    "sections": "Secciones",
+    "newsroom": "La redacción",
+    "talent": "Talento",
+    "forum": "Foro",
+    "editionsHeading": "Ediciones",
+    "account": "Cuenta",
+    "follow": "Síguenos",
+    "about": "Quiénes somos",
+    "editorialBoard": "Consejo editorial",
+    "join": "Únete a la redacción",
+    "ethics": "Ética y correcciones",
+    "advertise": "Anúnciate con nosotros",
+    "contact": "Contacto",
+    "printEditions": "Ediciones impresas",
+    "latestIssue": "Último número",
+    "buyIssue": "Comprar un número",
+    "signIn": "Iniciar sesión",
+    "createAccount": "Crear cuenta",
+    "yourLibrary": "Tu biblioteca",
+    "privacy": "Política de privacidad",
+    "terms": "Términos de uso",
+    "sitemap": "Mapa del sitio"
+  }
+}

@@ -55,6 +55,12 @@ export default async function AdminLayout({
                   <Link href="/admin/ads" className="hover:text-accent">
                     Ads
                   </Link>
+                  <Link href="/admin/talent" className="hover:text-accent">
+                    Talent
+                  </Link>
+                  <Link href="/admin/forum" className="hover:text-accent">
+                    Forum
+                  </Link>
                 </>
               )}
               {isAdmin && (

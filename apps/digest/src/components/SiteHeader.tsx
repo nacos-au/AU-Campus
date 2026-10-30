@@ -5,13 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile, hasRole } from "@/lib/auth";
 import { signOut } from "@/app/(auth)/actions";
 import { site } from "@/lib/site";
-import { canToggleDemoMode, isDemoMode } from "@/lib/demo-mode";
-import { getDemoModeCookie } from "@/app/actions/demo-mode";
 import { isAdminModeActive } from "@/app/actions/admin-mode";
 import type { Section } from "@/lib/types";
 import { AdminModeBanner } from "./AdminModeBanner";
 import { AdminModeToggle } from "./AdminModeToggle";
-import { DemoModeToggle } from "./DemoModeToggle";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { MobileMenu } from "./MobileMenu";
 import { ProfileMenu } from "./ProfileMenu";
@@ -19,17 +16,14 @@ import { WorldClock } from "./WorldClock";
 import { IconSignIn } from "./icons";
 
 export async function SiteHeader() {
-  const [t, locale, { user, profile }, supabase, demoCookie, adminMode] = await Promise.all([
+  const [t, locale, { user, profile }, supabase, adminMode] = await Promise.all([
     getTranslations("nav"),
     getLocale(),
     getSessionProfile(),
     createClient(),
-    getDemoModeCookie(),
     isAdminModeActive(),
   ]);
 
-  const demoActive = isDemoMode(demoCookie);
-  const showDemoToggle = canToggleDemoMode();
   const isWriter = hasRole(profile, "writer");
   const canAdminMode = isWriter;
   const adminModeOn = adminMode && canAdminMode;
@@ -108,7 +102,6 @@ export async function SiteHeader() {
         <div className="flex items-center justify-between gap-3 px-3 pb-2.5">
           <div className="flex items-center gap-2">
             <AdminModeToggle canUse={canAdminMode} active={adminModeOn} />
-            <DemoModeToggle active={demoActive} canToggle={showDemoToggle} />
           </div>
           <p className="min-w-0 truncate text-[11px] font-semibold text-ink">
             {todayShort}
@@ -158,7 +151,6 @@ export async function SiteHeader() {
 
           <div className="flex items-center justify-end gap-4 text-xs">
             <AdminModeToggle canUse={canAdminMode} active={adminModeOn} />
-            <DemoModeToggle active={demoActive} canToggle={showDemoToggle} />
             <LanguageSwitcher />
             {user ? (
               <>
@@ -217,6 +209,16 @@ export async function SiteHeader() {
                 </Link>
               </li>
             ))}
+            <li>
+              <Link href="/talent" className="hover:text-accent whitespace-nowrap">
+                {t("talent")}
+              </Link>
+            </li>
+            <li>
+              <Link href="/forum" className="hover:text-accent whitespace-nowrap">
+                {t("forum")}
+              </Link>
+            </li>
             <li>
               <Link
                 href="/editions"

@@ -1,9 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
+import { getDemoModeCookie } from "@/app/actions/demo-mode";
 import { createClient } from "@/lib/supabase/server";
+import { canToggleDemoMode, isDemoMode } from "@/lib/demo-mode";
 import { site } from "@/lib/site";
 import type { Section } from "@/lib/types";
+import { DemoModeToggle } from "./DemoModeToggle";
 import {
   IconFacebook,
   IconInstagram,
@@ -61,10 +64,15 @@ function FooterLink({
 }
 
 export async function SiteFooter() {
-  const t = await getTranslations("footer");
+  const [t, demoCookie] = await Promise.all([
+    getTranslations("footer"),
+    getDemoModeCookie(),
+  ]);
   const supabase = await createClient();
   const { data } = await supabase.from("sections").select("*").order("position");
   const sections = (data ?? []) as Section[];
+  const showDemoToggle = canToggleDemoMode();
+  const demoActive = isDemoMode(demoCookie);
 
   return (
     <footer className="mt-16">
@@ -122,6 +130,8 @@ export async function SiteFooter() {
           </Column>
 
           <Column heading={t("newsroom")}>
+            <FooterLink href="/talent">{t("talent")}</FooterLink>
+            <FooterLink href="/forum">{t("forum")}</FooterLink>
             <FooterLink href="#">{t("about")}</FooterLink>
             <FooterLink href="#">{t("editorialBoard")}</FooterLink>
             <FooterLink href="#">{t("join")}</FooterLink>
@@ -160,6 +170,13 @@ export async function SiteFooter() {
             </a>
           </div>
         </div>
+
+        {/* DEPLOY_DEMO_TOGGLE — remove this whole block when staging toggle is no longer needed */}
+        {(showDemoToggle || demoActive) && (
+          <div className="mt-4 flex items-center gap-2 border-t border-rule/60 pt-3 text-[10px] text-ink-soft/80">
+            <DemoModeToggle active={demoActive} canToggle={showDemoToggle} />
+          </div>
+        )}
       </div>
     </footer>
   );

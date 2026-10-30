@@ -12,9 +12,8 @@ import {
 } from "@/components/stories";
 import { formatNaira } from "@/lib/site";
 import type { ArticleWithMeta, Edition, Section } from "@/lib/types";
-import { canToggleDemoMode, isDemoMode } from "@/lib/demo-mode";
+import { isDemoMode } from "@/lib/demo-mode";
 import { getDemoModeCookie } from "@/app/actions/demo-mode";
-import { DemoModeToggle } from "@/components/DemoModeToggle";
 
 export default async function HomePage() {
   const demoCookie = await getDemoModeCookie();
@@ -23,7 +22,7 @@ export default async function HomePage() {
   const t = await getTranslations("home");
 
   const ARTICLE_SELECT =
-    "*, sections(slug, name), profiles(display_name)";
+    "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username)";
 
   const [{ data: articlesData }, { data: sectionsData }, { data: editionsData }] =
     await Promise.all([
@@ -54,13 +53,8 @@ export default async function HomePage() {
         <p className="mt-2 text-sm max-w-md mx-auto">
           {demoActive
             ? "Demo fixtures failed to load — try refreshing. If this persists, report a bug."
-            : "Your Supabase database is connected but empty. Run the SQL migrations and seed in the Supabase SQL editor, or switch to Demo for sample stories."}
+            : "Your Supabase database is connected but empty. Run the SQL migrations and seed in the Supabase SQL editor, or use Demo/Live in the page footer for sample stories."}
         </p>
-        {canToggleDemoMode() && (
-          <div className="mt-6 flex justify-center">
-            <DemoModeToggle active={demoActive} canToggle={canToggleDemoMode()} />
-          </div>
-        )}
         {!demoActive && (
           <p className="mt-4 text-xs">
             Newsroom:{" "}

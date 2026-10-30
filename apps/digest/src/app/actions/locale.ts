@@ -2,10 +2,10 @@
 
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { LOCALE_COOKIE, locales, type Locale } from "@/i18n/locales";
+import { isLocale, LOCALE_COOKIE } from "@/i18n/locales";
 
 export async function setLocale(locale: string) {
-  if (!locales.includes(locale as Locale)) return;
+  if (!isLocale(locale)) return;
   const cookieStore = await cookies();
   cookieStore.set(LOCALE_COOKIE, locale, {
     path: "/",

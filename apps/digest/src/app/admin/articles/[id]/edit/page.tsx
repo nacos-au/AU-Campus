@@ -22,6 +22,10 @@ export default async function EditArticlePage({
 
   if (!article) notFound();
   return (
-    <ArticleForm article={article} isStaff={hasRole(profile, "editor")} />
+    <ArticleForm
+      article={article}
+      userId={profile.id}
+      isStaff={hasRole(profile, "editor")}
+    />
   );
 }

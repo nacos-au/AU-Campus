@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { slugify } from "@/lib/articles";
 import { uploadCover } from "@/lib/uploads";
 import { locales, localeNames } from "@/i18n/locales";
-import type { Article, Section } from "@/lib/types";
+import type { Article, Profile, Section } from "@/lib/types";
 
 const EMPTY_DOC = { type: "doc", content: [] };
 
@@ -42,9 +42,11 @@ function ToolbarButton({
 
 export function ArticleForm({
   article,
+  userId,
   isStaff = false,
 }: {
   article: Article | null;
+  userId: string;
   isStaff?: boolean;
 }) {
   const supabase = useMemo(() => createClient(), []);
@@ -57,6 +59,9 @@ export function ArticleForm({
   );
   const [language, setLanguage] = useState(article?.language ?? "en");
   const [coverUrl, setCoverUrl] = useState(article?.cover_url ?? "");
+  const [assignedEditorId, setAssignedEditorId] = useState(
+    article?.assigned_editor_id ?? ""
+  );
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -72,6 +77,21 @@ export function ArticleForm({
     },
   });
 
+  const { data: editors = [] } = useQuery({
+    queryKey: ["newsroom-editors"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, display_name, username, role, is_super_admin")
+        .or("role.eq.editor,role.eq.admin,is_super_admin.eq.true")
+        .order("display_name");
+      if (error) throw error;
+      return (data as Pick<Profile, "id" | "display_name" | "username">[]).filter(
+        (p) => p.id !== userId
+      );
+    },
+  });
+
   const editor = useEditor({
     extensions: [StarterKit],
     content: article?.body ?? EMPTY_DOC,
@@ -82,18 +102,18 @@ export function ArticleForm({
   });
 
   const save = useMutation({
-    mutationFn: async (action: "draft" | "submit" | "publish") => {
+    mutationFn: async (action: "draft" | "submit") => {
       if (!title.trim()) throw new Error("A headline is required.");
       if (!sectionId) throw new Error("Pick a section.");
 
       let status: "draft" | "submitted" | "published";
-      if (action === "publish") {
-        if (!isStaff) throw new Error("Only editors can publish.");
-        status = "published";
-      } else if (action === "submit") {
+      if (action === "submit") {
+        if (!assignedEditorId) throw new Error("Assign a different editor.");
+        if (assignedEditorId === userId) {
+          throw new Error("Assign a different editor.");
+        }
         status = "submitted";
       } else if (article?.status === "published" && isStaff) {
-        // Staff editing a live story keeps it published unless they unpublish.
         status = "published";
       } else {
         status = "draft";
@@ -108,8 +128,10 @@ export function ArticleForm({
         language,
         status,
       };
-      if (action === "publish") {
-        payload.published_at = new Date().toISOString();
+      if (action === "submit") {
+        payload.assigned_editor_id = assignedEditorId;
+      } else if (status === "draft" && assignedEditorId) {
+        payload.assigned_editor_id = assignedEditorId;
       }
 
       if (article) {
@@ -192,6 +214,23 @@ export function ArticleForm({
               {locales.map((l) => (
                 <option key={l} value={l}>
                   {localeNames[l]}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+            Assign editor
+            <select
+              value={assignedEditorId}
+              onChange={(e) => setAssignedEditorId(e.target.value)}
+              className="mt-1 block border border-rule-dark px-3 py-2 text-sm text-ink focus:border-ink focus:outline-none"
+            >
+              <option value="">Choose…</option>
+              {editors.map((person) => (
+                <option key={person.id} value={person.id}>
+                  {person.display_name}
+                  {person.username ? ` (@${person.username})` : ""}
                 </option>
               ))}
             </select>
@@ -306,40 +345,14 @@ export function ArticleForm({
           >
             Save draft
           </button>
-          {!isStaff && (
+          {article?.status !== "published" && (
             <button
               onClick={() => save.mutate("submit")}
               disabled={save.isPending || uploading}
               className="bg-accent px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
             >
-              Save &amp; submit for review
+              Submit to editor
             </button>
-          )}
-          {isStaff && (
-            <>
-              <button
-                onClick={() => save.mutate("submit")}
-                disabled={save.isPending || uploading}
-                className="border border-ink px-5 py-2.5 text-xs font-semibold uppercase tracking-wider hover:bg-ink hover:text-paper transition-colors disabled:opacity-50"
-              >
-                Save to review queue
-              </button>
-              <button
-                onClick={() => {
-                  if (
-                    !confirm(
-                      "Admin action: publish this article now?\n\nIt will go live on AU Digest immediately."
-                    )
-                  )
-                    return;
-                  save.mutate("publish");
-                }}
-                disabled={save.isPending || uploading}
-                className="bg-accent px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-white hover:bg-accent-hover transition-colors disabled:opacity-50"
-              >
-                Publish now
-              </button>
-            </>
           )}
         </div>
       </div>

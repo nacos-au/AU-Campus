@@ -1,0 +1,91 @@
+{
+  "nav": {
+    "home": "Gida",
+    "editions": "Bugaggun jaridu",
+    "talent": "Bayanai",
+    "forum": "Dandalin tattaunawa",
+    "account": "Asusu",
+    "admin": "Ofishin labarai",
+    "signIn": "Shiga",
+    "signOut": "Fita",
+    "subscribe": "Sayi jaridar wannan mako",
+    "subscribeShort": "Sayi jarida"
+  },
+  "home": {
+    "latestNews": "Sabbin labarai",
+    "topNews": "Manyan labarai",
+    "opinion": "Ra'ayi",
+    "moreIn": "Ƙari a cikin",
+    "editionsPromo": "Jaridar bugawa, a yanar gizo",
+    "editionsPromoBody": "Kowane lambar jarida, shafi bayan shafi, kamar yadda aka buga. Saya sau ɗaya, karanta har abada.",
+    "browseEditions": "Duba jaridu",
+    "advertisement": "Talla",
+    "minRead": "Mintuna {minutes} na karantawa",
+    "by": "Daga {name}"
+  },
+  "editions": {
+    "title": "Bugaggun jaridu",
+    "subtitle": "Cikakkun kwafin dijital na jaridar da aka buga. Abin da ka saya yana buɗe nan take kuma yana cikin asusunka.",
+    "buy": "Saya · {price}",
+    "read": "Karanta jarida",
+    "owned": "A cikin ɗakin karatu naka",
+    "signInToBuy": "Shiga don saya",
+    "comingSoon": "Yana zuwa nan ba da jimawa ba"
+  },
+  "reader": {
+    "protectedNotice": "An ba da lasisin wannan jarida ga {email}. Kwafi, bugawa da rarrabawa an kashe su.",
+    "loading": "Ana shirya jaridar ka mai tsaro…",
+    "page": "Shafi {current} daga {total}",
+    "notAvailable": "Ba a ɗora fayil ɗin wannan jarida ba tukuna."
+  },
+  "auth": {
+    "signIn": "Shiga",
+    "signUp": "Kirkiro asusu",
+    "email": "Adireshin imel",
+    "password": "Kalmar sirri",
+    "displayName": "Cikakken suna",
+    "haveAccount": "Kana da asusu?",
+    "noAccount": "Sabo a nan?",
+    "signInCta": "Shiga",
+    "signUpCta": "Kirkiro asusu"
+  },
+  "account": {
+    "title": "Asusunka",
+    "library": "Ɗakin karatunka",
+    "libraryEmpty": "Ban sayi wata jarida ba tukuna.",
+    "purchasedOn": "An saya a {date}",
+    "settings": "Saitunan asusu",
+    "newsletters": "Wasiku",
+    "editProfile": "Gyara bayananka",
+    "logOut": "Fita",
+    "yourContent": "Abubuwan ka",
+    "getSupport": "Nemi taimako",
+    "helpCenter": "Cibiyar taimako"
+  },
+  "footer": {
+    "rights": "Duk haƙƙoƙi an kiyaye su.",
+    "tagline": "Jaridar ɗalibai masu zaman kansu ta {university}.",
+    "sections": "Sassan",
+    "newsroom": "Ofishin labarai",
+    "talent": "Bayanai",
+    "forum": "Dandalin tattaunawa",
+    "editionsHeading": "Jaridu",
+    "account": "Asusu",
+    "follow": "Bi mu",
+    "about": "Game da mu",
+    "editorialBoard": "Kwamitin edita",
+    "join": "Shiga ofishin labarai",
+    "ethics": "Da'a da gyare-gyare",
+    "advertise": "Yi talla tare da mu",
+    "contact": "Tuntuɓe mu",
+    "printEditions": "Bugaggun jaridu",
+    "latestIssue": "Sabon lamba",
+    "buyIssue": "Sayi lamba",
+    "signIn": "Shiga",
+    "createAccount": "Kirkiro asusu",
+    "yourLibrary": "Ɗakin karatunka",
+    "privacy": "Manufar sirri",
+    "terms": "Sharuɗɗan amfani",
+    "sitemap": "Taswirar shafi"
+  }
+}

@@ -148,6 +148,22 @@ export function MobileMenu({
                 ))}
                 <li>
                   <Link
+                    href="/talent"
+                    className="block px-4 py-3.5 font-serif text-lg font-bold"
+                  >
+                    {t("talent")}
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/forum"
+                    className="block px-4 py-3.5 font-serif text-lg font-bold"
+                  >
+                    {t("forum")}
+                  </Link>
+                </li>
+                <li>
+                  <Link
                     href="/editions"
                     className="block px-4 py-3.5 font-serif text-lg font-bold text-accent"
                   >

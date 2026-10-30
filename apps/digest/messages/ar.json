@@ -1,0 +1,91 @@
+{
+  "nav": {
+    "home": "الرئيسية",
+    "editions": "الطبعات المطبوعة",
+    "talent": "المواهب",
+    "forum": "المنتدى",
+    "account": "الحساب",
+    "admin": "غرفة التحرير",
+    "signIn": "تسجيل الدخول",
+    "signOut": "تسجيل الخروج",
+    "subscribe": "اشترِ عدد هذا الأسبوع",
+    "subscribeShort": "اشترِ الطبعة"
+  },
+  "home": {
+    "latestNews": "آخر الأخبار",
+    "topNews": "الأبرز",
+    "opinion": "الرأي",
+    "moreIn": "المزيد في",
+    "editionsPromo": "الطبعة المطبوعة، عبر الإنترنت",
+    "editionsPromoBody": "كل عدد من الصحيفة، صفحة بصفحة، كما صدرت. اشترِ مرة واقرأ إلى الأبد.",
+    "browseEditions": "تصفح الطبعات",
+    "advertisement": "إعلان",
+    "minRead": "{minutes} دقائق للقراءة",
+    "by": "بقلم {name}"
+  },
+  "editions": {
+    "title": "الطبعات المطبوعة",
+    "subtitle": "نسخ رقمية كاملة من الصحيفة المطبوعة. تُفتح المشتريات فورًا وتبقى في حسابك.",
+    "buy": "اشترِ · {price}",
+    "read": "اقرأ العدد",
+    "owned": "في مكتبتك",
+    "signInToBuy": "سجّل الدخول للشراء",
+    "comingSoon": "قريبًا"
+  },
+  "reader": {
+    "protectedNotice": "هذه الطبعة مرخّصة لـ {email}. النسخ والطباعة وإعادة التوزيع معطّلة.",
+    "loading": "جارٍ تجهيز طبعتك الآمنة…",
+    "page": "صفحة {current} من {total}",
+    "notAvailable": "لم يُرفع ملف هذه الطبعة بعد."
+  },
+  "auth": {
+    "signIn": "تسجيل الدخول",
+    "signUp": "إنشاء حساب",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "displayName": "الاسم الكامل",
+    "haveAccount": "لديك حساب بالفعل؟",
+    "noAccount": "جديد هنا؟",
+    "signInCta": "تسجيل الدخول",
+    "signUpCta": "إنشاء حساب"
+  },
+  "account": {
+    "title": "حسابك",
+    "library": "مكتبتك",
+    "libraryEmpty": "لم تشترِ أي طبعة بعد.",
+    "purchasedOn": "تم الشراء في {date}",
+    "settings": "إعدادات الحساب",
+    "newsletters": "النشرات",
+    "editProfile": "عدّل ملفك",
+    "logOut": "تسجيل الخروج",
+    "yourContent": "محتواك",
+    "getSupport": "احصل على المساعدة",
+    "helpCenter": "مركز المساعدة"
+  },
+  "footer": {
+    "rights": "جميع الحقوق محفوظة.",
+    "tagline": "الصحيفة الطلابية المستقلة لـ {university}.",
+    "sections": "الأقسام",
+    "newsroom": "غرفة التحرير",
+    "talent": "المواهب",
+    "forum": "المنتدى",
+    "editionsHeading": "الطبعات",
+    "account": "الحساب",
+    "follow": "تابعنا",
+    "about": "من نحن",
+    "editorialBoard": "هيئة التحرير",
+    "join": "انضم إلى التحرير",
+    "ethics": "الأخلاقيات والتصحيحات",
+    "advertise": "أعلن معنا",
+    "contact": "اتصل بنا",
+    "printEditions": "الطبعات المطبوعة",
+    "latestIssue": "آخر عدد",
+    "buyIssue": "اشترِ عددًا",
+    "signIn": "تسجيل الدخول",
+    "createAccount": "إنشاء حساب",
+    "yourLibrary": "مكتبتك",
+    "privacy": "سياسة الخصوصية",
+    "terms": "شروط الاستخدام",
+    "sitemap": "خريطة الموقع"
+  }
+}

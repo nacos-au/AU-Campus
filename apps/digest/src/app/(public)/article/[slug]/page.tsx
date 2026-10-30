@@ -12,7 +12,8 @@ import type { ArticleWithMeta } from "@/lib/types";
 
 export const revalidate = 60;
 
-const SELECT = "*, sections(slug, name), profiles(display_name)";
+const SELECT =
+  "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username)";
 
 async function getArticle(slug: string) {
   const supabase = await createClient();
@@ -98,9 +99,18 @@ export default async function ArticlePage({
           {article.profiles?.display_name && (
             <span>
               By{" "}
-              <span className="font-semibold text-ink">
-                {article.profiles.display_name}
-              </span>
+              {article.profiles.username ? (
+                <Link
+                  href={`/author/${article.profiles.username}`}
+                  className="font-semibold text-ink hover:text-accent"
+                >
+                  {article.profiles.display_name}
+                </Link>
+              ) : (
+                <span className="font-semibold text-ink">
+                  {article.profiles.display_name}
+                </span>
+              )}
             </span>
           )}
           <span>{published}</span>

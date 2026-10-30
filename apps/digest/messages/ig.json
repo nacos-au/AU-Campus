@@ -1,0 +1,91 @@
+{
+  "nav": {
+    "home": "Ụlọ",
+    "editions": "Mbipụta akwụkwọ",
+    "talent": "Talent",
+    "forum": "Ogbe mkparịta ụka",
+    "account": "Akaụntụ",
+    "admin": "Ụlọ ọrụ akụkọ",
+    "signIn": "Banye",
+    "signOut": "Pụọ",
+    "subscribe": "Zụta mbipụta izu a",
+    "subscribeShort": "Zụta mbipụta"
+  },
+  "home": {
+    "latestNews": "Akụkọ ọhụrụ",
+    "topNews": "Akụkọ dị mkpa",
+    "opinion": "Echiche",
+    "moreIn": "Ọzọ na",
+    "editionsPromo": "Mbipụta akwụkwọ, n'ịntanetị",
+    "editionsPromoBody": "Mbipụta ọ bụla nke akwụkwọ akụkọ, ibe n'ibe, dịka e bipụtara ya. Zụọ otu ugboro, gụọ mgbe niile.",
+    "browseEditions": "Lee mbipụta",
+    "advertisement": "Mgbasa ozi",
+    "minRead": "Nkeji {minutes} ịgụ",
+    "by": "Site n'aka {name}"
+  },
+  "editions": {
+    "title": "Mbipụta akwụkwọ",
+    "subtitle": "Nṅomi dijitalụ zuru ezu nke akwụkwọ akụkọ. Ihe ị zụtara na-emeghe ozugbo ma nọrọ n'akaụntụ gị.",
+    "buy": "Zụta · {price}",
+    "read": "Gụọ mbipụta",
+    "owned": "N'ọbá akwụkwọ gị",
+    "signInToBuy": "Banye iji zụta",
+    "comingSoon": "Na-abịa n'oge na-adịghị anya"
+  },
+  "reader": {
+    "protectedNotice": "E nyere mbipụta a ikike nye {email}. Idepụta, ibipụta na ikesa agbanyụrụ.",
+    "loading": "Na-akwado mbipụta nchekwa gị…",
+    "page": "Ibe {current} n'ime {total}",
+    "notAvailable": "E tinyebeghị faịlụ mbipụta a."
+  },
+  "auth": {
+    "signIn": "Banye",
+    "signUp": "Mepụta akaụntụ",
+    "email": "Adreesị email",
+    "password": "Okwuntughe",
+    "displayName": "Aha zuru ezu",
+    "haveAccount": "Ị nwere akaụntụ?",
+    "noAccount": "Ọhụrụ ebe a?",
+    "signInCta": "Banye",
+    "signUpCta": "Mepụta akaụntụ"
+  },
+  "account": {
+    "title": "Akaụntụ gị",
+    "library": "Ọbá akwụkwọ gị",
+    "libraryEmpty": "Ị zụtabeghị mbipụta ọ bụla.",
+    "purchasedOn": "Zụtara na {date}",
+    "settings": "Ntọala akaụntụ",
+    "newsletters": "Akwụkwọ ozi",
+    "editProfile": "Dezie profaịlụ gị",
+    "logOut": "Pụọ",
+    "yourContent": "Ọdịnaya gị",
+    "getSupport": "Nweta enyemaka",
+    "helpCenter": "Ebe enyemaka"
+  },
+  "footer": {
+    "rights": "Echedoro ikike niile.",
+    "tagline": "Akwụkwọ akụkọ ụmụ akwụkwọ nọọrọ onwe nke {university}.",
+    "sections": "Ngalaba",
+    "newsroom": "Ụlọ ọrụ akụkọ",
+    "talent": "Talent",
+    "forum": "Ogbe mkparịta ụka",
+    "editionsHeading": "Mbipụta",
+    "account": "Akaụntụ",
+    "follow": "Soro anyị",
+    "about": "Banyere anyị",
+    "editorialBoard": "Kọmitii nchịkọta akụkọ",
+    "join": "Sonye n'ụlọ ọrụ akụkọ",
+    "ethics": "Omume na ndozi",
+    "advertise": "Gbasaa ozi anyị",
+    "contact": "Kpọtụrụ anyị",
+    "printEditions": "Mbipụta akwụkwọ",
+    "latestIssue": "Mbipụta ọhụrụ",
+    "buyIssue": "Zụta mbipụta",
+    "signIn": "Banye",
+    "createAccount": "Mepụta akaụntụ",
+    "yourLibrary": "Ọbá akwụkwọ gị",
+    "privacy": "Amụma nzuzo",
+    "terms": "Usoro ojiji",
+    "sitemap": "Maapụ saịtị"
+  }
+}

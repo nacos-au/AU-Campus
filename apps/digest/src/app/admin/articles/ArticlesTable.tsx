@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import type { ArticleStatus, ArticleWithMeta } from "@/lib/types";
+import type { ArticleStatus, ArticleWithMeta, Profile } from "@/lib/types";
 
 const STATUS_STYLES: Record<ArticleStatus, string> = {
   draft: "bg-gray-100 text-gray-700",
@@ -21,11 +21,16 @@ const FILTERS: ("all" | ArticleStatus)[] = [
   "rejected",
 ];
 
+const ARTICLE_SELECT =
+  "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username), assignee:profiles!articles_assigned_editor_id_fkey(display_name)";
+
 export function ArticlesTable({
   isStaff,
+  isAdmin,
   userId,
 }: {
   isStaff: boolean;
+  isAdmin: boolean;
   userId: string;
 }) {
   const supabase = useMemo(() => createClient(), []);
@@ -37,7 +42,7 @@ export function ArticlesTable({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("articles")
-        .select("*, sections(slug, name), profiles(display_name)")
+        .select(ARTICLE_SELECT)
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return data as unknown as ArticleWithMeta[];
@@ -80,6 +85,32 @@ export function ArticlesTable({
   const remove = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("articles").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: ["admin-articles"] }),
+  });
+
+  const { data: editors = [] } = useQuery({
+    queryKey: ["newsroom-editors"],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, display_name, role, is_super_admin")
+        .or("role.eq.editor,role.eq.admin,is_super_admin.eq.true")
+        .order("display_name");
+      if (error) throw error;
+      return data as Pick<Profile, "id" | "display_name">[];
+    },
+  });
+
+  const reassign = useMutation({
+    mutationFn: async (vars: { id: string; editorId: string }) => {
+      const { error } = await supabase
+        .from("articles")
+        .update({ assigned_editor_id: vars.editorId })
+        .eq("id", vars.id);
       if (error) throw error;
     },
     onSettled: () =>
@@ -144,8 +175,11 @@ export function ArticlesTable({
                     {a.title}
                   </p>
                   <p className="mt-0.5 text-xs text-ink-soft">
-                    {a.sections?.name} · {a.profiles?.display_name} ·{" "}
-                    {new Date(a.updated_at).toLocaleString()}
+                    {a.sections?.name} · {a.profiles?.display_name}
+                    {a.assignee?.display_name
+                      ? ` · assigned to ${a.assignee.display_name}`
+                      : ""}{" "}
+                    · {new Date(a.updated_at).toLocaleString()}
                   </p>
                   {a.status === "rejected" && a.editor_note && (
                     <p className="mt-1 text-xs text-red-700">
@@ -178,22 +212,10 @@ export function ArticlesTable({
                     </Link>
                   )}
 
-                  {/* Writer: submit a draft */}
-                  {!isStaff &&
-                    a.author_id === userId &&
-                    (a.status === "draft" || a.status === "rejected") && (
-                      <button
-                        onClick={() =>
-                          updateStatus.mutate({ id: a.id, status: "submitted" })
-                        }
-                        className="bg-ink px-2.5 py-1 text-paper hover:bg-accent transition-colors"
-                      >
-                        Submit for review
-                      </button>
-                    )}
-
-                  {/* Editor: publish / reject / feature */}
-                  {isStaff && a.status === "submitted" && (
+                  {isStaff &&
+                    a.status === "submitted" &&
+                    a.assigned_editor_id === userId &&
+                    a.author_id !== userId && (
                     <>
                       <button
                         onClick={() => {
@@ -226,6 +248,25 @@ export function ArticlesTable({
                         Reject
                       </button>
                     </>
+                  )}
+                  {isAdmin && a.status === "submitted" && a.author_id !== userId && (
+                    <select
+                      value={a.assigned_editor_id ?? ""}
+                      onChange={(e) => {
+                        if (!e.target.value || e.target.value === a.author_id) return;
+                        reassign.mutate({ id: a.id, editorId: e.target.value });
+                      }}
+                      className="border border-rule-dark px-2 py-1 text-xs"
+                    >
+                      <option value="">Reassign…</option>
+                      {editors
+                        .filter((person) => person.id !== a.author_id)
+                        .map((person) => (
+                          <option key={person.id} value={person.id}>
+                            {person.display_name}
+                          </option>
+                        ))}
+                    </select>
                   )}
                   {isStaff && a.status === "published" && (
                     <>

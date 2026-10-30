@@ -24,7 +24,9 @@ export default async function SectionPage({
 
   const { data } = await supabase
     .from("articles")
-    .select("*, sections(slug, name), profiles(display_name)")
+    .select(
+      "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username)"
+    )
     .eq("status", "published")
     .eq("section_id", section.id)
     .order("published_at", { ascending: false })

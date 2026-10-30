@@ -16,12 +16,57 @@ function doc(...paras: string[]) {
   };
 }
 
-const AUTHORS = [
-  "Wale Adeyemi",
-  "Ngozi Bello",
-  "Tunde Bakare",
-  "Amina Yusuf",
-  "Chidera Okafor",
+export const demoAuthors = [
+  {
+    id: "demo-author-0",
+    display_name: "Wale Adeyemi",
+    username: "wale",
+    bio: "Covers the senate, faculties, and the stories that outlast a term.",
+    role: "writer",
+    verification_level: "verified",
+    forum_karma: 12,
+    created_at: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    id: "demo-author-1",
+    display_name: "Ngozi Bello",
+    username: "ngozi",
+    bio: "Campus life, culture, and the people who make the place.",
+    role: "writer",
+    verification_level: "verified",
+    forum_karma: 4,
+    created_at: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    id: "demo-author-2",
+    display_name: "Tunde Bakare",
+    username: "tunde",
+    bio: "Sports desk. Scores, lineups, and what the result actually meant.",
+    role: "editor",
+    verification_level: "verified",
+    forum_karma: 20,
+    created_at: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    id: "demo-author-3",
+    display_name: "Amina Yusuf",
+    username: "amina",
+    bio: "Opinion and reported essays.",
+    role: "writer",
+    verification_level: "verified",
+    forum_karma: 8,
+    created_at: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    id: "demo-author-4",
+    display_name: "Chidera Okafor",
+    username: "chidera",
+    bio: "Science, labs, and the technology students actually use.",
+    role: "writer",
+    verification_level: "soft",
+    forum_karma: 0,
+    created_at: "2026-01-01T00:00:00.000Z",
+  },
 ];
 
 let articleSeq = 0;
@@ -45,7 +90,7 @@ function article(a: {
     body: doc(...a.paras),
     cover_url: `https://picsum.photos/seed/${a.imageSeed}/1200/800`,
     section_id: a.section.id,
-    author_id: `demo-author-${articleSeq % AUTHORS.length}`,
+    author_id: demoAuthors[articleSeq % demoAuthors.length].id,
     language: "en",
     status: "published",
     featured: a.featured ?? false,
@@ -54,7 +99,10 @@ function article(a: {
     created_at: new Date(Date.now() - a.hoursAgo * 3_600_000).toISOString(),
     updated_at: new Date(Date.now() - a.hoursAgo * 3_600_000).toISOString(),
     sections: { slug: a.section.slug, name: a.section.name },
-    profiles: { display_name: AUTHORS[articleSeq % AUTHORS.length] },
+    profiles: {
+      display_name: demoAuthors[articleSeq % demoAuthors.length].display_name,
+      username: demoAuthors[articleSeq % demoAuthors.length].username,
+    },
   };
 }
 
@@ -491,12 +539,88 @@ export const demoAds: Ad[] = [
   },
 ];
 
+export const demoTalent = [
+  {
+    id: "talent-1",
+    profile_id: "demo-author-4",
+    discipline: "development",
+    headline: "Builds the tools other students actually open",
+    blurb: "A developer whose campus projects shipped past the demo and into daily use.",
+    published: true,
+    created_at: "2026-03-01T00:00:00.000Z",
+    profiles: {
+      display_name: "Chidera Okafor",
+      username: "chidera",
+      bio: "Science, labs, and the technology students actually use.",
+    },
+  },
+];
+
+export const demoForumCategories = [
+  {
+    id: 1,
+    slug: "general",
+    name: "General",
+    description: "Anything worth discussing.",
+    position: 1,
+  },
+  {
+    id: 2,
+    slug: "campus",
+    name: "Campus",
+    description: "Life, events, and questions.",
+    position: 2,
+  },
+  {
+    id: 3,
+    slug: "feedback",
+    name: "Feedback",
+    description: "What the paper should cover next.",
+    position: 3,
+  },
+];
+
+export const demoForumThreads = [
+  {
+    id: "thread-1",
+    category_id: 2,
+    author_id: "demo-author-0",
+    title: "Which faculty event should the paper cover this month?",
+    body: "Reply with the one event you would actually read about.",
+    status: "visible",
+    score: 3,
+    reply_count: 1,
+    created_at: "2026-04-01T00:00:00.000Z",
+    updated_at: "2026-04-02T00:00:00.000Z",
+    profiles: { display_name: "Wale Adeyemi", username: "wale" },
+    forum_categories: { slug: "campus", name: "Campus" },
+  },
+];
+
+export const demoForumPosts = [
+  {
+    id: "post-1",
+    thread_id: "thread-1",
+    author_id: "demo-author-1",
+    body: "The design exhibition. It is on for three days and almost nobody outside the department knows.",
+    status: "visible",
+    score: 2,
+    created_at: "2026-04-02T00:00:00.000Z",
+    profiles: { display_name: "Ngozi Bello", username: "ngozi" },
+  },
+];
+
 export const demoTables: Record<string, Record<string, unknown>[]> = {
   sections: demoSections as unknown as Record<string, unknown>[],
   articles: demoArticles as unknown as Record<string, unknown>[],
   editions: demoEditions as unknown as Record<string, unknown>[],
   ads: demoAds as unknown as Record<string, unknown>[],
   purchases: [],
-  profiles: [],
+  profiles: demoAuthors as unknown as Record<string, unknown>[],
   edition_files: [],
+  talent_spotlights: demoTalent as unknown as Record<string, unknown>[],
+  forum_categories: demoForumCategories as unknown as Record<string, unknown>[],
+  forum_threads: demoForumThreads as unknown as Record<string, unknown>[],
+  forum_posts: demoForumPosts as unknown as Record<string, unknown>[],
+  forum_filters: [],
 };
