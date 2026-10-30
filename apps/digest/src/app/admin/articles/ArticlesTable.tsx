@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmDialog";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -50,6 +51,7 @@ export function ArticlesTable({
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<Filter>("all");
   const [error, setError] = useState<string | null>(null);
+  const { confirm } = useConfirm();
 
   const { data: articles = [], isLoading } = useQuery({
     queryKey: ["admin-articles"],
@@ -320,9 +322,15 @@ export function ArticlesTable({
                         {a.featured ? "Unfeature" : "Feature"}
                       </button>
                       <button
-                        onClick={() => {
-                          if (!confirm(`Unpublish "${a.title}"?`)) return;
-                          unpublish.mutate(a.id);
+                        onClick={async () => {
+                          if (
+                            await confirm({
+                              title: `Unpublish “${a.title}”?`,
+                              body: "Readers will no longer see this story. It returns to drafts.",
+                              confirmLabel: "Unpublish",
+                            })
+                          )
+                            unpublish.mutate(a.id);
                         }}
                         className="text-ink-soft underline hover:text-ink"
                       >
@@ -333,8 +341,15 @@ export function ArticlesTable({
 
                   {(isStaff || (mine && a.status === "draft")) && (
                     <button
-                      onClick={() => {
-                        if (confirm(`Permanently delete "${a.title}"?`))
+                      onClick={async () => {
+                        if (
+                          await confirm({
+                            title: `Delete “${a.title}”?`,
+                            body: "This permanently removes the article and its review thread.",
+                            confirmLabel: "Delete",
+                            danger: true,
+                          })
+                        )
                           remove.mutate(a.id);
                       }}
                       className="text-red-700 underline hover:text-red-900"

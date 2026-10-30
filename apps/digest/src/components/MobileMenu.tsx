@@ -160,7 +160,7 @@ export function MobileMenu({
                 <div className="flex flex-col gap-1 border-t border-rule pt-4">
                   {signedIn ? (
                     <>
-                      {isWriter && adminMode && (
+                      {isWriter && (
                         <Link
                           href="/admin"
                           className="py-2 text-sm font-semibold uppercase tracking-wider"

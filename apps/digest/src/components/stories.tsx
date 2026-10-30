@@ -14,7 +14,7 @@ export function Byline({
   article: ArticleWithMeta;
   className?: string;
 }) {
-  const name = article.profiles?.display_name;
+  const name = article.byline || article.profiles?.display_name;
   if (!name) return null;
   return (
     <p className={`text-[11px] uppercase tracking-wide text-ink-soft ${className}`}>

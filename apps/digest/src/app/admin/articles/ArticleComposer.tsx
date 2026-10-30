@@ -14,6 +14,7 @@ import { slugify } from "@/lib/articles";
 import { uploadCover } from "@/lib/uploads";
 import { locales, localeNames } from "@/i18n/locales";
 import { RichText } from "@/components/RichText";
+import { useConfirm } from "@/components/ConfirmDialog";
 import type { Article, Profile, RevisionPayload, Section } from "@/lib/types";
 
 const EMPTY_DOC = { type: "doc", content: [] };
@@ -83,6 +84,7 @@ export function ArticleComposer({
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const articleIdRef = useRef<string | null>(article?.id ?? null);
+  const { prompt } = useConfirm();
 
   const initial = revision ?? article;
   const [title, setTitle] = useState(initial?.title ?? "");
@@ -291,10 +293,15 @@ export function ArticleComposer({
     }
   }
 
-  function setLink() {
+  async function setLink() {
     if (!editor) return;
     const prev = editor.getAttributes("link").href as string | undefined;
-    const url = window.prompt("Link URL (leave empty to remove)", prev ?? "");
+    const url = await prompt({
+      title: "Add a link",
+      body: "Leave empty to remove the link.",
+      confirmLabel: "Apply",
+      input: { placeholder: "https://", defaultValue: prev ?? "", label: "URL" },
+    });
     if (url === null) return;
     if (!url) editor.chain().focus().unsetLink().run();
     else editor.chain().focus().setLink({ href: url }).run();
@@ -304,10 +311,14 @@ export function ArticleComposer({
     editor?.chain().focus().updateAttributes("image", { align }).run();
   }
 
-  function setCaption() {
+  async function setCaption() {
     if (!editor) return;
     const prev = editor.getAttributes("image").title as string | undefined;
-    const cap = window.prompt("Caption", prev ?? "");
+    const cap = await prompt({
+      title: "Image caption",
+      confirmLabel: "Save",
+      input: { placeholder: "Describe the photo, credit the photographer", defaultValue: prev ?? "" },
+    });
     if (cap === null) return;
     editor
       .chain()

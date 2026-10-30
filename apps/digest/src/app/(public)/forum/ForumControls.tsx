@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -133,6 +134,7 @@ export function VoteReport({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const { prompt } = useConfirm();
 
   async function vote(value: 1 | -1) {
     setPending(true);
@@ -149,7 +151,12 @@ export function VoteReport({
   }
 
   async function report() {
-    const reason = window.prompt("Why should an editor look at this?") ?? "";
+    const reason = await prompt({
+      title: "Report to an editor",
+      confirmLabel: "Report",
+      input: { placeholder: "Why should an editor look at this?" },
+    });
+    if (reason === null) return;
     setPending(true);
     setError(null);
     const supabase = createClient();

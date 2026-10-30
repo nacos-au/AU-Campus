@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile, hasRole } from "@/lib/auth";
 import { signOut } from "@/app/(auth)/actions";
 import { site } from "@/lib/site";
-import { isAdminModeActive } from "@/app/actions/admin-mode";
+import { exitAdminModeAction, isAdminModeActive } from "@/app/actions/admin-mode";
 import type { Section } from "@/lib/types";
 import { AdminModeBanner } from "./AdminModeBanner";
 import { AdminModeToggle } from "./AdminModeToggle";
@@ -87,6 +87,9 @@ export async function SiteHeader() {
               displayName={profile?.display_name ?? ""}
               showAdminRole={showAdminRole}
               signOutAction={signOut}
+              newsroom={canAdminMode}
+              adminMode={adminModeOn}
+              exitAdminAction={exitAdminModeAction}
             />
           ) : (
             <Link
@@ -100,10 +103,7 @@ export async function SiteHeader() {
         </div>
 
         <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-1">
-          <div className="flex min-w-0 items-center gap-2">
-            <p className="truncate text-xs font-semibold text-ink">{todayLong}</p>
-            <AdminModeToggle canUse={canAdminMode} active={adminModeOn} />
-          </div>
+          <p className="min-w-0 truncate text-xs font-semibold text-ink">{todayLong}</p>
           <Link
             href="/editions"
             className="shrink-0 border border-ink px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-ink"
@@ -121,7 +121,7 @@ export async function SiteHeader() {
             <NavSearch />
             <p className="text-[11px] font-semibold text-ink">{todayLong}</p>
             <Link
-              href="/editions"
+              href="/weekly"
               className="text-[11px] font-bold uppercase tracking-wider text-accent hover:text-accent-hover"
             >
               {t("weeklyIssue")}
@@ -190,10 +190,6 @@ export async function SiteHeader() {
         </div>
 
         <CategoryNav items={navItems} />
-
-        <div className="mx-auto max-w-7xl px-4 pb-2">
-          <div className="mx-auto h-[2px] w-24 bg-accent" />
-        </div>
       </div>
     </header>
   );

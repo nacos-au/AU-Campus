@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmDialog";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -14,6 +15,7 @@ type EditionWithFile = Edition & {
 };
 
 export function EditionsManager() {
+  const { confirm } = useConfirm();
   const supabase = useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
 
@@ -256,16 +258,23 @@ export function EditionsManager() {
                     </Link>
                   )}
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (
-                        !confirm(
+                        await confirm(
                           e.published
-                            ? `Admin action: take "${e.title}" off sale?`
-                            : `Admin action: put "${e.title}" on sale for readers?`
+                            ? {
+                                title: `Take “${e.title}” off sale?`,
+                                body: "Readers who already bought it keep access.",
+                                confirmLabel: "Take off sale",
+                              }
+                            : {
+                                title: `Put “${e.title}” on sale?`,
+                                body: "It appears on the Print Editions page for readers to buy.",
+                                confirmLabel: "Put on sale",
+                              }
                         )
                       )
-                        return;
-                      togglePublish.mutate(e);
+                        togglePublish.mutate(e);
                     }}
                     className={`px-2.5 py-1 transition-colors ${
                       e.published

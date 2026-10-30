@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
@@ -11,6 +12,7 @@ export function SectionsManager() {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const { confirm } = useConfirm();
 
   const { data: sections = [], isLoading } = useQuery({
     queryKey: ["admin-sections"],
@@ -159,11 +161,14 @@ export function SectionsManager() {
                   ↓
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (
-                      confirm(
-                        `Delete section "${s.name}"? Stories that use it must be moved first.`
-                      )
+                      await confirm({
+                        title: `Delete section “${s.name}”?`,
+                        body: "Stories that use it must be moved first.",
+                        confirmLabel: "Delete",
+                        danger: true,
+                      })
                     )
                       remove.mutate(s.id);
                   }}

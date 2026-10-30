@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmDialog";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -46,6 +47,7 @@ export function AdsManager() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<"all" | "review" | "live">("all");
+  const { confirm } = useConfirm();
 
   const { data: ads = [], isLoading } = useQuery({
     queryKey: ["admin-ads"],
@@ -282,8 +284,15 @@ export function AdsManager() {
                         Approve
                       </button>
                       <button
-                        onClick={() => {
-                          if (confirm("Reject this creative? Refund the advertiser manually via Paystack."))
+                        onClick={async () => {
+                          if (
+                            await confirm({
+                              title: "Reject this creative?",
+                              body: "The advertiser has paid — refund them from the Paystack dashboard.",
+                              confirmLabel: "Reject",
+                              danger: true,
+                            })
+                          )
                             patch.mutate({ id: ad.id, patch: { status: "rejected", active: false } });
                         }}
                         className="border border-red-700 px-3 py-1.5 text-red-700 hover:bg-red-700 hover:text-white"
@@ -317,8 +326,15 @@ export function AdsManager() {
                     </label>
                   )}
                   <button
-                    onClick={() => {
-                      if (confirm(`Delete ad "${ad.label}"?`)) remove.mutate(ad.id);
+                    onClick={async () => {
+                      if (
+                        await confirm({
+                          title: `Delete ad “${ad.label}”?`,
+                          confirmLabel: "Delete",
+                          danger: true,
+                        })
+                      )
+                        remove.mutate(ad.id);
                     }}
                     className="text-red-700 underline hover:text-red-900"
                   >

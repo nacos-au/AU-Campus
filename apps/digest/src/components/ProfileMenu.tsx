@@ -32,6 +32,10 @@ type Props = {
   /** Only shown for Digest admin role */
   showAdminRole: boolean;
   signOutAction: () => Promise<void>;
+  /** Staff: show newsroom entry. */
+  newsroom?: boolean;
+  adminMode?: boolean;
+  exitAdminAction?: () => Promise<void>;
   /** Compact icon-only trigger (mobile header) */
   compact?: boolean;
 };
@@ -43,6 +47,9 @@ export function ProfileMenu({
   displayName,
   showAdminRole,
   signOutAction,
+  newsroom = false,
+  adminMode = false,
+  exitAdminAction,
   compact = false,
 }: Props) {
   const [mounted, setMounted] = useState(false);
@@ -164,6 +171,39 @@ export function ProfileMenu({
                   Account settings
                   <Chevron />
                 </Link>
+
+                {newsroom && (
+                  <>
+                    <p className="border-t border-rule pt-4 text-[11px] font-bold uppercase tracking-[0.08em] text-ink">
+                      Newsroom
+                    </p>
+                    <Link
+                      href="/admin"
+                      onClick={closeDrawer}
+                      className="flex items-center justify-between py-4 text-[15px] text-ink hover:bg-accent-soft/40"
+                    >
+                      <span>
+                        Open newsroom
+                        {adminMode && (
+                          <span className="ml-2 bg-accent px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                            Admin on
+                          </span>
+                        )}
+                      </span>
+                      <Chevron />
+                    </Link>
+                    {adminMode && exitAdminAction && (
+                      <form action={exitAdminAction} className="pb-4">
+                        <button
+                          type="submit"
+                          className="text-[13px] text-accent underline underline-offset-2"
+                        >
+                          Exit Admin Mode
+                        </button>
+                      </form>
+                    )}
+                  </>
+                )}
 
                 <p className="border-t border-rule pt-4 text-[11px] font-bold uppercase tracking-[0.08em] text-ink">
                   Your content

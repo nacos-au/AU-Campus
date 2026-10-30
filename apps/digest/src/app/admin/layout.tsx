@@ -1,11 +1,10 @@
-import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { hasRole } from "@/lib/auth";
 import { site } from "@/lib/site";
 import { AdminNav } from "@/components/AdminNav";
 import { Providers } from "@/components/Providers";
 import { signOut } from "@/app/(auth)/actions";
-import { exitAdminModeAction, isAdminModeActive } from "@/app/actions/admin-mode";
+import { exitAdminModeAction } from "@/app/actions/admin-mode";
 
 export default async function AdminLayout({
   children,
@@ -15,11 +14,6 @@ export default async function AdminLayout({
   const { profile } = await requireRole("writer");
   const staff = hasRole(profile, "editor");
   const isAdmin = hasRole(profile, "admin");
-  const adminMode = await isAdminModeActive();
-
-  if (!adminMode) {
-    redirect("/?admin_mode=required");
-  }
 
   const items = [
     { href: "/admin", label: "Dashboard" },

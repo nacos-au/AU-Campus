@@ -8,6 +8,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
 import { isRtlLocale } from "@/i18n/locales";
 import { site } from "@/lib/site";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
 import "./globals.css";
 
 const franklin = Libre_Franklin({
@@ -46,7 +47,9 @@ export default async function RootLayout({
       className={`${franklin.variable} ${sourceSerif.variable} ${masthead.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider>
+          <ConfirmProvider>{children}</ConfirmProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmDialog";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -68,6 +69,7 @@ export function ReviewClient({
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { confirm } = useConfirm();
 
   const { data: comments = [] } = useQuery({
     queryKey: ["review-comments", articleId],
@@ -123,12 +125,20 @@ export function ReviewClient({
   }
 
   async function act(kind: "changes" | "approve") {
-    if (
-      kind === "approve" &&
-      !confirm("Approve this and make it live immediately?")
-    )
-      return;
-    if (kind === "changes" && !confirm("Send back to the writer?")) return;
+    const ok = await confirm(
+      kind === "approve"
+        ? {
+            title: "Approve and publish?",
+            body: "The story goes live on the site immediately.",
+            confirmLabel: "Publish",
+          }
+        : {
+            title: "Send back to the writer?",
+            body: "They’ll be notified and can revise using your comments.",
+            confirmLabel: "Request changes",
+          }
+    );
+    if (!ok) return;
     setBusy(true);
     setError(null);
     const { error } =

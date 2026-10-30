@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { setAdminMode } from "@/app/actions/admin-mode";
@@ -17,20 +18,26 @@ export function AdminModeToggle({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const { confirm } = useConfirm();
 
   if (!canUse) return null;
 
-  function toggle() {
+  async function toggle() {
     setError("");
-    if (!active) {
-      const ok = window.confirm(
-        "Enter Admin Mode?\n\nYou will open the newsroom with elevated tools. Use this only when you intend to edit articles, editions, or team settings — not for normal reading."
-      );
-      if (!ok) return;
-    } else {
-      const ok = window.confirm("Exit Admin Mode and return to your normal account view?");
-      if (!ok) return;
-    }
+    const ok = await confirm(
+      active
+        ? {
+            title: "Exit Admin Mode?",
+            body: "You’ll return to the normal reader view. You can come back any time.",
+            confirmLabel: "Exit",
+          }
+        : {
+            title: "Enter Admin Mode?",
+            body: "Opens the newsroom with editing tools for articles, editions and team settings.",
+            confirmLabel: "Enter",
+          }
+    );
+    if (!ok) return;
 
     startTransition(async () => {
       const result = await setAdminMode(!active);
