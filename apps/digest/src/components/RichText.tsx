@@ -23,6 +23,9 @@ function renderText(node: Node, key: number): ReactNode {
       case "italic":
         el = <em key={key}>{el}</em>;
         break;
+      case "underline":
+        el = <u key={key}>{el}</u>;
+        break;
       case "strike":
         el = <s key={key}>{el}</s>;
         break;
@@ -71,6 +74,19 @@ function renderNode(node: Node, key: number): ReactNode {
       return <li key={key}>{children}</li>;
     case "horizontalRule":
       return <hr key={key} className="my-8 border-rule-dark" />;
+    case "image": {
+      const src = String(node.attrs?.src ?? "");
+      if (!src) return null;
+      const align = String(node.attrs?.align ?? "center");
+      const caption = (node.attrs?.title as string | null) || null;
+      return (
+        <figure key={key} className="article-figure" data-align={align}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={src} alt={String(node.attrs?.alt ?? "")} loading="lazy" />
+          {caption && <figcaption>{caption}</figcaption>}
+        </figure>
+      );
+    }
     case "hardBreak":
       return <br key={key} />;
     default:

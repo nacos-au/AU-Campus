@@ -9,11 +9,10 @@ import { isAdminModeActive } from "@/app/actions/admin-mode";
 import type { Section } from "@/lib/types";
 import { AdminModeBanner } from "./AdminModeBanner";
 import { AdminModeToggle } from "./AdminModeToggle";
-import { LanguageSwitcher } from "./LanguageSwitcher";
+import { LanguageLinks } from "./LanguageLinks";
 import { MobileMenu } from "./MobileMenu";
 import { ProfileMenu } from "./ProfileMenu";
-import { WorldClock } from "./WorldClock";
-import { IconSignIn } from "./icons";
+import { IconSearch, IconUser } from "./icons";
 
 export async function SiteHeader() {
   const [t, locale, { user, profile }, supabase, adminMode] = await Promise.all([
@@ -37,13 +36,6 @@ export async function SiteHeader() {
 
   const todayLong = new Intl.DateTimeFormat(locale, {
     weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }).format(new Date());
-
-  const todayShort = new Intl.DateTimeFormat(locale, {
-    weekday: "long",
     month: "long",
     day: "numeric",
     year: "numeric",
@@ -52,9 +44,10 @@ export async function SiteHeader() {
   return (
     <header>
       {adminModeOn && <AdminModeBanner />}
-      {/* ── Mobile (NYT-style): menu · masthead · account ── */}
-      <div className="sticky top-0 z-40 border-b border-rule bg-paper md:hidden">
-        <div className="flex items-center justify-between gap-2 px-2 py-2">
+
+      {/* ── Mobile: menu · masthead · account, then date + CTA (no card border) ── */}
+      <div className="sticky top-0 z-40 bg-paper md:hidden">
+        <div className="grid grid-cols-[2.5rem_1fr_2.5rem] items-center px-2 pt-2">
           <MobileMenu
             sections={sections}
             signedIn={!!user}
@@ -63,19 +56,16 @@ export async function SiteHeader() {
             signOutAction={signOut}
           />
 
-          <Link
-            href="/"
-            className="flex min-w-0 flex-1 items-center justify-center gap-2"
-          >
+          <Link href="/" className="flex min-w-0 items-center justify-center gap-2">
             <Image
               src="/au-logo.webp"
               alt=""
-              width={28}
-              height={28}
-              className="h-7 w-7 shrink-0 object-contain"
+              width={26}
+              height={26}
+              className="h-[26px] w-[26px] shrink-0 object-contain"
               priority
             />
-            <span className="truncate font-masthead text-[1.65rem] font-bold leading-none tracking-tight">
+            <span className="truncate font-masthead text-[1.55rem] font-bold leading-none tracking-tight">
               {site.masthead}
             </span>
           </Link>
@@ -94,106 +84,122 @@ export async function SiteHeader() {
               aria-label={t("signIn")}
               className="flex h-10 w-10 items-center justify-center text-ink"
             >
-              <IconSignIn className="h-6 w-6" />
+              <IconUser className="h-6 w-6" />
             </Link>
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-3 px-3 pb-2.5">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-1">
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="truncate text-xs font-semibold text-ink">{todayLong}</p>
             <AdminModeToggle canUse={canAdminMode} active={adminModeOn} />
           </div>
-          <p className="min-w-0 truncate text-[11px] font-semibold text-ink">
-            {todayShort}
-          </p>
           <Link
             href="/editions"
-            className="shrink-0 border border-ink px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-ink"
+            className="shrink-0 border border-ink px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-ink"
           >
-            {t("subscribeShort")}
+            {t("buySeasonal")}
           </Link>
         </div>
       </div>
 
-      {/* ── Desktop: keep the full editorial header ── */}
+      {/* ── Desktop: NYT-style masthead ── */}
       <div className="hidden md:block">
-        <div className="border-b border-rule">
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 overflow-hidden px-4 py-1.5">
-            <p className="whitespace-nowrap text-[11px] font-semibold text-ink">
-              {todayLong}
-            </p>
-            <WorldClock />
+        <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-start gap-6 px-4 pb-4 pt-5">
+          {/* left */}
+          <div className="flex flex-col items-start gap-3 pt-1">
+            <form action="/search" role="search" className="flex items-center gap-2">
+              <button
+                type="submit"
+                aria-label={t("search")}
+                className="text-ink hover:text-accent"
+              >
+                <IconSearch className="h-5 w-5" />
+              </button>
+              <input
+                name="q"
+                type="search"
+                placeholder={t("search")}
+                className="w-28 border-b border-transparent bg-transparent text-xs placeholder:text-ink-soft focus:border-ink focus:outline-none focus:w-44 transition-[width]"
+              />
+            </form>
+            <p className="text-xs font-semibold text-ink">{todayLong}</p>
+            <Link
+              href="/editions"
+              className="text-xs font-bold uppercase tracking-wider text-accent hover:text-accent-hover"
+            >
+              {t("weeklyIssue")}
+            </Link>
           </div>
-        </div>
 
-        <div className="mx-auto grid max-w-7xl grid-cols-3 items-center gap-2 px-4 py-4">
-          <div className="text-xs text-ink-soft">
-            <p className="font-semibold text-ink">{site.university}</p>
-            <p className="mt-0.5 max-w-52 leading-snug">{site.tagline}</p>
+          {/* center */}
+          <div className="flex flex-col items-center gap-3">
+            <LanguageLinks />
+            <Link href="/" className="flex items-center justify-center gap-3">
+              <Image
+                src="/au-logo.webp"
+                alt={site.university}
+                width={44}
+                height={44}
+                className="h-11 w-11 shrink-0 object-contain"
+                priority
+              />
+              <span className="font-masthead text-5xl font-bold leading-none">
+                {site.masthead}
+              </span>
+            </Link>
           </div>
 
-          <Link
-            href="/"
-            className="flex items-center justify-center gap-3"
-          >
-            <Image
-              src="/au-logo.webp"
-              alt={site.university}
-              width={40}
-              height={40}
-              className="h-10 w-10 shrink-0 object-contain"
-              priority
-            />
-            <span className="font-masthead text-5xl font-bold leading-none">
-              {site.masthead}
-            </span>
-          </Link>
-
-          <div className="flex items-center justify-end gap-4 text-xs">
-            <AdminModeToggle canUse={canAdminMode} active={adminModeOn} />
-            <LanguageSwitcher />
-            {user ? (
-              <>
-                {adminModeOn && (
-                  <Link
-                    href="/admin"
-                    className="font-semibold uppercase tracking-wider text-ink-soft hover:text-ink"
-                  >
-                    {t("admin")}
-                  </Link>
-                )}
+          {/* right */}
+          <div className="flex flex-col items-end gap-3">
+            <div className="flex items-center gap-3">
+              <AdminModeToggle canUse={canAdminMode} active={adminModeOn} />
+              {adminModeOn && (
+                <Link
+                  href="/admin"
+                  className="text-[11px] font-bold uppercase tracking-wider text-ink-soft hover:text-ink"
+                >
+                  {t("admin")}
+                </Link>
+              )}
+              {user ? (
                 <ProfileMenu
+                  compact
                   email={user.email}
                   displayName={profile?.display_name ?? ""}
                   showAdminRole={showAdminRole}
                   signOutAction={signOut}
                 />
-              </>
-            ) : (
+              ) : (
+                <Link
+                  href="/login"
+                  aria-label={t("signIn")}
+                  title={t("signIn")}
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-ink text-ink hover:bg-ink hover:text-paper transition-colors"
+                >
+                  <IconUser className="h-5 w-5" />
+                </Link>
+              )}
+            </div>
+            <Link
+              href="/editions"
+              className="bg-accent px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-accent-hover transition-colors"
+            >
+              {t("buySeasonal")}
+            </Link>
+            {!user && (
               <Link
                 href="/login"
-                className="inline-flex items-center gap-1.5 font-semibold uppercase tracking-wider text-ink-soft transition-colors hover:text-ink"
+                className="border border-ink px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-ink hover:text-paper transition-colors"
               >
-                <IconSignIn className="h-3.5 w-3.5" />
                 {t("signIn")}
               </Link>
             )}
-            <Link
-              href="/editions"
-              className="bg-accent px-3 py-1.5 font-semibold uppercase tracking-wider text-white hover:bg-accent-hover transition-colors"
-            >
-              {t("subscribe")}
-            </Link>
           </div>
         </div>
 
-        <div className="mx-auto max-w-7xl px-4">
-          <div className="h-[3px] bg-ink" />
-          <div className="mt-[2px] h-px bg-ink" />
-        </div>
-
-        <nav>
-          <ul className="mx-auto flex max-w-7xl items-center justify-center gap-6 px-4 py-2.5 text-[13px] font-semibold">
+        <nav className="border-y border-rule-dark">
+          <ul className="mx-auto flex max-w-7xl items-center justify-center gap-x-7 overflow-x-auto px-4 py-2.5 text-[13px] font-semibold [scrollbar-width:none]">
             <li>
               <Link href="/" className="hover:text-accent whitespace-nowrap">
                 {t("home")}
@@ -229,10 +235,6 @@ export async function SiteHeader() {
             </li>
           </ul>
         </nav>
-
-        <div className="mx-auto max-w-7xl px-4 pb-2">
-          <div className="mx-auto h-[2px] w-24 bg-accent" />
-        </div>
       </div>
     </header>
   );

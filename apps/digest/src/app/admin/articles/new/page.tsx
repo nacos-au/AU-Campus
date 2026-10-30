@@ -1,10 +1,10 @@
 import { requireRole, hasRole } from "@/lib/auth";
-import { ArticleForm } from "../ArticleForm";
+import { ArticleComposer } from "../ArticleComposer";
 
 export default async function NewArticlePage() {
   const { profile } = await requireRole("writer");
   return (
-    <ArticleForm
+    <ArticleComposer
       article={null}
       userId={profile.id}
       isStaff={hasRole(profile, "editor")}

@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { LanguageSwitcher } from "./LanguageSwitcher";
-import { WorldClockStack } from "./WorldClock";
 import {
   IconClose,
   IconMenu,
@@ -173,22 +172,6 @@ export function MobileMenu({
               </ul>
 
               <div className="space-y-4 border-t border-rule px-4 py-5">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">
-                    {site.university}
-                  </p>
-                  <p className="mt-1 text-sm leading-snug text-ink-soft">
-                    {site.tagline}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-ink-soft">
-                    World clocks
-                  </p>
-                  <WorldClockStack />
-                </div>
-
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">
                     Language

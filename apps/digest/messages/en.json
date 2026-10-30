@@ -9,7 +9,10 @@
     "signIn": "Sign in",
     "signOut": "Sign out",
     "subscribe": "Buy this week's issue",
-    "subscribeShort": "Buy edition"
+    "subscribeShort": "Buy edition",
+    "weeklyIssue": "Weekly Issue",
+    "buySeasonal": "Buy seasonal issue",
+    "search": "Search"
   },
   "home": {
     "latestNews": "Latest News",

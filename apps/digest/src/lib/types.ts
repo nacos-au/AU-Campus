@@ -1,5 +1,9 @@
 export type Role = "reader" | "writer" | "editor" | "admin";
-export type ArticleStatus = "draft" | "submitted" | "published" | "rejected";
+export type ArticleStatus =
+  | "draft"
+  | "awaiting_editor"
+  | "awaiting_writer"
+  | "published";
 export type AdSlot = "leaderboard" | "sidebar" | "infeed";
 
 export interface Profile {
@@ -39,6 +43,8 @@ export interface Article {
   featured: boolean;
   editor_note: string | null;
   assigned_editor_id?: string | null;
+  byline?: string | null;
+  like_count?: number;
   published_at: string | null;
   created_at: string;
   updated_at: string;
@@ -132,4 +138,33 @@ export interface Ad {
   label: string;
   active: boolean;
   created_at: string;
+}
+
+export interface ReviewComment {
+  id: string;
+  article_id: string;
+  author_id: string;
+  body: string;
+  anchor: { quote: string } | null;
+  created_at: string;
+  profiles?: Pick<Profile, "display_name"> | null;
+}
+
+export interface AppNotification {
+  id: string;
+  type: string;
+  article_id: string | null;
+  body: string;
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface RevisionPayload {
+  title: string;
+  dek: string | null;
+  body: unknown;
+  cover_url: string | null;
+  byline: string | null;
+  section_id: number;
+  language: string;
 }

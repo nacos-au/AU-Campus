@@ -9,7 +9,10 @@
     "signIn": "Se connecter",
     "signOut": "Se déconnecter",
     "subscribe": "Acheter le numéro de la semaine",
-    "subscribeShort": "Acheter"
+    "subscribeShort": "Acheter",
+    "weeklyIssue": "Numéro hebdomadaire",
+    "buySeasonal": "Acheter le numéro de saison",
+    "search": "Rechercher"
   },
   "home": {
     "latestNews": "Dernières nouvelles",

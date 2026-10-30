@@ -6,6 +6,7 @@ import { getLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { AdSlot } from "@/components/AdSlot";
 import { RichText } from "@/components/RichText";
+import { LikeShare } from "@/components/LikeShare";
 import { CompactStory } from "@/components/stories";
 import { readingMinutes } from "@/lib/articles";
 import type { ArticleWithMeta } from "@/lib/types";
@@ -96,10 +97,12 @@ export default async function ArticlePage({
         )}
 
         <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-1 border-y border-rule py-3 text-xs text-ink-soft">
-          {article.profiles?.display_name && (
+          {(article.byline || article.profiles?.display_name) && (
             <span>
               By{" "}
-              {article.profiles.username ? (
+              {article.byline ? (
+                <span className="font-semibold text-ink">{article.byline}</span>
+              ) : article.profiles?.username ? (
                 <Link
                   href={`/author/${article.profiles.username}`}
                   className="font-semibold text-ink hover:text-accent"
@@ -108,7 +111,7 @@ export default async function ArticlePage({
                 </Link>
               ) : (
                 <span className="font-semibold text-ink">
-                  {article.profiles.display_name}
+                  {article.profiles?.display_name}
                 </span>
               )}
             </span>
@@ -135,6 +138,12 @@ export default async function ArticlePage({
         <div className="mt-8">
           <RichText doc={article.body} />
         </div>
+
+        <LikeShare
+          articleId={article.id}
+          initialLikes={article.like_count ?? 0}
+          title={article.title}
+        />
       </article>
 
       <div className="mx-auto max-w-3xl">

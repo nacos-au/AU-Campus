@@ -71,7 +71,7 @@ export const ROLE_SUMMARIES: Record<Role, string> = {
   writer:
     "Everything a reader can do, plus write and edit their own drafts, submit for review, upload covers, and delete their own drafts.",
   editor:
-    "Everything a writer can do, plus approve articles assigned to them, feature and unpublish, manage sections, paid editions, ads, talent, and forums. Their own articles need a different editor.",
+    "Everything a writer can do, plus approve articles assigned to them, feature and unpublish, manage sections, paid editions, ads, talent, and forums. Own articles need another editor — unless they are the only editor.",
   admin:
-    "Everything an editor can do, plus assign roles, reassign articles, and view sales. They still cannot publish their own article.",
+    "Everything an editor can do, plus assign roles, reassign articles, and view sales. Own articles need another editor — unless they are the only admin/editor.",
 };

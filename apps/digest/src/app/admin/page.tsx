@@ -19,7 +19,7 @@ export default async function AdminDashboard() {
       supabase
         .from("articles")
         .select("id", { count: "exact", head: true })
-        .eq("status", "submitted"),
+        .eq("status", "awaiting_editor"),
       supabase
         .from("articles")
         .select("id", { count: "exact", head: true })
@@ -44,7 +44,7 @@ export default async function AdminDashboard() {
     {
       label: "Awaiting review",
       value: submitted.count ?? 0,
-      href: "/admin/articles?status=submitted",
+      href: "/admin/articles?status=awaiting_editor",
       accent: (submitted.count ?? 0) > 0,
     },
     {
