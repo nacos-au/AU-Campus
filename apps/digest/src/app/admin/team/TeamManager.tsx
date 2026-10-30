@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/admin/ui";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
@@ -42,14 +43,12 @@ export function TeamManager({ currentUserId }: { currentUserId: string }) {
 
   return (
     <div>
-      <h1 className="font-serif text-3xl font-bold">Team &amp; Roles</h1>
-      <p className="mt-2 max-w-2xl text-sm text-ink-soft">
-        Promote writers, appoint editors, and reserve admin for people who can
-        change roles. No one can escalate their own access — only another admin
-        can.
-      </p>
+      <PageHeader
+        title="Team"
+        description="Promote writers, appoint editors, and reserve admin for people who can change roles. No one can escalate their own access."
+      />
 
-      <div className="mt-6 grid gap-3 border border-rule-dark p-4 text-sm sm:grid-cols-2">
+      <div className="grid gap-3 border border-rule bg-gray-50/60 p-4 text-sm sm:grid-cols-2">
         {(Object.keys(ROLE_SUMMARIES) as Role[]).map((role) => (
           <div key={role}>
             <p className="text-xs font-bold uppercase tracking-wider">

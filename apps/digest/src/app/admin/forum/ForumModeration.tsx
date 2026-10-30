@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/admin/ui";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
@@ -110,16 +111,15 @@ export function ForumModeration() {
   return (
     <div className="space-y-10">
       <div>
-        <h1 className="font-serif text-3xl font-bold">Forum</h1>
-        <p className="mt-2 text-sm text-ink-soft">
-          Hidden posts stay off the forum until an editor restores or removes them.
-          Three reports, or a filtered word, hide a post automatically.
-        </p>
-        {error && <p className="mt-3 text-sm text-accent">{error}</p>}
+        <PageHeader
+          title="Forum"
+          description="Hidden posts stay off the forum until an editor restores or removes them. Three reports, or a filtered word, hide a post automatically."
+        />
+        {error && <p className="-mt-4 text-sm text-accent">{error}</p>}
       </div>
 
       <section>
-        <h2 className="text-sm font-bold uppercase tracking-wider">Hidden queue</h2>
+        <h2 className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">Hidden queue</h2>
         <ul className="mt-3 divide-y divide-rule">
           {(hiddenThreads.data ?? []).map((thread) => (
             <li key={thread.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
@@ -160,7 +160,7 @@ export function ForumModeration() {
       </section>
 
       <section>
-        <h2 className="text-sm font-bold uppercase tracking-wider">Word list</h2>
+        <h2 className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">Word list</h2>
         <form
           className="mt-3 flex gap-2"
           onSubmit={(e) => {
@@ -197,7 +197,7 @@ export function ForumModeration() {
       </section>
 
       <section>
-        <h2 className="text-sm font-bold uppercase tracking-wider">Categories</h2>
+        <h2 className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">Categories</h2>
         <ul className="mt-3 text-sm">
           {(categories.data ?? []).map((category) => (
             <li key={category.id} className="py-1">

@@ -63,7 +63,7 @@ export default async function ReviewPage({
 
   return (
     <div>
-      <Link href="/admin/articles" className="text-sm text-ink-soft hover:text-ink">
+      <Link href="/admin/articles" className="text-xs font-semibold uppercase tracking-wider text-ink-soft hover:text-ink">
         ← Articles
       </Link>
       <ReviewClient

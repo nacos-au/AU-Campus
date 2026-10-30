@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader, btn } from "@/components/admin/ui";
 import { useConfirm } from "@/components/ConfirmDialog";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -173,27 +174,29 @@ export function ArticlesTable({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-serif text-2xl font-bold sm:text-3xl">
-          {isStaff ? "All articles" : "My articles"}
-        </h1>
-        <Link
-          href="/admin/articles/new"
-          className="bg-accent px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white hover:bg-accent-hover transition-colors"
-        >
-          New article
-        </Link>
-      </div>
+      <PageHeader
+        title={isStaff ? "Articles" : "My articles"}
+        description={
+          isStaff
+            ? "Everything in the pipeline — drafts, reviews, and what’s live."
+            : "Your drafts, what’s with an editor, and what’s live."
+        }
+        action={
+          <Link href="/admin/articles/new" className={btn.primary}>
+            + New article
+          </Link>
+        }
+      />
 
-      <div className="-mx-4 mt-5 flex gap-1 overflow-x-auto border-b border-rule px-4 pb-3 text-xs font-semibold [scrollbar-width:none] sm:mx-0 sm:px-0">
+      <div className="-mx-4 -mt-2 flex gap-1 overflow-x-auto border-b border-rule px-4 pb-3 text-xs font-semibold [scrollbar-width:none] sm:mx-0 sm:px-0">
         {filters.map((f) => (
           <button
             key={f.id}
             onClick={() => setFilter(f.id)}
-            className={`shrink-0 px-3 py-1.5 uppercase tracking-wide transition-colors ${
+            className={`shrink-0 rounded-full px-3 py-1.5 transition-colors ${
               filter === f.id
                 ? "bg-ink text-paper"
-                : "text-ink-soft hover:text-ink"
+                : "text-ink-soft hover:bg-gray-100 hover:text-ink"
             }`}
           >
             {f.label}

@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/admin/ui";
 import { useConfirm } from "@/components/ConfirmDialog";
 import Image from "next/image";
 import Link from "next/link";
@@ -130,20 +131,23 @@ export function AdsManager() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-serif text-2xl font-bold sm:text-3xl">Advertising</h1>
-        <Link href="/advertise" className="text-xs font-semibold text-ink-soft underline hover:text-ink">
-          Public rate card →
-        </Link>
-      </div>
+      <PageHeader
+        title="Advertising"
+        description="Direct bookings from campus businesses, house ads, and what they earn."
+        action={
+          <Link href="/advertise" className="text-xs font-semibold text-ink-soft underline-offset-2 hover:text-ink hover:underline">
+            Public rate card →
+          </Link>
+        }
+      />
 
-      <div className="mt-5 grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {[
           ["Ad revenue", formatNaira(totals.rev)],
           ["Impressions", totals.imp.toLocaleString()],
           ["Clicks", totals.clk.toLocaleString()],
         ].map(([k, v]) => (
-          <div key={k} className="border border-rule-dark p-3 sm:p-4">
+          <div key={k} className="border border-rule p-3 sm:p-4">
             <p className="font-serif text-xl font-bold sm:text-2xl">{v}</p>
             <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-soft sm:text-xs">
               {k}
@@ -152,7 +156,7 @@ export function AdsManager() {
         ))}
       </div>
 
-      <details className="mt-6 border border-rule-dark">
+      <details className="mt-6 border border-rule bg-gray-50/60">
         <summary className="cursor-pointer px-4 py-3 text-sm font-bold uppercase tracking-wider">
           New house ad
         </summary>

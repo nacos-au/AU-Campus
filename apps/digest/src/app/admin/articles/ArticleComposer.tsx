@@ -341,9 +341,9 @@ export function ArticleComposer({
           : "Draft";
 
   return (
-    <div className="-mx-4 -mt-8 sm:mx-0 sm:mt-0">
+    <div className="-mx-4 -mt-6 sm:-mx-6 sm:-mt-8 lg:-mx-8">
       {/* Top bar */}
-      <div className="sticky top-0 z-30 flex items-center gap-2 border-b border-rule-dark bg-paper px-3 py-2 sm:px-0">
+      <div className="sticky top-0 z-30 flex items-center gap-2 border-b border-rule bg-paper px-3 py-2 sm:px-6 lg:px-8">
         <Link
           href="/admin/articles"
           className="text-sm text-ink-soft hover:text-ink"
@@ -351,8 +351,13 @@ export function ArticleComposer({
         >
           ←<span className="ml-1 hidden sm:inline">Articles</span>
         </Link>
-        <span className="ml-1 rounded-full bg-rule px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
-          {statusLabel}
+        <span className="ml-1 inline-flex items-center gap-1.5 rounded-full border border-rule px-2.5 py-0.5 text-[11px] font-semibold text-ink-soft">
+          {saveDraft.isPending ? (
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+          ) : notice ? (
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          ) : null}
+          {saveDraft.isPending ? "Saving…" : notice ? "Saved" : statusLabel}
         </span>
         {article && (
           <Link
@@ -395,7 +400,7 @@ export function ArticleComposer({
 
       {/* Toolbar */}
       {!preview && !locked && (
-        <div className="sticky top-[49px] z-20 flex items-center gap-0.5 overflow-x-auto border-b border-rule bg-paper px-2 py-1.5 sm:px-0 [scrollbar-width:none]">
+        <div className="sticky top-[49px] z-20 flex items-center gap-0.5 overflow-x-auto border-b border-rule bg-paper px-2 py-1.5 sm:justify-center sm:px-6 [scrollbar-width:none]">
           <Btn title="Undo" disabled={!ui?.canUndo} onClick={() => editor?.chain().focus().undo().run()}>↺</Btn>
           <Btn title="Redo" disabled={!ui?.canRedo} onClick={() => editor?.chain().focus().redo().run()}>↻</Btn>
           <Sep />
@@ -453,7 +458,7 @@ export function ArticleComposer({
       )}
 
       {/* Page */}
-      <div className="mx-auto max-w-[44rem] px-4 pb-24 pt-8 sm:px-0">
+      <div className="mx-auto max-w-[44rem] px-4 pb-24 pt-8 sm:px-6">
         {preview ? (
           <article>
             <h1 className="font-serif text-4xl font-bold leading-tight">

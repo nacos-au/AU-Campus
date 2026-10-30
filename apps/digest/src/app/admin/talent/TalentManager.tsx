@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/admin/ui";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
@@ -87,13 +88,13 @@ export function TalentManager() {
 
   return (
     <div>
-      <h1 className="font-serif text-3xl font-bold">Talent</h1>
-      <p className="mt-2 max-w-2xl text-sm text-ink-soft">
-        Editors publish spotlights. A spotlight does not change anyone’s role.
-      </p>
+      <PageHeader
+        title="Talent"
+        description="Spotlights on students doing remarkable work. A spotlight does not change anyone’s role."
+      />
 
       <form
-        className="mt-6 space-y-3 border border-rule-dark p-4"
+        className="space-y-3 border border-rule bg-gray-50/60 p-4"
         onSubmit={(e) => {
           e.preventDefault();
           create.mutate();

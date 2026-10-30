@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/admin/ui";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -86,13 +87,12 @@ export function SectionsManager() {
 
   return (
     <div>
-      <h1 className="font-serif text-3xl font-bold">Sections</h1>
-      <p className="mt-2 max-w-2xl text-sm text-ink-soft">
-        Newsroom desks that appear in the nav and footer's section list — News,
-        Sports, Opinion, and the rest.
-      </p>
+      <PageHeader
+        title="Sections"
+        description="Newsroom desks that appear in the nav and footer — News, Sports, Opinion, and the rest."
+      />
 
-      <div className="mt-6 flex flex-wrap gap-3 border border-rule-dark p-4">
+      <div className="flex flex-wrap gap-3 border border-rule bg-gray-50/60 p-4">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}

@@ -1,5 +1,6 @@
 "use client";
 
+import { PageHeader } from "@/components/admin/ui";
 import { useConfirm } from "@/components/ConfirmDialog";
 import Image from "next/image";
 import Link from "next/link";
@@ -115,11 +116,14 @@ export function EditionsManager() {
 
   return (
     <div>
-      <h1 className="font-serif text-3xl font-bold">Editions</h1>
+      <PageHeader
+        title="Editions"
+        description="The weekly print issue as a PDF. Upload, price, and put it on sale."
+      />
 
       {/* ── Create ── */}
-      <div className="mt-6 border border-rule-dark p-5">
-        <h2 className="text-sm font-bold uppercase tracking-wider">
+      <div className="border border-rule bg-gray-50/60 p-5">
+        <h2 className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">
           New edition
         </h2>
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
