@@ -10,9 +10,10 @@ import type { Section } from "@/lib/types";
 import { AdminModeBanner } from "./AdminModeBanner";
 import { AdminModeToggle } from "./AdminModeToggle";
 import { LanguageLinks } from "./LanguageLinks";
+import { NavSearch } from "./NavSearch";
 import { MobileMenu } from "./MobileMenu";
 import { ProfileMenu } from "./ProfileMenu";
-import { IconSearch, IconUser } from "./icons";
+import { IconUser } from "./icons";
 
 export async function SiteHeader() {
   const [t, locale, { user, profile }, supabase, adminMode] = await Promise.all([
@@ -108,21 +109,7 @@ export async function SiteHeader() {
         <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-start gap-6 px-4 pb-4 pt-5">
           {/* left */}
           <div className="flex flex-col items-start gap-3 pt-1">
-            <form action="/search" role="search" className="flex items-center gap-2">
-              <button
-                type="submit"
-                aria-label={t("search")}
-                className="text-ink hover:text-accent"
-              >
-                <IconSearch className="h-5 w-5" />
-              </button>
-              <input
-                name="q"
-                type="search"
-                placeholder={t("search")}
-                className="w-28 border-b border-transparent bg-transparent text-xs placeholder:text-ink-soft focus:border-ink focus:outline-none focus:w-44 transition-[width]"
-              />
-            </form>
+            <NavSearch />
             <p className="text-xs font-semibold text-ink">{todayLong}</p>
             <Link
               href="/editions"

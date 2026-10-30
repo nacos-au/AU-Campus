@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
+import { NavSearch } from "./NavSearch";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import {
   IconClose,
@@ -53,15 +54,6 @@ export function MobileMenu({
     };
   }, [open]);
 
-  function onSearch(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const q = new FormData(e.currentTarget).get("q");
-    const query = typeof q === "string" ? q.trim() : "";
-    setOpen(false);
-    if (query) router.push(`/search?q=${encodeURIComponent(query)}`);
-    else router.push("/search");
-  }
-
   return (
     <>
       <button
@@ -107,24 +99,7 @@ export function MobileMenu({
             </div>
 
             <div className="flex-1 overflow-y-auto">
-              <form
-                onSubmit={onSearch}
-                className="flex gap-2 border-b border-rule px-4 py-3"
-              >
-                <input
-                  name="q"
-                  type="search"
-                  placeholder="Search"
-                  autoFocus
-                  className="min-w-0 flex-1 border border-rule-dark px-3 py-2 text-sm focus:border-ink focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  className="shrink-0 bg-ink px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-paper"
-                >
-                  Go
-                </button>
-              </form>
+              <NavSearch withLabel />
 
               <ul className="divide-y divide-rule">
                 <li>
