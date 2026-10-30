@@ -8,17 +8,37 @@ import { AdminGuestTeamManager } from "@/components/admin/admin-guest-team-manag
 import { AdminKeeperCalendar } from "@/components/admin/admin-keeper-calendar";
 import { AdminMatchManager } from "@/components/admin/admin-match-manager";
 import { AdminPostResultTool } from "@/components/admin/admin-post-result-tool";
+import { AdminRosterImport } from "@/components/admin/admin-roster-import";
 import { AdminVenueManager } from "@/components/admin/admin-venue-manager";
-import { DEMO_DEPARTMENTS, DEMO_SPORTS, DEMO_TEAMS } from "@/lib/data/demo";
 
 export function AdminDashboard() {
   return (
     <div className="mx-auto max-w-[1200px] space-y-8 px-4 py-8 sm:px-6">
       <p className="text-sm opacity-70">
-        Admin tools for calendar assignment, venues, guest opponents, manual results, and match edits.
-        Keepers only access events you assign. Production writes go to Supabase;
-        demo mode uses a session overlay so you can verify flows locally.
+        Season setup runs top to bottom. Paste teams and players in from a list, publish a league or
+        cup from the sides that exist in that sport, then keepers open those fixtures and fill them
+        in. Friendlies and one-off matches stay here with admins.
       </p>
+
+      <ol className="grid gap-3 sm:grid-cols-3">
+        {[
+          { n: "1", title: "Onboard", body: "Paste teams, then players — comma, colon, space or dot." },
+          { n: "2", title: "Compete", body: "Create a league or cup from the teams in that sport." },
+          { n: "3", title: "Keep score", body: "Keepers fill competition fixtures. You handle friendlies." },
+        ].map((s) => (
+          <li key={s.n} className="rounded-2xl border border-rule bg-white px-4 py-3">
+            <p className="font-display text-[11px] font-bold uppercase tracking-wide text-accent/50">
+              Step {s.n}
+            </p>
+            <p className="font-display font-extrabold">{s.title}</p>
+            <p className="mt-0.5 text-sm opacity-70">{s.body}</p>
+          </li>
+        ))}
+      </ol>
+
+      <AdminRosterImport />
+
+      <AdminCompetitionWizard />
 
       <AdminKeeperCalendar />
 
@@ -45,8 +65,6 @@ export function AdminDashboard() {
         </div>
       </div>
 
-      <AdminCompetitionWizard />
-
       <div className="grid gap-6 lg:grid-cols-2">
         <AdminVenueManager />
         <AdminGuestTeamManager />
@@ -58,23 +76,6 @@ export function AdminDashboard() {
       </div>
 
       <AdminAwardsManager />
-
-      <div className="grid gap-6 sm:grid-cols-3">
-        {[
-          { title: "Departments", items: DEMO_DEPARTMENTS.map((d) => d.name) },
-          { title: "Sports", items: DEMO_SPORTS.map((s) => s.name) },
-          { title: "Teams", items: DEMO_TEAMS.slice(0, 8).map((t) => t.name) },
-        ].map((card) => (
-          <div key={card.title} className="table-card p-5">
-            <h2 className="font-display font-extrabold">{card.title}</h2>
-            <ul className="mt-3 space-y-1 text-sm opacity-80">
-              {card.items.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
 
       <div className="flex flex-wrap gap-3">
         <Link href="/demo" className="rounded-lg border border-accent px-4 py-2 font-display text-sm font-bold text-accent">

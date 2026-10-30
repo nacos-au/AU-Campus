@@ -1,13 +1,13 @@
 import type { Match, MatchScope, SetScore, Team, Tournament } from "@/lib/types/database";
-import { DEMO_MATCHES, DEMO_SPORTS, DEMO_TEAMS } from "@/lib/data/demo";
-import { listGuestTeams } from "@/lib/data/demo-guest-teams";
+import { DEMO_MATCHES, DEMO_SPORTS } from "@/lib/data/demo";
+import { findDemoTeam } from "@/lib/data/demo-roster";
 import { getDemoVenueById } from "@/lib/data/venues";
 
 /** Session overlay for manually posted / edited matches in demo mode. */
 let postedMatches: Match[] = [];
 
 function findTeam(id: string): Team | undefined {
-  return DEMO_TEAMS.find((t) => t.id === id) ?? listGuestTeams().find((t) => t.id === id);
+  return findDemoTeam(id);
 }
 
 function friendlyTournament(sportId: string): Tournament {
@@ -57,17 +57,25 @@ export interface PostDemoMatchInput {
   venue_id?: string | null;
   set_scores?: SetScore[];
   tournament_id?: string | null;
+  /** Competition the fixture belongs to (defaults to the sport's Friendlies). */
+  tournament?: Tournament | null;
+  competition_phase?: string | null;
+  id?: string;
 }
+
+let postedSeq = 0;
 
 export function postDemoMatch(input: PostDemoMatchInput): Match {
   const home = findTeam(input.home_team_id);
   const away = findTeam(input.away_team_id);
-  const tournament = friendlyTournament(input.sport_id);
+  const tournament = input.tournament ?? friendlyTournament(input.sport_id);
   const venue = input.venue_id ? getDemoVenueById(input.venue_id) : null;
+  postedSeq += 1;
 
   const match: Match = {
-    id: `match-posted-${Date.now()}`,
+    id: input.id ?? `match-posted-${Date.now()}-${postedSeq}`,
     tournament_id: input.tournament_id || tournament.id,
+    competition_phase: (input.competition_phase ?? undefined) as Match["competition_phase"],
     sport_id: input.sport_id,
     home_team_id: input.home_team_id,
     away_team_id: input.away_team_id,

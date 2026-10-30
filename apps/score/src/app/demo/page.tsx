@@ -37,7 +37,7 @@ export default function DemoPage() {
       <PageContent>
         <div className="mx-auto max-w-[1200px] space-y-10 px-4 py-8 sm:px-6">
           <p className="text-sm opacity-70">
-            No account required. Ensure <strong>Demo mode</strong> is on in the header. All links open with sample data.
+            No account required. Ensure <strong>Demo mode</strong> is on — the switch sits at the bottom of every page, in the footer. All links open with sample data.
             Record keeper logs are stored in your browser only — they do not update the public match pages yet.
           </p>
 

@@ -21,18 +21,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "competition_type must be league or cup" }, { status: 400 });
   }
 
-  if (await getScoreDemoMode()) {
-    return NextResponse.json({
-      ok: true,
-      demo: true,
-      message: `Demo: "${body.name}" validated (${body.teams.length} teams, ${body.competition_type}). Connect Supabase to persist.`,
-    });
-  }
-
+  const demo = await getScoreDemoMode();
   const result = await createCompetition(body);
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
 
-  return NextResponse.json({ ok: true, id: result.id, message: "Competition created." });
+  const fixtureNote = result.fixtures
+    ? ` ${result.fixtures} fixture${result.fixtures === 1 ? "" : "s"} are now open for keepers.`
+    : "";
+  return NextResponse.json({
+    ok: true,
+    id: result.id,
+    demo,
+    fixtures: result.fixtures,
+    message: demo
+      ? `Demo: “${body.name}” created for this session.${fixtureNote}`
+      : `Competition created.${fixtureNote}`,
+  });
 }

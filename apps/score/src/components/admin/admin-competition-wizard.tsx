@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Dices, Trophy } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Dices, RefreshCw, Trophy } from "lucide-react";
 import {
   buildKnockoutDraw,
   buildLeagueSchedule,
@@ -11,7 +11,9 @@ import {
   type KnockoutDraw,
   type RegisteredTeam,
 } from "@/lib/competition/competition-builder";
-import { DEMO_TEAMS } from "@/lib/data/demo";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { ROSTER_UPDATED_EVENT } from "@/lib/roster/parse-roster";
+import type { Team } from "@/lib/types/database";
 import { sportToDbId, SPORT_LABELS, type SportId } from "@/lib/utils/sport";
 import { cn } from "@/lib/utils/cn";
 
@@ -20,6 +22,7 @@ const ENTRY_SIZES: CupEntrySize[] = [2, 4, 8, 16, 32];
 type Step = "basics" | "teams" | "draw" | "confirm";
 
 export function AdminCompetitionWizard() {
+  const { confirm } = useConfirm();
   const [step, setStep] = useState<Step>("basics");
   const [name, setName] = useState("");
   const [sport, setSport] = useState<SportId>("football");
@@ -36,7 +39,31 @@ export function AdminCompetitionWizard() {
   const [publishMessage, setPublishMessage] = useState("");
 
   const sportDbId = sportToDbId(sport);
-  const availableTeams = DEMO_TEAMS.filter((t) => t.sport_id === sportDbId);
+
+  // Teams available for this sport — department sides (incl. bulk-imported) and guests.
+  const [availableTeams, setAvailableTeams] = useState<Team[]>([]);
+  const [teamsLoading, setTeamsLoading] = useState(false);
+  const loadTeams = useCallback(async (forSport: SportId) => {
+    setTeamsLoading(true);
+    try {
+      const res = await fetch(`/api/roster?sport=${forSport}`);
+      const json = (await res.json()) as { teams?: Team[] };
+      setAvailableTeams(json.teams ?? []);
+    } catch {
+      setAvailableTeams([]);
+    } finally {
+      setTeamsLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    void loadTeams(sport);
+  }, [sport, loadTeams]);
+  // Re-fetch when the bulk import tool on the same page adds teams.
+  useEffect(() => {
+    const onUpdated = () => void loadTeams(sport);
+    window.addEventListener(ROSTER_UPDATED_EVENT, onUpdated);
+    return () => window.removeEventListener(ROSTER_UPDATED_EVENT, onUpdated);
+  }, [sport, loadTeams]);
 
   const registered: RegisteredTeam[] = useMemo(
     () =>
@@ -94,9 +121,19 @@ export function AdminCompetitionWizard() {
   }
 
   async function handlePublish() {
-    const ok = window.confirm(
-      `Publish competition as Admin?\n\n"${name.trim()}" (${registered.length} teams)\n\nThis creates live fixtures.`
-    );
+    const ok = await confirm({
+      eyebrow: "Admin action",
+      title: "Publish this competition?",
+      body: (
+        <>
+          <span className="block font-display text-base font-extrabold text-accent">
+            “{name.trim()}” · {registered.length} teams
+          </span>
+          <span className="mt-1 block">This creates live fixtures.</span>
+        </>
+      ),
+      confirmLabel: "Publish",
+    });
     if (!ok) return;
 
     setPublishState("saving");
@@ -149,9 +186,10 @@ export function AdminCompetitionWizard() {
         Create Competition
       </h2>
       <p className="mt-1 text-sm opacity-70">
-        Leagues crown a <strong>Team of the Season</strong>; cups a{" "}
-        <strong>Team of the Tournament</strong>. Byes are handled automatically when
-        fewer teams register than the bracket needs.
+        Non-friendly only — pick from the teams already in this sport (including ones you
+        just imported). Leagues crown a <strong>Team of the Season</strong>; cups a{" "}
+        <strong>Team of the Tournament</strong>. Published fixtures open immediately for
+        keepers. Friendlies stay in the tool below.
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -279,6 +317,38 @@ export function AdminCompetitionWizard() {
               Too many teams for a Round of {entrySize} — deselect some or increase the cup size.
             </p>
           )}
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
+            <span className="opacity-60">
+              {availableTeams.length} available in {SPORT_LABELS[sport]}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setByeConfirmed(false);
+                setSelectedTeamIds(availableTeams.filter((t) => !t.is_guest).map((t) => t.id));
+              }}
+              className="interactive-btn rounded-full border border-rule px-2.5 py-1 font-display font-bold"
+            >
+              Select all AU teams
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTeamIds([])}
+              className="interactive-btn rounded-full border border-rule px-2.5 py-1 font-display font-bold"
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={() => loadTeams(sport)}
+              disabled={teamsLoading}
+              title="Reload teams (after an import)"
+              className="interactive-btn ml-auto inline-flex items-center gap-1 rounded-full border border-rule px-2.5 py-1 font-display font-bold disabled:opacity-50"
+            >
+              <RefreshCw className={cn("h-3 w-3", teamsLoading && "animate-spin")} />
+              Refresh
+            </button>
+          </div>
           <div className="grid gap-2 sm:grid-cols-2">
             {availableTeams.map((t) => {
               const checked = selectedTeamIds.includes(t.id);
@@ -291,12 +361,19 @@ export function AdminCompetitionWizard() {
                   )}
                 >
                   <input type="checkbox" checked={checked} onChange={() => toggleTeam(t.id)} />
-                  {t.name}
+                  <span className="min-w-0 flex-1 truncate">{t.name}</span>
+                  {t.is_guest && (
+                    <span className="rounded bg-surface px-1.5 py-0.5 text-[10px] font-bold uppercase opacity-70">
+                      Guest
+                    </span>
+                  )}
                 </label>
               );
             })}
-            {availableTeams.length === 0 && (
-              <p className="text-sm opacity-60">No teams registered for {SPORT_LABELS[sport]} yet.</p>
+            {availableTeams.length === 0 && !teamsLoading && (
+              <p className="text-sm opacity-60 sm:col-span-2">
+                No teams registered for {SPORT_LABELS[sport]} yet — onboard them in the import tool above.
+              </p>
             )}
           </div>
         </div>

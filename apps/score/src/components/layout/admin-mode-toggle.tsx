@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Shield, ShieldOff } from "lucide-react";
 import { setAdminMode } from "@/app/actions/admin-mode";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils/cn";
 
 /**
@@ -20,20 +21,28 @@ export function AdminModeToggle({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const { confirm } = useConfirm();
 
   if (!canUse) return null;
 
-  function toggle() {
+  async function toggle() {
     setError("");
-    if (!active) {
-      const ok = window.confirm(
-        "Enter Admin Mode?\n\nYou will have elevated privileges. Use this only when you intend to manage venues, results, competitions, or other staff tools — not for normal browsing."
-      );
-      if (!ok) return;
-    } else {
-      const ok = window.confirm("Exit Admin Mode and return to your normal account view?");
-      if (!ok) return;
-    }
+    const ok = await confirm(
+      active
+        ? {
+            eyebrow: "Admin Mode",
+            title: "Exit Admin Mode?",
+            body: "You’ll return to the normal fan view. You can come back any time.",
+            confirmLabel: "Exit",
+          }
+        : {
+            eyebrow: "Admin Mode",
+            title: "Enter Admin Mode?",
+            body: "Elevated staff tools for venues, results, competitions and keeper assignments. Use it only when you intend to manage — not for normal browsing.",
+            confirmLabel: "Enter",
+          }
+    );
+    if (!ok) return;
 
     startTransition(async () => {
       const result = await setAdminMode(!active);
@@ -68,7 +77,7 @@ export function AdminModeToggle({
         <span className="hidden sm:inline">{active ? "Admin Mode on" : "Admin Mode"}</span>
       </button>
       {error && (
-        <p className="absolute right-0 top-full z-50 mt-1 w-56 rounded border border-red-200 bg-white px-2 py-1 text-[11px] font-semibold text-red-600 shadow">
+        <p className="absolute right-0 top-full z-50 mt-1.5 w-60 rounded-xl border border-red-200 bg-white px-3 py-2 text-[11px] font-semibold text-red-600 shadow-lg">
           {error}
         </p>
       )}

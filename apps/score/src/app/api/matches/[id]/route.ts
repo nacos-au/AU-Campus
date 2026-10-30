@@ -1,7 +1,22 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/roles";
-import { softDeleteMatch, updateMatch } from "@/lib/data/repository";
+import { requireAdmin, requireMatchStaff } from "@/lib/auth/roles";
+import { fetchMatchById, softDeleteMatch, updateMatch } from "@/lib/data/repository";
 import type { MatchScope } from "@/lib/types/database";
+
+/** Resolve one match (used by the keeper console to open an assigned fixture). */
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const gate = await requireMatchStaff();
+  if ("error" in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status });
+  }
+  const { id } = await params;
+  const match = await fetchMatchById(id);
+  if (!match) return NextResponse.json({ error: "Match not found" }, { status: 404 });
+  return NextResponse.json({ match });
+}
 
 export async function PATCH(
   request: Request,

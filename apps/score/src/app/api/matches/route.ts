@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { requireMatchStaff } from "@/lib/auth/roles";
+import { requireAdmin } from "@/lib/auth/roles";
 import { createMatch } from "@/lib/data/repository";
 import type { MatchScope } from "@/lib/types/database";
 
+/** Friendlies and one-off manual matches — admin only. Keepers fill competition fixtures. */
 export async function POST(request: Request) {
-  const gate = await requireMatchStaff();
+  const gate = await requireAdmin();
   if ("error" in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status });
   }

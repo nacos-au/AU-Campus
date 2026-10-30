@@ -1,48 +1,65 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Handshake } from "lucide-react";
 import { ScoreEntryFields, type ScoreEntryValue } from "@/components/admin/score-entry-fields";
 import { VenueSelect } from "@/components/admin/venue-select";
-import { DEMO_TEAMS } from "@/lib/data/demo";
+import { useConfirm } from "@/components/ui/confirm-dialog";
+import { ROSTER_UPDATED_EVENT } from "@/lib/roster/parse-roster";
 import { sportToDbId, SPORT_LABELS, type SportId } from "@/lib/utils/sport";
 import type { MatchScope, Team } from "@/lib/types/database";
 
 const AWAY_NEW_GUEST = "__new_guest__";
 
 /**
- * Lets admin or record keeper post a finished match without live logging —
- * including friendlies against a guest team.
+ * Admin-only: friendlies and one-off matches that are not part of a
+ * published competition. Keepers pick up competition fixtures themselves.
  */
 export function AdminPostResultTool() {
+  const { confirm } = useConfirm();
   const [sport, setSport] = useState<SportId>("football");
-  const [guestTeams, setGuestTeams] = useState<Team[]>([]);
+  const [sportTeams, setSportTeams] = useState<Team[]>([]);
   const [homeTeamId, setHomeTeamId] = useState("");
   const [awayTeamId, setAwayTeamId] = useState("");
   const [guestName, setGuestName] = useState("");
   const [guestInstitution, setGuestInstitution] = useState("");
   const [scheduledAt, setScheduledAt] = useState(() => new Date().toISOString().slice(0, 16));
   const [venueId, setVenueId] = useState("");
-  const [scope, setScope] = useState<MatchScope>("official");
+  const [scope, setScope] = useState<MatchScope>("pickup");
+  const [finished, setFinished] = useState(true);
   const [score, setScore] = useState<ScoreEntryValue>({ home_score: 0, away_score: 0 });
   const [publishState, setPublishState] = useState<"idle" | "saving" | "done" | "error">("idle");
   const [publishMessage, setPublishMessage] = useState("");
   const [publishedMatchId, setPublishedMatchId] = useState<string | null>(null);
 
   const sportDbId = sportToDbId(sport);
-  const auTeams = useMemo(() => DEMO_TEAMS.filter((t) => t.sport_id === sportDbId), [sportDbId]);
+  const auTeams = useMemo(() => sportTeams.filter((t) => !t.is_guest), [sportTeams]);
+  const guestTeams = useMemo(() => sportTeams.filter((t) => t.is_guest), [sportTeams]);
+
+  const loadTeams = useCallback(async (forSport: SportId) => {
+    try {
+      const res = await fetch(`/api/roster?sport=${forSport}`);
+      const json = (await res.json()) as { teams?: Team[] };
+      setSportTeams(json.teams ?? []);
+    } catch {
+      setSportTeams([]);
+    }
+  }, []);
 
   useEffect(() => {
     setHomeTeamId("");
     setAwayTeamId("");
     setVenueId("");
     setPublishState("idle");
-    fetch(`/api/guest-teams?sport=${sport}`)
-      .then((r) => r.json())
-      .then((json: { teams?: Team[] }) => setGuestTeams(json.teams ?? []))
-      .catch(() => setGuestTeams([]));
-  }, [sport]);
+    void loadTeams(sport);
+  }, [sport, loadTeams]);
+
+  useEffect(() => {
+    const onUpdated = () => void loadTeams(sport);
+    window.addEventListener(ROSTER_UPDATED_EVENT, onUpdated);
+    return () => window.removeEventListener(ROSTER_UPDATED_EVENT, onUpdated);
+  }, [sport, loadTeams]);
 
   const homeTeam = auTeams.find((t) => t.id === homeTeamId);
   const isNewGuest = awayTeamId === AWAY_NEW_GUEST;
@@ -57,9 +74,25 @@ export function AdminPostResultTool() {
   async function handlePublish() {
     if (!canPublish || !homeTeam) return;
     const awayLabel = isNewGuest ? guestName.trim() : (awayTeam?.name ?? "Away");
-    const ok = window.confirm(
-      `Publish this result as Admin?\n\n${homeTeam.name} ${score.home_score}–${score.away_score} ${awayLabel}\n\nThis writes to the live Score record.`
-    );
+    const ok = await confirm({
+      eyebrow: scope === "pickup" ? "Friendly" : "Manual match",
+      title: finished ? "Publish this result?" : "Schedule this match?",
+      body: (
+        <>
+          <span className="block font-display text-base font-extrabold text-accent">
+            {finished
+              ? `${homeTeam.name} ${score.home_score}–${score.away_score} ${awayLabel}`
+              : `${homeTeam.name} vs ${awayLabel}`}
+          </span>
+          <span className="mt-1 block">
+            {finished
+              ? "This writes to the live Score record. It will not appear on the keeper fixture list."
+              : "Scheduled only — keepers will not pick this up (competitions only)."}
+          </span>
+        </>
+      ),
+      confirmLabel: finished ? "Publish" : "Schedule",
+    });
     if (!ok) return;
 
     setPublishState("saving");
@@ -82,7 +115,7 @@ export function AdminPostResultTool() {
       }
       resolvedAwayTeamId = json.team.id;
       resolvedAwayName = json.team.name;
-      setGuestTeams((prev) => [...prev, json.team!]);
+      setSportTeams((prev) => [...prev, json.team!]);
       setAwayTeamId(json.team.id);
       setGuestName("");
       setGuestInstitution("");
@@ -96,11 +129,11 @@ export function AdminPostResultTool() {
           sport_id: sportDbId,
           home_team_id: homeTeamId,
           away_team_id: resolvedAwayTeamId,
-          status: "completed",
+          status: finished ? "completed" : "scheduled",
           scheduled_at: new Date(scheduledAt).toISOString(),
-          home_score: score.home_score,
-          away_score: score.away_score,
-          set_scores: score.set_scores,
+          home_score: finished ? score.home_score : 0,
+          away_score: finished ? score.away_score : 0,
+          set_scores: finished ? score.set_scores : undefined,
           venue_id: venueId,
           scope,
         }),
@@ -110,7 +143,9 @@ export function AdminPostResultTool() {
         setPublishState("done");
         setPublishedMatchId(json.id);
         setPublishMessage(
-          `${homeTeam.name} ${score.home_score}\u2013${score.away_score} ${resolvedAwayName} recorded.`
+          finished
+            ? `${homeTeam.name} ${score.home_score}\u2013${score.away_score} ${resolvedAwayName} recorded.`
+            : `${homeTeam.name} vs ${resolvedAwayName} scheduled.`
         );
       } else {
         setPublishState("error");
@@ -124,10 +159,14 @@ export function AdminPostResultTool() {
 
   return (
     <div className="table-card p-6">
-      <h2 className="font-display text-lg font-extrabold">Post a Result</h2>
+      <h2 className="flex items-center gap-2 font-display text-lg font-extrabold">
+        <Handshake className="h-5 w-5 text-accent" />
+        Friendlies &amp; manual matches
+      </h2>
       <p className="mt-1 text-sm opacity-70">
-        Admin or record keeper — enter a final score without live logging, including
-        friendlies against a guest team from another university.
+        Admin only. Use this for friendlies (including guest sides) and one-off matches
+        that aren’t in a published competition. League and cup fixtures are filled in by
+        keepers.
       </p>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -164,8 +203,8 @@ export function AdminPostResultTool() {
             value={scope}
             onChange={(e) => setScope(e.target.value as MatchScope)}
           >
-            <option value="official">Official</option>
             <option value="pickup">Friendly / pickup</option>
+            <option value="official">Manual official (not in a competition)</option>
           </select>
         </label>
 
@@ -237,14 +276,22 @@ export function AdminPostResultTool() {
         </div>
       )}
 
-      <div className="mt-5 border-t border-rule pt-5">
-        <ScoreEntryFields
-          sport={sport}
-          homeLabel={homeTeam?.name ?? "Home"}
-          awayLabel={isNewGuest ? guestName || "Guest team" : (awayTeam?.name ?? "Away")}
-          onChange={setScore}
-        />
-      </div>
+      <label className="mt-4 flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={finished} onChange={(e) => setFinished(e.target.checked)} />
+        <span className="font-semibold">Record as a finished score</span>
+        <span className="opacity-60">uncheck to schedule without a result</span>
+      </label>
+
+      {finished && (
+        <div className="mt-5 border-t border-rule pt-5">
+          <ScoreEntryFields
+            sport={sport}
+            homeLabel={homeTeam?.name ?? "Home"}
+            awayLabel={isNewGuest ? guestName || "Guest team" : (awayTeam?.name ?? "Away")}
+            onChange={setScore}
+          />
+        </div>
+      )}
 
       <button
         type="button"
@@ -252,7 +299,7 @@ export function AdminPostResultTool() {
         disabled={!canPublish || publishState === "saving"}
         className="btn-primary mt-5 w-full rounded-lg px-4 py-2.5 font-display text-sm font-bold disabled:opacity-40 sm:w-auto"
       >
-        {publishState === "saving" ? "Publishing…" : "Publish result"}
+        {publishState === "saving" ? "Saving…" : finished ? "Publish result" : "Schedule match"}
       </button>
 
       {publishState === "done" && (

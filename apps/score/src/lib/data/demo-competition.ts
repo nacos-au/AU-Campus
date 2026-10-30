@@ -6,6 +6,7 @@ import type {
   Tournament,
 } from "@/lib/types/database";
 import { playerAvatarForId, logoForSportId } from "@/lib/utils/sport-assets";
+import { listCreatedDemoTournaments } from "@/lib/data/demo-competitions-store";
 
 /** Achievers League — the football league competition (renamed from Inter-Faculty League) */
 export const DEMO_LEAGUE_TOURNAMENT: Tournament = {
@@ -439,7 +440,8 @@ export function getTournamentsForSport(sportDbId: string): Tournament[] {
         return [];
     }
   })();
-  return list.map(withHolderLogo);
+  // Plus competitions created on the spot from the admin wizard (demo overlay).
+  return [...list, ...listCreatedDemoTournaments(sportDbId)].map(withHolderLogo);
 }
 
 export function getTournamentForSport(sportDbId: string, tournamentId?: string): Tournament | null {

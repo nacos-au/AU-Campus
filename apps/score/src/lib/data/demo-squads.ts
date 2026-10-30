@@ -1,5 +1,6 @@
 import type { Player } from "@/lib/types/database";
 import { DEMO_PLAYERS, DEMO_TEAMS } from "@/lib/data/demo";
+import { getImportedSquadForTeam } from "@/lib/data/demo-roster";
 import {
   DEMO_BASKETBALL_TOURNAMENT,
   DEMO_TENNIS_TOURNAMENT,
@@ -226,6 +227,10 @@ export function getClubCompetitions(teamId: string): ClubCompetition[] {
 }
 
 export function getSquadForTeam(teamId: string, sportId: string): SquadPlayer[] {
+  // Bulk-imported squads (demo overlay) take precedence over fixtures.
+  const imported = getImportedSquadForTeam(teamId);
+  if (imported.length) return imported.sort(sortSquad);
+
   const team = DEMO_TEAMS.find((t) => t.id === teamId);
   if (!team) return [];
 

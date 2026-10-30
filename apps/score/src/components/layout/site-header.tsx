@@ -4,10 +4,8 @@ import { Suspense } from "react";
 import { Search } from "lucide-react";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { getDemoModeCookie } from "@/app/actions/demo-mode";
 import { isAdminModeActive } from "@/app/actions/admin-mode";
 import { SiteNav } from "@/components/layout/site-nav";
-import { DemoModeToggle } from "@/components/layout/demo-mode-toggle";
 import { AdminModeToggle } from "@/components/layout/admin-mode-toggle";
 import { AdminModeBanner } from "@/components/layout/admin-mode-banner";
 import { ProfileMenu } from "@/components/layout/profile-menu";
@@ -15,7 +13,7 @@ import { AuthEntryButton } from "@/components/auth/auth-entry";
 import { SportNav } from "@/components/layout/sport-nav";
 import { PhantomIcon } from "@/components/phantom/phantom-icon";
 import { PHANTOM_BRAND } from "@/lib/phantom/types";
-import { canToggleDemoMode, isDemoMode, hasSupabaseConfig } from "@/lib/demo-mode";
+import { hasSupabaseConfig } from "@/lib/demo-mode";
 import { getSessionStaff } from "@/lib/auth/roles";
 import { signOut } from "@/app/auth/actions";
 
@@ -69,14 +67,12 @@ async function getSignedInProfile(): Promise<{
 }
 
 export async function SiteHeader() {
-  const demoCookie = await getDemoModeCookie();
-  const demoActive = isDemoMode(demoCookie);
-  const showDemoToggle = canToggleDemoMode();
-
-  const staff = await getSessionStaff();
-  const adminMode = await isAdminModeActive();
+  const [staff, adminMode, signedIn] = await Promise.all([
+    getSessionStaff(),
+    isAdminModeActive(),
+    getSignedInProfile(),
+  ]);
   const canAdmin = Boolean(staff?.isAdmin && !staff.isDemoBypass);
-  const signedIn = await getSignedInProfile();
   const showAdminRole = Boolean(staff?.isAdmin && !staff?.isDemoBypass && signedIn);
 
   return (
@@ -110,16 +106,13 @@ export async function SiteHeader() {
           </Link>
 
           <AdminModeToggle canUse={canAdmin} active={adminMode && canAdmin} />
-          <DemoModeToggle active={demoActive} canToggle={showDemoToggle} />
-          <button type="button" aria-label="Search" className="hidden text-accent sm:block">
+          <button
+            type="button"
+            aria-label="Search"
+            className="hidden h-9 w-9 items-center justify-center rounded-full text-accent transition-colors hover:bg-surface sm:inline-flex"
+          >
             <Search className="h-5 w-5" />
           </button>
-          <Link
-            href="/demo"
-            className="interactive-btn hidden rounded-full border border-rule px-4 py-1.5 font-display text-xs font-bold md:block"
-          >
-            Demo links
-          </Link>
           {signedIn ? (
             <ProfileMenu
               email={signedIn.email}

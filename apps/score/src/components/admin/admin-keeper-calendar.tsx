@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import type { KeeperEvent } from "@/lib/keeper/keeper-events-types";
 import { SPORT_LABELS, type SportId } from "@/lib/utils/sport";
 
@@ -12,6 +13,7 @@ type KeeperCandidate = { id: string; display_name: string; email: string | null 
  * Admin calendar: create season/track events and assign record keepers.
  */
 export function AdminKeeperCalendar() {
+  const { confirm } = useConfirm();
   const [events, setEvents] = useState<KeeperEvent[]>([]);
   const [keepers, setKeepers] = useState<KeeperCandidate[]>([]);
   const [error, setError] = useState("");
@@ -75,7 +77,13 @@ export function AdminKeeperCalendar() {
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm("Remove this event from the calendar?")) return;
+    const ok = await confirm({
+      title: "Remove this event?",
+      body: "It will disappear from the keeper calendar and any assignments on it are dropped.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
+    if (!ok) return;
     setBusy(true);
     const res = await fetch(`/api/keeper-events?id=${encodeURIComponent(id)}`, {
       method: "DELETE",

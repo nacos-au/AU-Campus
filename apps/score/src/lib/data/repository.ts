@@ -5,6 +5,7 @@ import type {
   MatchScope,
   MeetEventFixture,
   PeriodScore,
+  Player,
   SetScore,
   Team,
   Tournament,
@@ -22,6 +23,8 @@ import {
   getTournamentForSport,
 } from "@/lib/data/demo-competition";
 import { DEMO_PLAYERS } from "@/lib/data/demo";
+import { nextMatchday, registerDemoTournament } from "@/lib/data/demo-competitions-store";
+import { resolveSportUuid } from "@/lib/data/sport-ids";
 import {
   getDemoMatchById,
   listAllDemoMatches,
@@ -371,21 +374,28 @@ export async function fetchSquadForTeam(teamId: string, sportId: string): Promis
   const supabase = await createClient();
   const { data } = await supabase
     .from("player_sport_registry")
-    .select("jersey_number, squad_role, player_id")
-    .eq("team_id", teamId) as {
-    data: Array<{ jersey_number: number | null; squad_role: string | null; player_id: string }> | null;
+    .select("jersey_number, squad_role, player_id, player:players(*)")
+    .eq("team_id", teamId)
+    .eq("is_active", true) as {
+    data: Array<{
+      jersey_number: number | null;
+      squad_role: string | null;
+      player_id: string;
+      player: Player | Player[] | null;
+    }> | null;
   };
 
   if (!data?.length) return getSquadForTeam(teamId, sportId);
 
   const squad: SquadPlayer[] = [];
   for (const row of data) {
-    const fromDemo = DEMO_PLAYERS.find((p) => p.id === row.player_id);
-    if (!fromDemo) continue;
+    const joined = Array.isArray(row.player) ? row.player[0] : row.player;
+    const player = joined ?? DEMO_PLAYERS.find((p) => p.id === row.player_id);
+    if (!player) continue;
     squad.push({
-      ...fromDemo,
+      ...player,
       jersey_number: row.jersey_number ?? undefined,
-      squad_role: row.squad_role ?? "Squad",
+      squad_role: row.squad_role ?? player.position ?? "Squad",
     });
   }
   return squad.length ? squad : getSquadForTeam(teamId, sportId);
@@ -877,17 +887,19 @@ export interface CreateCompetitionInput {
  */
 export async function createCompetition(
   input: CreateCompetitionInput
-): Promise<{ id: string } | { error: string }> {
+): Promise<{ id: string; fixtures: number } | { error: string }> {
   if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
-    return { error: "Demo mode: competition preview only — connect Supabase to persist" };
+    return createDemoCompetition(input);
   }
 
   const supabase = await createClient();
+  const sportUuid = await resolveSportUuid(supabase, input.sport_id);
+  if (typeof sportUuid !== "string") return sportUuid;
 
   const { data: tournament, error: tErr } = await (supabase.from("tournaments") as ReturnType<typeof supabase.from>)
     .insert({
       name: input.name,
-      sport_id: input.sport_id,
+      sport_id: sportUuid,
       category: input.competition_type === "cup" ? "knockout_cup" : "league",
       format: input.competition_type === "cup" ? "knockout_only" : "league",
       competition_type: input.competition_type,
@@ -918,13 +930,41 @@ export async function createCompetition(
 
   if (regErr) return { error: regErr.message };
 
+  let fixtures = 0;
+
   if (input.pairings?.length) {
+    // First-round ties become real matches so keepers can pick them up.
+    const playable = input.pairings.filter((p) => !p.is_bye && p.home && p.away);
+    const matchIds: Array<string | null> = [];
+    for (const [i, p] of playable.entries()) {
+      const { data: m, error: mErr } = await (supabase.from("matches") as ReturnType<typeof supabase.from>)
+        .insert({
+          tournament_id: tournament.id,
+          sport_id: sportUuid,
+          home_team_id: p.home!.id,
+          away_team_id: p.away!.id,
+          status: "scheduled",
+          current_period: "not_started",
+          home_score: 0,
+          away_score: 0,
+          scheduled_at: nextMatchday(0, Math.floor(i / 2)),
+          scope: "official",
+          competition_phase: p.round,
+        } as Record<string, unknown>)
+        .select("id")
+        .single() as { data: { id: string } | null; error: { message: string } | null };
+      if (mErr) return { error: mErr.message };
+      matchIds.push(m?.id ?? null);
+      fixtures += 1;
+    }
+
     const { error: bErr } = await (supabase.from("bracket_fixtures") as ReturnType<typeof supabase.from>)
       .insert(
         input.pairings.map((p, i) => ({
           tournament_id: tournament.id,
           round: p.round,
           round_label: p.round_label,
+          match_id: p.is_bye ? null : matchIds[playable.indexOf(p)] ?? null,
           home_team_id: p.home?.id ?? null,
           away_team_id: p.away?.id ?? null,
           home_display_name: p.home?.name ?? null,
@@ -940,20 +980,77 @@ export async function createCompetition(
   if (input.league_fixtures?.length) {
     const { error: mErr } = await (supabase.from("matches") as ReturnType<typeof supabase.from>)
       .insert(
-        input.league_fixtures.map((f) => ({
+        input.league_fixtures.map((f, i) => ({
           tournament_id: tournament.id,
-          sport_id: input.sport_id,
+          sport_id: sportUuid,
           home_team_id: f.home.id,
           away_team_id: f.away.id,
           status: "scheduled",
           current_period: "not_started",
           home_score: 0,
           away_score: 0,
+          scheduled_at: nextMatchday(f.matchweek - 1, i % 3),
+          scope: "official",
           competition_phase: `matchweek_${f.matchweek}`,
         })) as Record<string, unknown>[]
       ) as { error: { message: string } | null };
     if (mErr) return { error: mErr.message };
+    fixtures += input.league_fixtures.length;
   }
 
-  return { id: tournament.id };
+  return { id: tournament.id, fixtures };
+}
+
+/** Demo-mode twin of createCompetition — tournament + fixtures in the session overlay. */
+function createDemoCompetition(input: CreateCompetitionInput): { id: string; fixtures: number } {
+  const id = `tourn-created-${Date.now().toString(36)}`;
+  const tournament: Tournament = registerDemoTournament({
+    id,
+    name: input.name,
+    sport_id: input.sport_id,
+    category: input.competition_type === "cup" ? "knockout_cup" : "league",
+    format: input.competition_type === "cup" ? "knockout_only" : "league",
+    competition_type: input.competition_type,
+    season: input.season,
+    rules: {},
+    title_holder: input.title_holder_name
+      ? { team_name: input.title_holder_name, season: "Previous" }
+      : null,
+  });
+
+  let fixtures = 0;
+  for (const [i, p] of (input.pairings ?? []).entries()) {
+    if (p.is_bye || !p.home || !p.away) continue;
+    postDemoMatch({
+      sport_id: input.sport_id,
+      home_team_id: p.home.id,
+      away_team_id: p.away.id,
+      status: "scheduled",
+      scheduled_at: nextMatchday(0, Math.floor(i / 2)),
+      home_score: 0,
+      away_score: 0,
+      scope: "official",
+      tournament_id: id,
+      tournament,
+      competition_phase: p.round,
+    });
+    fixtures += 1;
+  }
+  for (const [i, f] of (input.league_fixtures ?? []).entries()) {
+    postDemoMatch({
+      sport_id: input.sport_id,
+      home_team_id: f.home.id,
+      away_team_id: f.away.id,
+      status: "scheduled",
+      scheduled_at: nextMatchday(f.matchweek - 1, i % 3),
+      home_score: 0,
+      away_score: 0,
+      scope: "official",
+      tournament_id: id,
+      tournament,
+      competition_phase: `matchweek_${f.matchweek}`,
+    });
+    fixtures += 1;
+  }
+  return { id, fixtures };
 }

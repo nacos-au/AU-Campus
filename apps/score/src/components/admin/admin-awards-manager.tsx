@@ -12,12 +12,14 @@ import {
   type AwardType,
   type SeasonAward,
 } from "@/lib/data/demo-awards";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { DEMO_PLAYERS, DEMO_TEAMS } from "@/lib/data/demo";
 import { sportToDbId, SPORT_LABELS, type SportId } from "@/lib/utils/sport";
 
 const STORAGE_KEY = ADMIN_AWARDS_STORAGE_KEY;
 
 export function AdminAwardsManager() {
+  const { confirm, notify } = useConfirm();
   const [sport, setSport] = useState<SportId>("football");
   const [overrides, setOverrides] = useState<SeasonAward[]>([]);
   const [awardType, setAwardType] = useState<AwardType>("player_of_season");
@@ -86,7 +88,11 @@ export function AdminAwardsManager() {
     const player = players.find((p) => p.id === playerId);
     const team = teams.find((t) => t.id === teamId);
     if (awardType === "custom" && !customTitle.trim()) {
-      window.alert("Custom award title is empty — enter a name for this award.");
+      await notify({
+        tone: "warning",
+        title: "Add an award title",
+        body: "The custom award title is empty — enter a name before publishing.",
+      });
       return;
     }
     const display =
@@ -95,9 +101,17 @@ export function AdminAwardsManager() {
         : player
           ? `${player.first_name} ${player.last_name}`
           : team?.name ?? awardType;
-    const ok = window.confirm(
-      `Publish this award as Admin?\n\n${display}\n\nThis updates the public awards board.`
-    );
+    const ok = await confirm({
+      eyebrow: "Admin action",
+      title: "Publish this award?",
+      body: (
+        <>
+          <span className="block font-display text-base font-extrabold text-accent">{display}</span>
+          <span className="mt-1 block">This updates the public awards board.</span>
+        </>
+      ),
+      confirmLabel: "Publish",
+    });
     if (!ok) return;
 
     const parsedValue = statValue.trim() ? Number(statValue) : null;
