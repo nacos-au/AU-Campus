@@ -160,11 +160,9 @@ export async function SiteHeader() {
               ) : (
                 <Link
                   href="/login"
-                  aria-label={t("signIn")}
-                  title={t("signIn")}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-ink text-ink hover:bg-ink hover:text-paper transition-colors"
+                  className="border border-ink px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-ink hover:text-paper transition-colors"
                 >
-                  <IconUser className="h-5 w-5" />
+                  {t("signIn")}
                 </Link>
               )}
             </div>
@@ -174,12 +172,6 @@ export async function SiteHeader() {
             >
               {t("buySeasonal")}
             </Link>
-            {!user && (
-              <Link
-                href="/login"
-                className="border border-ink px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-ink hover:text-paper transition-colors"
-              >
-                {t("signIn")}
               </Link>
             )}
           </div>
