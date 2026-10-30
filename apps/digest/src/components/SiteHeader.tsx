@@ -172,8 +172,6 @@ export async function SiteHeader() {
             >
               {t("buySeasonal")}
             </Link>
-              </Link>
-            )}
           </div>
         </div>
 
