@@ -13,31 +13,34 @@ interface Hit {
   sections: { name: string } | null;
 }
 
-/** Icon-only trigger → search bar with brand Go button → results modal. */
-export function NavSearch({ withLabel = false }: { withLabel?: boolean }) {
+/** Plain icon → expands inline into a bar with a brand Go button; results drop down beneath. */
+export function NavSearch({ inline = true }: { inline?: boolean }) {
   const supabase = useMemo(() => createClient(), []);
+  const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(!inline);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
   const [hits, setHits] = useState<Hit[] | null>(null);
   const [asked, setAsked] = useState("");
 
   useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (!open || !inline) return;
     inputRef.current?.focus();
+    const onDown = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) close();
+    };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && close();
+    document.addEventListener("mousedown", onDown);
     window.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = prev;
+      document.removeEventListener("mousedown", onDown);
       window.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, inline]);
 
   function close() {
-    setOpen(false);
+    if (inline) setOpen(false);
     setHits(null);
     setQ("");
     setAsked("");
@@ -69,86 +72,74 @@ export function NavSearch({ withLabel = false }: { withLabel?: boolean }) {
   }
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label="Search"
-        className={
-          withLabel
-            ? "flex w-full items-center gap-3 border-b border-rule px-4 py-3 text-sm text-ink-soft"
-            : "flex h-9 w-9 items-center justify-center rounded bg-gray-100 text-ink hover:bg-rule"
-        }
-      >
-        <IconSearch className="h-5 w-5" />
-        {withLabel && "Search"}
-      </button>
+    <div ref={rootRef} className="relative">
+      <form onSubmit={run} className="flex h-9 items-center gap-2">
+        <button
+          type={open ? "submit" : "button"}
+          onClick={open ? undefined : () => setOpen(true)}
+          aria-label="Search"
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded text-ink transition-colors ${
+            open ? "bg-gray-100" : "hover:bg-gray-100"
+          }`}
+        >
+          <IconSearch className="h-[18px] w-[18px]" />
+        </button>
+        {open && (
+          <>
+            <input
+              ref={inputRef}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              type="search"
+              placeholder="Search"
+              className="h-9 w-40 min-w-0 flex-1 rounded border-2 border-ink px-3 text-sm focus:outline-none sm:w-52"
+            />
+            <button
+              type="submit"
+              disabled={!q.trim() || loading}
+              className="h-9 shrink-0 rounded bg-accent px-3 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-accent-hover disabled:opacity-50"
+            >
+              {loading ? "…" : "Go"}
+            </button>
+          </>
+        )}
+      </form>
 
-      {open && (
-        <div className="fixed inset-0 z-[90] flex flex-col">
-          <button
-            aria-label="Close search"
-            className="absolute inset-0 bg-ink/40"
-            onClick={close}
-          />
-          <div className="relative mx-auto mt-0 w-full max-w-2xl bg-paper px-3 pb-4 pt-3 shadow-2xl sm:mt-16">
-            <form onSubmit={run} className="flex items-center gap-2">
-              <IconSearch className="h-5 w-5 shrink-0 text-ink" />
-              <input
-                ref={inputRef}
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                type="search"
-                placeholder="Search"
-                className="min-w-0 flex-1 rounded border-2 border-ink px-3 py-2.5 text-base focus:outline-none"
-              />
-              <button
-                type="submit"
-                disabled={!q.trim() || loading}
-                className="shrink-0 rounded bg-accent px-4 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-accent-hover disabled:opacity-50"
-              >
-                {loading ? "…" : "Go"}
-              </button>
-            </form>
-
-            {asked && !loading && hits && (
-              <div className="mt-4 max-h-[60vh] overflow-y-auto border-t border-rule">
-                {hits.length === 0 ? (
-                  <p className="py-8 text-center text-sm text-ink-soft">
-                    No stories matched “{asked}”.
-                  </p>
-                ) : (
-                  <ul className="divide-y divide-rule">
-                    {hits.map((a) => (
-                      <li key={a.id}>
-                        <Link
-                          href={`/article/${a.slug}`}
-                          onClick={close}
-                          className="block py-3 hover:bg-gray-50"
-                        >
-                          {a.sections?.name && (
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-accent">
-                              {a.sections.name}
-                            </span>
-                          )}
-                          <span className="block font-serif text-lg font-bold leading-snug">
-                            {a.title}
-                          </span>
-                          {a.dek && (
-                            <span className="line-clamp-1 text-sm text-ink-soft">
-                              {a.dek}
-                            </span>
-                          )}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </div>
+      {open && asked && !loading && hits && (
+        <div className="absolute left-0 top-11 z-50 w-[min(28rem,calc(100vw-2rem))] max-h-[60vh] overflow-y-auto border border-rule-dark bg-paper shadow-xl">
+          {hits.length === 0 ? (
+            <p className="px-4 py-6 text-center text-sm text-ink-soft">
+              No stories matched “{asked}”.
+            </p>
+          ) : (
+            <ul className="divide-y divide-rule">
+              {hits.map((a) => (
+                <li key={a.id}>
+                  <Link
+                    href={`/article/${a.slug}`}
+                    onClick={close}
+                    className="block px-4 py-3 hover:bg-gray-50"
+                  >
+                    {a.sections?.name && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-accent">
+                        {a.sections.name}
+                      </span>
+                    )}
+                    <span className="block font-serif text-base font-bold leading-snug">
+                      {a.title}
+                    </span>
+                    {a.dek && (
+                      <span className="line-clamp-1 text-xs text-ink-soft">
+                        {a.dek}
+                      </span>
+                    )}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
-    </>
+    </div>
   );
 }

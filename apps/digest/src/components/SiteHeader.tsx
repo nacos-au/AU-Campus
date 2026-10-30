@@ -106,21 +106,21 @@ export async function SiteHeader() {
 
       {/* ── Desktop: NYT-style masthead ── */}
       <div className="hidden md:block">
-        <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-start gap-6 px-4 pb-4 pt-5">
-          {/* left */}
-          <div className="flex flex-col items-start gap-3 pt-1">
+        <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-start gap-6 px-4 pb-3 pt-2.5">
+          {/* left: search · date · weekly issue */}
+          <div className="flex flex-col items-start gap-1.5">
             <NavSearch />
-            <p className="text-xs font-semibold text-ink">{todayLong}</p>
+            <p className="text-[11px] font-semibold text-ink">{todayLong}</p>
             <Link
               href="/editions"
-              className="text-xs font-bold uppercase tracking-wider text-accent hover:text-accent-hover"
+              className="text-[11px] font-semibold text-ink hover:text-accent"
             >
               {t("weeklyIssue")}
             </Link>
           </div>
 
-          {/* center */}
-          <div className="flex flex-col items-center gap-3">
+          {/* center: languages over the masthead */}
+          <div className="flex flex-col items-center gap-2.5 pt-1">
             <LanguageLinks />
             <Link href="/" className="flex items-center justify-center gap-3">
               <Image
@@ -137,46 +137,44 @@ export async function SiteHeader() {
             </Link>
           </div>
 
-          {/* right */}
-          <div className="flex flex-col items-end gap-3">
-            <div className="flex items-center gap-3">
-              <AdminModeToggle canUse={canAdminMode} active={adminModeOn} />
-              {adminModeOn && (
-                <Link
-                  href="/admin"
-                  className="text-[11px] font-bold uppercase tracking-wider text-ink-soft hover:text-ink"
-                >
-                  {t("admin")}
-                </Link>
-              )}
-              {user ? (
-                <ProfileMenu
-                  compact
-                  email={user.email}
-                  displayName={profile?.display_name ?? ""}
-                  showAdminRole={showAdminRole}
-                  signOutAction={signOut}
-                />
-              ) : (
-                <Link
-                  href="/login"
-                  className="border border-ink px-4 py-1.5 text-[11px] font-bold uppercase tracking-wider hover:bg-ink hover:text-paper transition-colors"
-                >
-                  {t("signIn")}
-                </Link>
-              )}
-            </div>
+          {/* right: CTA · sign in / profile */}
+          <div className="flex items-center justify-end gap-2 pt-0.5">
+            <AdminModeToggle canUse={canAdminMode} active={adminModeOn} />
+            {adminModeOn && (
+              <Link
+                href="/admin"
+                className="text-[11px] font-bold uppercase tracking-wider text-ink-soft hover:text-ink"
+              >
+                {t("admin")}
+              </Link>
+            )}
             <Link
               href="/editions"
-              className="bg-accent px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-accent-hover transition-colors"
+              className="bg-accent px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-accent-hover transition-colors"
             >
               {t("buySeasonal")}
             </Link>
+            {user ? (
+              <ProfileMenu
+                compact
+                email={user.email}
+                displayName={profile?.display_name ?? ""}
+                showAdminRole={showAdminRole}
+                signOutAction={signOut}
+              />
+            ) : (
+              <Link
+                href="/login"
+                className="bg-[#326891] px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-ink transition-colors"
+              >
+                {t("signIn")}
+              </Link>
+            )}
           </div>
         </div>
 
-        <nav className="border-y border-rule-dark">
-          <ul className="mx-auto flex max-w-7xl items-center justify-center gap-x-7 overflow-x-auto px-4 py-2.5 text-[13px] font-semibold [scrollbar-width:none]">
+        <nav className="mx-auto max-w-7xl px-4">
+          <ul className="flex items-center justify-between gap-x-4 border-y border-rule-dark py-2.5 text-[13px] font-semibold">
             <li>
               <Link href="/" className="hover:text-accent whitespace-nowrap">
                 {t("home")}
@@ -211,6 +209,7 @@ export async function SiteHeader() {
               </Link>
             </li>
           </ul>
+          <div className="mt-[2px] h-px bg-rule-dark" />
         </nav>
       </div>
     </header>

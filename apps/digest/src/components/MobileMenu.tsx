@@ -99,7 +99,9 @@ export function MobileMenu({
             </div>
 
             <div className="flex-1 overflow-y-auto">
-              <NavSearch withLabel />
+              <div className="border-b border-rule px-3 py-3">
+                <NavSearch inline={false} />
+              </div>
 
               <ul className="divide-y divide-rule">
                 <li>

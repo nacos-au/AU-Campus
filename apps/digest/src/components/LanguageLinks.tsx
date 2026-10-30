@@ -15,7 +15,7 @@ export function LanguageLinks() {
   return (
     <ul
       aria-label="Language"
-      className="flex items-center justify-center gap-x-4 text-[11px]"
+      className="flex items-center justify-center gap-x-5 text-[10px] font-semibold uppercase tracking-wider"
     >
       {SHOWN.map((l) => (
         <li key={l}>
@@ -27,7 +27,7 @@ export function LanguageLinks() {
             title={isUnderReview(l) ? "Translation under review" : undefined}
             className={`transition-colors hover:text-ink ${
               l === current
-                ? "font-bold text-ink underline underline-offset-4"
+                ? "text-ink"
                 : isUnderReview(l)
                   ? "text-ink-soft/70"
                   : "text-ink-soft"
