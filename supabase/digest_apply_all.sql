@@ -1172,6 +1172,7 @@ begin
 end;
 $$;
 
+drop trigger if exists articles_enforce_gate on public.articles;
 create trigger articles_enforce_gate
   before insert or update on public.articles
   for each row execute function private.enforce_article_gate();
