@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
+import { isActivePath } from "./CategoryNav";
 import { NavSearch } from "./NavSearch";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import {
@@ -107,7 +108,7 @@ export function MobileMenu({
                 <li>
                   <Link
                     href="/"
-                    className="block px-4 py-3.5 font-serif text-lg font-bold"
+                    className={`block px-4 py-3.5 font-serif text-lg font-bold ${isActivePath(pathname, "/") ? "text-accent" : ""}`}
                   >
                     {t("home")}
                   </Link>
@@ -116,7 +117,7 @@ export function MobileMenu({
                   <li key={s.id}>
                     <Link
                       href={`/section/${s.slug}`}
-                      className="block px-4 py-3.5 font-serif text-lg font-bold"
+                      className={`block px-4 py-3.5 font-serif text-lg font-bold ${isActivePath(pathname, `/section/${s.slug}`) ? "text-accent" : ""}`}
                     >
                       {s.name}
                     </Link>
@@ -125,7 +126,7 @@ export function MobileMenu({
                 <li>
                   <Link
                     href="/talent"
-                    className="block px-4 py-3.5 font-serif text-lg font-bold"
+                    className={`block px-4 py-3.5 font-serif text-lg font-bold ${isActivePath(pathname, "/talent") ? "text-accent" : ""}`}
                   >
                     {t("talent")}
                   </Link>
@@ -133,7 +134,7 @@ export function MobileMenu({
                 <li>
                   <Link
                     href="/forum"
-                    className="block px-4 py-3.5 font-serif text-lg font-bold"
+                    className={`block px-4 py-3.5 font-serif text-lg font-bold ${isActivePath(pathname, "/forum") ? "text-accent" : ""}`}
                   >
                     {t("forum")}
                   </Link>

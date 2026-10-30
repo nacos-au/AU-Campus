@@ -11,6 +11,7 @@ import { AdminModeBanner } from "./AdminModeBanner";
 import { AdminModeToggle } from "./AdminModeToggle";
 import { LanguageLinks } from "./LanguageLinks";
 import { NavSearch } from "./NavSearch";
+import { CategoryNav, type NavItem } from "./CategoryNav";
 import { MobileMenu } from "./MobileMenu";
 import { ProfileMenu } from "./ProfileMenu";
 import { IconUser } from "./icons";
@@ -41,6 +42,14 @@ export async function SiteHeader() {
     day: "numeric",
     year: "numeric",
   }).format(new Date());
+
+  const navItems: NavItem[] = [
+    { href: "/", label: t("home") },
+    ...sections.map((s) => ({ href: `/section/${s.slug}`, label: s.name })),
+    { href: "/talent", label: t("talent") },
+    { href: "/forum", label: t("forum") },
+    { href: "/editions", label: t("editions"), accent: true },
+  ];
 
   return (
     <header>
@@ -180,43 +189,7 @@ export async function SiteHeader() {
           <div className="mt-[2px] h-px bg-ink" />
         </div>
 
-        <nav>
-          <ul className="mx-auto flex max-w-7xl items-center justify-center gap-6 px-4 py-2.5 text-[13px] font-semibold">
-            <li>
-              <Link href="/" className="hover:text-accent whitespace-nowrap">
-                {t("home")}
-              </Link>
-            </li>
-            {sections.map((s) => (
-              <li key={s.id}>
-                <Link
-                  href={`/section/${s.slug}`}
-                  className="hover:text-accent whitespace-nowrap"
-                >
-                  {s.name}
-                </Link>
-              </li>
-            ))}
-            <li>
-              <Link href="/talent" className="hover:text-accent whitespace-nowrap">
-                {t("talent")}
-              </Link>
-            </li>
-            <li>
-              <Link href="/forum" className="hover:text-accent whitespace-nowrap">
-                {t("forum")}
-              </Link>
-            </li>
-            <li>
-              <Link
-                href="/editions"
-                className="whitespace-nowrap text-accent hover:text-accent-hover"
-              >
-                {t("editions")}
-              </Link>
-            </li>
-          </ul>
-        </nav>
+        <CategoryNav items={navItems} />
 
         <div className="mx-auto max-w-7xl px-4 pb-2">
           <div className="mx-auto h-[2px] w-24 bg-accent" />
