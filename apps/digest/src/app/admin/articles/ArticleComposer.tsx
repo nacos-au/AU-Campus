@@ -88,6 +88,7 @@ export function ArticleComposer({
   const [title, setTitle] = useState(initial?.title ?? "");
   const [dek, setDek] = useState(initial?.dek ?? "");
   const [byline, setByline] = useState(initial?.byline ?? "");
+  const [sponsoredBy, setSponsoredBy] = useState(initial?.sponsored_by ?? "");
   const [sectionId, setSectionId] = useState<number | "">(
     initial?.section_id ?? ""
   );
@@ -173,6 +174,7 @@ export function ArticleComposer({
       body: editor?.getJSON() ?? EMPTY_DOC,
       cover_url: coverUrl || null,
       byline: byline.trim() || null,
+      sponsored_by: isStaff ? sponsoredBy.trim() || null : (article?.sponsored_by ?? null),
       section_id: Number(resolvedSection),
       language,
     };
@@ -203,6 +205,7 @@ export function ArticleComposer({
           body: p.body,
           cover_url: p.cover_url,
           byline: p.byline,
+          sponsored_by: p.sponsored_by,
           section_id: p.section_id,
           language: p.language,
         })
@@ -575,6 +578,18 @@ export function ArticleComposer({
                   className="mt-2 block w-full text-sm"
                 />
               </div>
+
+              {isStaff && (
+                <label className="block text-xs font-semibold uppercase tracking-wide text-ink-soft">
+                  Sponsored by (optional — marks this a paid post)
+                  <input
+                    value={sponsoredBy}
+                    onChange={(e) => setSponsoredBy(e.target.value)}
+                    placeholder="Campus Bookshop"
+                    className="mt-1 block w-full border border-rule-dark px-3 py-2 text-sm text-ink"
+                  />
+                </label>
+              )}
 
               {!soleEditor && (
                 <label className="block text-xs font-semibold uppercase tracking-wide text-ink-soft">

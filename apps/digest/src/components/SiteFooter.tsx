@@ -136,7 +136,7 @@ export async function SiteFooter() {
             <FooterLink href="#">{t("editorialBoard")}</FooterLink>
             <FooterLink href="#">{t("join")}</FooterLink>
             <FooterLink href="#">{t("ethics")}</FooterLink>
-            <FooterLink href="#">{t("advertise")}</FooterLink>
+            <FooterLink href="/advertise">{t("advertise")}</FooterLink>
             <FooterLink href="#">{t("contact")}</FooterLink>
           </Column>
 
@@ -159,7 +159,7 @@ export async function SiteFooter() {
             {t("rights")}
           </p>
           <div className="flex flex-wrap gap-x-5 gap-y-1">
-            <a href="#" className="hover:text-ink">
+            <a href="/privacy" className="hover:text-ink">
               {t("privacy")}
             </a>
             <a href="#" className="hover:text-ink">

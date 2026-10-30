@@ -19,7 +19,7 @@ export async function initializeTransaction(params: {
   amountKobo: number;
   reference: string;
   callbackUrl: string;
-  metadata: { edition_id: string; user_id: string };
+  metadata: Record<string, string>;
 }): Promise<InitializeResult> {
   const res = await fetch(`${PAYSTACK_API}/transaction/initialize`, {
     method: "POST",
@@ -52,7 +52,7 @@ export interface VerifiedTransaction {
   status: string;
   amount: number;
   reference: string;
-  metadata: { edition_id?: string; user_id?: string } | null;
+  metadata: { edition_id?: string; user_id?: string; ad_id?: string } | null;
   customerEmail: string | null;
 }
 

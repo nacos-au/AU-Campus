@@ -45,6 +45,7 @@ export interface Article {
   assigned_editor_id?: string | null;
   byline?: string | null;
   like_count?: number;
+  sponsored_by?: string | null;
   published_at: string | null;
   created_at: string;
   updated_at: string;
@@ -130,6 +131,12 @@ export interface Purchase {
   paid_at: string;
 }
 
+export type AdStatus =
+  | "pending_payment"
+  | "pending_review"
+  | "approved"
+  | "rejected";
+
 export interface Ad {
   id: string;
   slot: AdSlot;
@@ -138,6 +145,18 @@ export interface Ad {
   label: string;
   active: boolean;
   created_at: string;
+  advertiser_name?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  weight?: number;
+  price_kobo?: number;
+  paid_at?: string | null;
+  paystack_reference?: string | null;
+  impressions?: number;
+  clicks?: number;
+  status?: AdStatus;
 }
 
 export interface ReviewComment {
@@ -165,6 +184,7 @@ export interface RevisionPayload {
   body: unknown;
   cover_url: string | null;
   byline: string | null;
+  sponsored_by?: string | null;
   section_id: number;
   language: string;
 }

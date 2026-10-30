@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isValidWebhookSignature, verifyTransaction } from "@/lib/paystack";
 import { recordVerifiedPurchase } from "@/lib/purchases";
+import { recordAdPayment } from "@/lib/ad-bookings";
 
 export const runtime = "nodejs";
 
@@ -36,7 +37,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "verification failed" }, { status: 500 });
   }
 
-  const result = await recordVerifiedPurchase(verified);
+  const result = verified.metadata?.ad_id
+    ? await recordAdPayment(verified)
+    : await recordVerifiedPurchase(verified);
   if (!result.ok) {
     console.error("[paystack webhook] purchase rejected:", result.reason);
   }

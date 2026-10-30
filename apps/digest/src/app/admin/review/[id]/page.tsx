@@ -46,6 +46,7 @@ export default async function ReviewPage({
         body: article.body,
         cover_url: article.cover_url,
         byline: article.byline ?? null,
+        sponsored_by: article.sponsored_by ?? null,
         section_id: article.section_id,
         language: article.language,
       };
