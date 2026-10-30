@@ -50,7 +50,8 @@
     "haveAccount": "Vous avez déjà un compte ?",
     "noAccount": "Nouveau ici ?",
     "signInCta": "Se connecter",
-    "signUpCta": "Créer un compte"
+    "signUpCta": "Créer un compte",
+    "signUpCampus": "Créer un compte sur AU Campus"
   },
   "account": {
     "title": "Votre compte",

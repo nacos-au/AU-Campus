@@ -1,10 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { IconSignIn } from "@/components/icons";
 import { PasswordInput } from "@/components/PasswordInput";
 import { signIn, type AuthState } from "./actions";
 
@@ -27,15 +25,10 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
 
   return (
     <div className="mx-auto w-full max-w-sm">
-      <div className="mb-1 flex flex-col items-center gap-2">
-        <span className="flex h-10 w-10 items-center justify-center border border-rule-dark text-ink">
-          <IconSignIn className="h-5 w-5" />
-        </span>
-        <h1 className="font-serif text-3xl font-bold text-center">
-          {t("signIn")}
-        </h1>
-      </div>
-      <div className="mx-auto my-4 h-px w-16 bg-ink" />
+      <h1 className="font-serif text-3xl font-bold text-center">
+        {t("signIn")}
+      </h1>
+      <div className="mx-auto my-5 h-px w-16 bg-ink" />
 
       <form action={formAction} className="space-y-4">
         <input type="hidden" name="next" value={next} />
@@ -81,16 +74,15 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-ink-soft">
-        {t("noAccount")}{" "}
+      <div className="mt-8 border-t border-rule pt-5 text-center">
+        <p className="text-xs text-ink-soft">{t("noAccount")}</p>
         <a
           href={`${CAMPUS_URL}/signup`}
-          className="font-semibold text-ink underline underline-offset-2"
+          className="mt-2 inline-block border border-ink px-5 py-2 text-xs font-semibold uppercase tracking-wider text-ink transition-colors hover:bg-ink hover:text-paper"
         >
-          {t("signUp")}
+          {t("signUpCampus")}
         </a>
-        {" "}on AU Campus
-      </p>
+      </div>
     </div>
   );
 }
