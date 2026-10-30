@@ -336,7 +336,10 @@ export function KeeperClient({
               {isAdmin ? (
                 <>
                   {" "}
-                  <Link href="/admin" className="font-bold text-accent underline-offset-2 hover:underline">
+                  <Link
+                    href="/admin/competitions"
+                    className="font-bold text-accent underline-offset-2 hover:underline"
+                  >
                     Create a competition
                   </Link>{" "}
                   to generate fixtures.
@@ -352,8 +355,11 @@ export function KeeperClient({
         {isAdmin && (
           <p className="mt-3 text-xs opacity-60">
             Friendlies and manual results are admin-only — use{" "}
-            <Link href="/admin" className="font-bold text-accent underline-offset-2 hover:underline">
-              Admin → Friendlies &amp; manual matches
+            <Link
+              href="/admin/matches"
+              className="font-bold text-accent underline-offset-2 hover:underline"
+            >
+              Admin → Matches
             </Link>
             .
           </p>

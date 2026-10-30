@@ -45,3 +45,11 @@ export function removeGuestTeam(id: string): void {
 export function getGuestTeamById(id: string): Team | null {
   return guestTeams.find((t) => t.id === id) ?? null;
 }
+
+export function updateGuestTeamLogo(id: string, logoUrl: string): Team | null {
+  const idx = guestTeams.findIndex((t) => t.id === id && !t.deleted_at);
+  if (idx < 0) return null;
+  const next = { ...guestTeams[idx], logo_url: logoUrl };
+  guestTeams = [...guestTeams.slice(0, idx), next, ...guestTeams.slice(idx + 1)];
+  return next;
+}

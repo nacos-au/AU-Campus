@@ -1,6 +1,6 @@
 import type { Department, Player, Team } from "@/lib/types/database";
 import { DEMO_DEPARTMENTS, DEMO_PLAYERS, DEMO_TEAMS } from "@/lib/data/demo";
-import { listGuestTeams } from "@/lib/data/demo-guest-teams";
+import { listGuestTeams, updateGuestTeamLogo } from "@/lib/data/demo-guest-teams";
 import type { SquadPlayer } from "@/lib/data/demo-squads";
 import { logoForSportId } from "@/lib/utils/sport-assets";
 
@@ -26,7 +26,11 @@ export function listDemoDepartments(): Department[] {
 
 /** AU department teams (fixtures + imported). Guests are listed separately. */
 export function listDemoTeams(sportId?: string): Team[] {
-  const all = [...DEMO_TEAMS, ...teams].filter((t) => !t.deleted_at);
+  const overlayIds = new Set(teams.map((t) => t.id));
+  const all = [
+    ...DEMO_TEAMS.filter((t) => !overlayIds.has(t.id)),
+    ...teams,
+  ].filter((t) => !t.deleted_at);
   return sportId ? all.filter((t) => t.sport_id === sportId) : all;
 }
 
@@ -40,7 +44,8 @@ export function findDemoTeam(id: string): Team | undefined {
 }
 
 export function listDemoPlayers(): Player[] {
-  return [...DEMO_PLAYERS, ...players];
+  const overlayIds = new Set(players.map((p) => p.id));
+  return [...DEMO_PLAYERS.filter((p) => !overlayIds.has(p.id)), ...players];
 }
 
 /** Imported squad members for a team (empty when nothing was imported). */
@@ -213,4 +218,98 @@ export function importDemoRoster(input: RosterImportInput): RosterImportResult {
   }
 
   return result;
+}
+
+export interface RosterPlayerRow extends Player {
+  team_id: string;
+  team_name: string;
+  jersey_number: number | null;
+  squad_role: string | null;
+}
+
+/** Players registered to teams in a sport (demo fixtures + imports). */
+export function listDemoRosterPlayers(sportId?: string, teamId?: string | null): RosterPlayerRow[] {
+  const sportTeams = listDemoTeams(sportId);
+  const teamById = new Map(sportTeams.map((t) => [t.id, t]));
+  const out: RosterPlayerRow[] = [];
+
+  for (const r of registry) {
+    if (teamId && r.team_id !== teamId) continue;
+    const team = teamById.get(r.team_id);
+    if (!team) continue;
+    const p = players.find((x) => x.id === r.player_id) ?? DEMO_PLAYERS.find((x) => x.id === r.player_id);
+    if (!p) continue;
+    out.push({
+      ...p,
+      team_id: team.id,
+      team_name: team.name,
+      jersey_number: r.jersey_number,
+      squad_role: r.squad_role,
+    });
+  }
+
+  // Seed squads for demo teams that have no import overlay yet.
+  const allPlayers = listDemoPlayers();
+  if (!teamId) {
+    for (const team of sportTeams) {
+      if (out.some((r) => r.team_id === team.id)) continue;
+      const seed = allPlayers.filter((p) => p.department_id === team.department_id).slice(0, 8);
+      for (const p of seed) {
+        out.push({
+          ...p,
+          team_id: team.id,
+          team_name: team.name,
+          jersey_number: null,
+          squad_role: p.position,
+        });
+      }
+    }
+  } else {
+    const team = teamById.get(teamId);
+    if (team && !out.length) {
+      for (const p of allPlayers.filter((x) => x.department_id === team.department_id).slice(0, 12)) {
+        out.push({
+          ...p,
+          team_id: team.id,
+          team_name: team.name,
+          jersey_number: null,
+          squad_role: p.position,
+        });
+      }
+    }
+  }
+
+  return out.sort((a, b) => a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name));
+}
+
+export function updateDemoTeamLogo(teamId: string, logoUrl: string): Team | null {
+  const guest = updateGuestTeamLogo(teamId, logoUrl);
+  if (guest) return guest;
+
+  const idx = teams.findIndex((t) => t.id === teamId);
+  if (idx >= 0) {
+    const next = { ...teams[idx], logo_url: logoUrl };
+    teams = [...teams.slice(0, idx), next, ...teams.slice(idx + 1)];
+    return next;
+  }
+  // Base fixture team — clone into overlay so logo persists for the session
+  const base = DEMO_TEAMS.find((t) => t.id === teamId);
+  if (!base) return null;
+  const cloned = { ...base, logo_url: logoUrl };
+  teams = [...teams, cloned];
+  return cloned;
+}
+
+export function updateDemoPlayerAvatar(playerId: string, avatarUrl: string): Player | null {
+  const idx = players.findIndex((p) => p.id === playerId);
+  if (idx >= 0) {
+    const next = { ...players[idx], avatar_url: avatarUrl };
+    players = [...players.slice(0, idx), next, ...players.slice(idx + 1)];
+    return next;
+  }
+  const base = DEMO_PLAYERS.find((p) => p.id === playerId);
+  if (!base) return null;
+  const cloned = { ...base, avatar_url: avatarUrl };
+  players = [...players, cloned];
+  return cloned;
 }

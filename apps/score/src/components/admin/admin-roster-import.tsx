@@ -21,16 +21,37 @@ const INLINE_TEAM = "__inline__";
 
 const inputClass = "mt-1 w-full rounded-lg border border-rule px-3 py-2 text-sm";
 
-export function AdminRosterImport() {
+export function AdminRosterImport({
+  fixedMode,
+  fixedSport,
+  hideSport,
+  title,
+  description,
+}: {
+  /** Lock to teams or players (hides mode toggle). */
+  fixedMode?: Mode;
+  fixedSport?: SportId;
+  hideSport?: boolean;
+  title?: string;
+  description?: string;
+} = {}) {
   const { confirm } = useConfirm();
-  const [sport, setSport] = useState<SportId>("football");
-  const [mode, setMode] = useState<Mode>("teams");
+  const [sport, setSport] = useState<SportId>(fixedSport ?? "football");
+  const [mode, setMode] = useState<Mode>(fixedMode ?? "teams");
   const [text, setText] = useState("");
   const [teams, setTeams] = useState<Team[]>([]);
   const [targetTeamId, setTargetTeamId] = useState<string>(INLINE_TEAM);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<RosterImportResult | null>(null);
+
+  useEffect(() => {
+    if (fixedSport) setSport(fixedSport);
+  }, [fixedSport]);
+
+  useEffect(() => {
+    if (fixedMode) setMode(fixedMode);
+  }, [fixedMode]);
 
   const loadTeams = useCallback(async (forSport: SportId) => {
     try {
@@ -145,63 +166,61 @@ export function AdminRosterImport() {
         <div>
           <h2 className="flex items-center gap-2 font-display text-lg font-extrabold">
             <Users className="h-5 w-5 text-accent" />
-            Onboard Teams &amp; Players
+            {title ?? "Onboard Teams & Players"}
           </h2>
           <p className="mt-1 max-w-xl text-sm opacity-70">
-            Paste a list straight from a spreadsheet, WhatsApp or a note. One entry per line, or on one
-            line separated by commas or semicolons. Fields can be split with{" "}
-            <code className="rounded bg-surface px-1">,</code>{" "}
-            <code className="rounded bg-surface px-1">:</code>{" "}
-            <code className="rounded bg-surface px-1">;</code>{" "}
-            <code className="rounded bg-surface px-1">|</code>{" "}
-            <code className="rounded bg-surface px-1">-</code>{" "}
-            <code className="rounded bg-surface px-1">.</code> a tab or two spaces.
+            {description ??
+              "Paste a list straight from a spreadsheet, WhatsApp or a note. One entry per line, or on one line separated by commas or semicolons."}
           </p>
         </div>
 
-        <div className="flex rounded-full border border-rule p-0.5">
-          {(["teams", "players"] as Mode[]).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => {
-                setMode(m);
-                setResult(null);
-                setError("");
-              }}
-              className={cn(
-                "rounded-full px-4 py-1.5 font-display text-xs font-bold capitalize",
-                mode === m ? "btn-filled" : "text-accent/70"
-              )}
-            >
-              {m}
-            </button>
-          ))}
-        </div>
+        {!fixedMode && (
+          <div className="flex rounded-full border border-rule p-0.5">
+            {(["teams", "players"] as Mode[]).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => {
+                  setMode(m);
+                  setResult(null);
+                  setError("");
+                }}
+                className={cn(
+                  "rounded-full px-4 py-1.5 font-display text-xs font-bold capitalize",
+                  mode === m ? "btn-filled" : "text-accent/70"
+                )}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         {/* ── Input column ── */}
         <div className="space-y-4">
-          <div className={cn("grid gap-3", mode === "players" && "sm:grid-cols-2")}>
-            <label className="block text-sm">
-              <span className="font-semibold">Sport</span>
-              <select
-                className={inputClass}
-                value={sport}
-                onChange={(e) => {
-                  setSport(e.target.value as SportId);
-                  setTargetTeamId(INLINE_TEAM);
-                  setResult(null);
-                }}
-              >
-                {(Object.keys(SPORT_LABELS) as SportId[]).map((s) => (
-                  <option key={s} value={s}>
-                    {SPORT_LABELS[s]}
-                  </option>
-                ))}
-              </select>
-            </label>
+          <div className={cn("grid gap-3", mode === "players" && !hideSport && "sm:grid-cols-2")}>
+            {!hideSport && (
+              <label className="block text-sm">
+                <span className="font-semibold">Sport</span>
+                <select
+                  className={inputClass}
+                  value={sport}
+                  onChange={(e) => {
+                    setSport(e.target.value as SportId);
+                    setTargetTeamId(INLINE_TEAM);
+                    setResult(null);
+                  }}
+                >
+                  {(Object.keys(SPORT_LABELS) as SportId[]).map((s) => (
+                    <option key={s} value={s}>
+                      {SPORT_LABELS[s]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
 
             {mode === "players" && (
               <label className="block text-sm">

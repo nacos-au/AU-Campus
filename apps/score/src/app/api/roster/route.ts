@@ -1,9 +1,17 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, requireMatchStaff } from "@/lib/auth/roles";
-import { fetchDepartments, fetchTeamsForSport, importRoster, type RosterImportInput } from "@/lib/data/roster";
+import {
+  fetchDepartments,
+  fetchPlayersForSport,
+  fetchTeamsForSport,
+  importRoster,
+  updatePlayerAvatar,
+  updateTeamLogo,
+  type RosterImportInput,
+} from "@/lib/data/roster";
 import { parseSportParam, sportToDbId } from "@/lib/utils/sport";
 
-/** Teams (department + guest) and departments for a sport — used by pickers. */
+/** Teams (department + guest), departments, and optional players for a sport. */
 export async function GET(request: Request) {
   const gate = await requireMatchStaff();
   if ("error" in gate) {
@@ -11,8 +19,16 @@ export async function GET(request: Request) {
   }
   const { searchParams } = new URL(request.url);
   const sport = parseSportParam(searchParams.get("sport") ?? undefined);
+  const includePlayers = searchParams.get("players") === "1" || searchParams.get("players") === "true";
+  const teamId = searchParams.get("teamId");
+
   const [teams, departments] = await Promise.all([fetchTeamsForSport(sport), fetchDepartments()]);
-  return NextResponse.json({ sport, teams, departments });
+  if (!includePlayers) {
+    return NextResponse.json({ sport, teams, departments });
+  }
+
+  const players = await fetchPlayersForSport(sport, teamId);
+  return NextResponse.json({ sport, teams, departments, players });
 }
 
 /** Bulk import of teams and/or players for one sport. Admin only. */
@@ -64,4 +80,45 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
   return NextResponse.json({ ok: true, result });
+}
+
+/**
+ * Update image URLs on a team or player.
+ * Body: { kind: "team_logo" | "player_avatar", id: string, url: string }
+ */
+export async function PATCH(request: Request) {
+  const gate = await requireAdmin();
+  if ("error" in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status });
+  }
+
+  const body = (await request.json()) as {
+    kind?: string;
+    id?: string;
+    url?: string;
+  };
+
+  const id = body.id?.trim();
+  const url = body.url?.trim();
+  if (!id || !url) {
+    return NextResponse.json({ error: "id and url are required" }, { status: 400 });
+  }
+
+  if (body.kind === "team_logo") {
+    const result = await updateTeamLogo(id, url);
+    if ("error" in result) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
+    }
+    return NextResponse.json({ ok: true, team: result });
+  }
+
+  if (body.kind === "player_avatar") {
+    const result = await updatePlayerAvatar(id, url);
+    if ("error" in result) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
+    }
+    return NextResponse.json({ ok: true, player: result });
+  }
+
+  return NextResponse.json({ error: "kind must be team_logo or player_avatar" }, { status: 400 });
 }

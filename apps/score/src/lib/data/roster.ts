@@ -1,4 +1,4 @@
-import type { Department, Team } from "@/lib/types/database";
+import type { Department, Player, Team } from "@/lib/types/database";
 import { getScoreDemoMode } from "@/lib/data/mode";
 import { hasSupabaseConfig } from "@/lib/demo-mode";
 import { createClient } from "@/lib/supabase/server";
@@ -6,13 +6,17 @@ import { resolveSportUuid } from "@/lib/data/sport-ids";
 import {
   importDemoRoster,
   listDemoDepartments,
+  listDemoRosterPlayers,
   listDemoTeamsWithGuests,
+  updateDemoPlayerAvatar,
+  updateDemoTeamLogo,
   type RosterImportInput,
   type RosterImportResult,
+  type RosterPlayerRow,
 } from "@/lib/data/demo-roster";
 import { sportToDbId, type SportId } from "@/lib/utils/sport";
 
-export type { RosterImportInput, RosterImportResult } from "@/lib/data/demo-roster";
+export type { RosterImportInput, RosterImportResult, RosterPlayerRow } from "@/lib/data/demo-roster";
 
 async function inDemo() {
   return !hasSupabaseConfig() || (await getScoreDemoMode());
@@ -220,4 +224,90 @@ export async function importRoster(input: RosterImportInput): Promise<RosterImpo
   }
 
   return result;
+}
+
+export async function fetchPlayersForSport(
+  sport: SportId,
+  teamId?: string | null
+): Promise<RosterPlayerRow[]> {
+  const slug = sportToDbId(sport);
+  if (await inDemo()) return listDemoRosterPlayers(slug, teamId);
+
+  const supabase = await createClient();
+  const sportUuid = await resolveSportUuid(supabase, slug);
+  if (typeof sportUuid !== "string") return listDemoRosterPlayers(slug, teamId);
+
+  let teamQuery = supabase
+    .from("teams")
+    .select("id, name")
+    .eq("sport_id", sportUuid)
+    .is("deleted_at", null);
+  if (teamId) teamQuery = teamQuery.eq("id", teamId);
+  const { data: teamRows } = (await teamQuery) as { data: Array<{ id: string; name: string }> | null };
+  const teams = teamRows ?? [];
+  if (!teams.length) return [];
+
+  const teamIds = teams.map((t) => t.id);
+  const teamName = new Map(teams.map((t) => [t.id, t.name]));
+
+  const { data: regs } = (await supabase
+    .from("player_sport_registry")
+    .select("player_id, team_id, jersey_number, squad_role, player:players(*)")
+    .in("team_id", teamIds)
+    .eq("is_active", true)) as {
+    data: Array<{
+      player_id: string;
+      team_id: string;
+      jersey_number: number | null;
+      squad_role: string | null;
+      player: Player | null;
+    }> | null;
+  };
+
+  return (regs ?? [])
+    .filter((r) => r.player)
+    .map((r) => ({
+      ...(r.player as Player),
+      team_id: r.team_id,
+      team_name: teamName.get(r.team_id) ?? "—",
+      jersey_number: r.jersey_number,
+      squad_role: r.squad_role,
+    }))
+    .sort((a, b) => a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name));
+}
+
+export async function updateTeamLogo(
+  teamId: string,
+  logoUrl: string
+): Promise<Team | { error: string }> {
+  if (await inDemo()) {
+    const t = updateDemoTeamLogo(teamId, logoUrl);
+    return t ?? { error: "Team not found" };
+  }
+  const supabase = await createClient();
+  const { data, error } = (await (supabase.from("teams") as ReturnType<typeof supabase.from>)
+    .update({ logo_url: logoUrl } as Record<string, unknown>)
+    .eq("id", teamId)
+    .select("*, department:departments(*)")
+    .single()) as { data: Team | null; error: { message: string } | null };
+  if (error || !data) return { error: error?.message ?? "Team not found" };
+  return data;
+}
+
+export async function updatePlayerAvatar(
+  playerId: string,
+  avatarUrl: string
+): Promise<Player | { error: string }> {
+  if (await inDemo()) {
+    const p = updateDemoPlayerAvatar(playerId, avatarUrl);
+    return p ?? { error: "Player not found" };
+  }
+  const supabase = await createClient();
+  const { data, error } = (await (supabase.from("players") as ReturnType<typeof supabase.from>)
+    .update({ avatar_url: avatarUrl } as Record<string, unknown>)
+    .eq("id", playerId)
+    .select("*")
+    .single()) as { data: Player | null; error: { message: string } | null };
+  if (error || !data) return { error: error?.message ?? "Player not found" };
+  return data;
 }

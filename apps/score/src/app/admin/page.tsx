@@ -1,39 +1,26 @@
-import { redirect } from "next/navigation";
-import { BrandedSection } from "@/components/layout/branded-section";
-import { PageContent } from "@/components/layout/page-content";
-import { AdminDashboard } from "@/components/admin/admin-dashboard";
-import { isAdminModeActive } from "@/app/actions/admin-mode";
-import { getSessionStaff } from "@/lib/auth/roles";
+import { AdminHubCards } from "@/components/admin/admin-shell";
+import { fetchTeamsForSport } from "@/lib/data/roster";
 
 export const metadata = { title: "Admin" };
 
-export const dynamic = "force-dynamic";
-
-export default async function AdminPage() {
-  const staff = await getSessionStaff();
-
-  if (!staff) {
-    redirect("/?auth=signin&next=/admin");
-  }
-  if (!staff.isAdmin) {
-    redirect("/?sport=football");
-  }
-  // Demo overlay (no live keys / local practice) skips the Admin Mode cookie.
-  if (!staff.isDemoBypass && !(await isAdminModeActive())) {
-    redirect("/?sport=football&admin_mode=required");
-  }
+export default async function AdminHubPage() {
+  const footballClubs = await fetchTeamsForSport("football");
+  const auCount = footballClubs.filter((t) => !t.is_guest).length;
+  const guestCount = footballClubs.filter((t) => t.is_guest).length;
 
   return (
-    <>
-      <BrandedSection title="Admin" showSubNav={false} />
-      <PageContent>
-        <div className="mb-4 rounded-lg border border-accent/30 bg-accent/[0.06] px-4 py-3 font-display text-sm font-semibold text-accent">
-          {staff.isDemoBypass
-            ? "Demo overlay — imports and competitions stay in this session and are not live results."
-            : "You are in Admin Mode. Changes here affect live Score data."}
-        </div>
-        <AdminDashboard />
-      </PageContent>
-    </>
+    <div className="space-y-6">
+      <div>
+        <h2 className="font-display text-2xl font-extrabold tracking-tight">Management</h2>
+        <p className="mt-1 max-w-2xl text-sm text-accent/70">
+          Season office for campus sport. Set up clubs and players, publish competitions, then keep
+          real fixtures moving — friendlies stay under Matches.
+        </p>
+        <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-accent/50">
+          Football books · {auCount} AU clubs · {guestCount} guests
+        </p>
+      </div>
+      <AdminHubCards />
+    </div>
   );
 }
