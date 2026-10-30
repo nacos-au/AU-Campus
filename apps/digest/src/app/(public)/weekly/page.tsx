@@ -53,7 +53,8 @@ export default async function WeeklyIssuePage() {
   const edition = ((editionData ?? []) as Edition[])[0] ?? null;
 
   // This week's stories; fall back to the latest if the week is quiet.
-  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const now = new Date();
+  const weekAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
   const recent = all.filter(
     (a) => a.published_at && new Date(a.published_at).getTime() >= weekAgo
   );
@@ -68,7 +69,7 @@ export default async function WeeklyIssuePage() {
     day: "numeric",
     month: "long",
     year: "numeric",
-  }).format(new Date());
+  }).format(now);
 
   const bySection = sections
     .map((s) => ({

@@ -74,7 +74,6 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("keydown", onKey);
       clearTimeout(t);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opts]);
 
   return (
