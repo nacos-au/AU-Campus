@@ -1,7 +1,19 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/roles";
+import { listCompetitions } from "@/lib/data/competition-rosters";
 import { getScoreDemoMode } from "@/lib/data/mode";
 import { createCompetition, type CreateCompetitionInput } from "@/lib/data/repository";
+
+export async function GET(request: Request) {
+  const gate = await requireAdmin();
+  if ("error" in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status });
+  }
+
+  const sport = new URL(request.url).searchParams.get("sport") ?? undefined;
+  const competitions = await listCompetitions(sport || undefined);
+  return NextResponse.json({ competitions });
+}
 
 export async function POST(request: Request) {
   const gate = await requireAdmin();

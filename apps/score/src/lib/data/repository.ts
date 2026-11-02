@@ -1020,19 +1020,25 @@ export async function createCompetition(
 /** Demo-mode twin of createCompetition — tournament + fixtures in the session overlay. */
 function createDemoCompetition(input: CreateCompetitionInput): { id: string; fixtures: number } {
   const id = `tourn-created-${Date.now().toString(36)}`;
-  const tournament: Tournament = registerDemoTournament({
-    id,
-    name: input.name,
-    sport_id: input.sport_id,
-    category: input.competition_type === "cup" ? "knockout_cup" : "league",
-    format: input.competition_type === "cup" ? "knockout_only" : "league",
-    competition_type: input.competition_type,
-    season: input.season,
-    rules: {},
-    title_holder: input.title_holder_name
-      ? { team_name: input.title_holder_name, season: "Previous" }
-      : null,
-  });
+  const tournament: Tournament = registerDemoTournament(
+    {
+      id,
+      name: input.name,
+      sport_id: input.sport_id,
+      category: input.competition_type === "cup" ? "knockout_cup" : "league",
+      format: input.competition_type === "cup" ? "knockout_only" : "league",
+      competition_type: input.competition_type,
+      season: input.season,
+      rules: {},
+      title_holder: input.title_holder_name
+        ? { team_name: input.title_holder_name, season: "Previous" }
+        : null,
+    },
+    {
+      config: input.config,
+      team_ids: input.teams.map((t) => t.id),
+    }
+  );
 
   let fixtures = 0;
   for (const [i, p] of (input.pairings ?? []).entries()) {

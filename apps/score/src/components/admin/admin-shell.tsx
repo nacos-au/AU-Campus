@@ -63,14 +63,14 @@ export function AdminHubCards() {
       href: "/admin/players",
       icon: Users,
       title: "Players",
-      body: "Register athletes to a club — name first, photos later.",
+      body: "Register athletes into an unlimited club pool — name first, photos later.",
       cta: "Manage players",
     },
     {
       href: "/admin/competitions",
       icon: Trophy,
       title: "Competitions",
-      body: "Publish leagues and cups from the teams in each sport.",
+      body: "Publish a comp, set squad caps, then fill each club’s competition squad.",
       cta: "Create competition",
     },
     {

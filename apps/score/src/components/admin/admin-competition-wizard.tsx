@@ -21,10 +21,17 @@ const ENTRY_SIZES: CupEntrySize[] = [2, 4, 8, 16, 32];
 
 type Step = "basics" | "teams" | "draw" | "confirm";
 
-export function AdminCompetitionWizard() {
+export const COMPETITION_CREATED_EVENT = "au-score-competition-created";
+
+export function AdminCompetitionWizard({
+  onCreated,
+}: {
+  onCreated?: (id: string) => void;
+} = {}) {
   const { confirm } = useConfirm();
   const [step, setStep] = useState<Step>("basics");
-  const [name, setName] = useState("");
+  const [name, setName] = useState("Inter-Faculty Pre-season 2026/27");
+  const [season, setSeason] = useState("2026/27");
   const [sport, setSport] = useState<SportId>("football");
   const [type, setType] = useState<CompetitionType>("league");
   const [entrySize, setEntrySize] = useState<CupEntrySize | "auto">("auto");
@@ -37,6 +44,7 @@ export function AdminCompetitionWizard() {
   const [byeConfirmed, setByeConfirmed] = useState(false);
   const [publishState, setPublishState] = useState<"idle" | "saving" | "done" | "error">("idle");
   const [publishMessage, setPublishMessage] = useState("");
+  const [createdId, setCreatedId] = useState<string | null>(null);
   /** Preseason default 25; normal comps 22 — admin can override. */
   const [maxSquadSize, setMaxSquadSize] = useState(25);
   const [maxSubs, setMaxSubs] = useState(9);
@@ -146,7 +154,7 @@ export function AdminCompetitionWizard() {
       name,
       sport_id: sportDbId,
       competition_type: type,
-      season: "2025/26",
+      season: season.trim() || "2026/27",
       title_holder_name: titleHolder || null,
       config: {
         ...(type === "cup"
@@ -169,10 +177,24 @@ export function AdminCompetitionWizard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      const json = (await res.json()) as { ok?: boolean; message?: string; error?: string };
+      const json = (await res.json()) as {
+        ok?: boolean;
+        id?: string;
+        message?: string;
+        error?: string;
+      };
       if (res.ok && json.ok) {
         setPublishState("done");
-        setPublishMessage(json.message ?? "Competition created.");
+        setPublishMessage(
+          `${json.message ?? "Competition created."} Next: fill each club’s competition squad below.`
+        );
+        if (json.id) {
+          setCreatedId(json.id);
+          onCreated?.(json.id);
+          window.dispatchEvent(
+            new CustomEvent(COMPETITION_CREATED_EVENT, { detail: { id: json.id } })
+          );
+        }
       } else {
         setPublishState("error");
         setPublishMessage(json.error ?? "Failed to create competition.");
@@ -227,7 +249,17 @@ export function AdminCompetitionWizard() {
               className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Inter-Faculty Cup 2027"
+              placeholder="e.g. Inter-Faculty Pre-season 2026/27"
+            />
+          </label>
+
+          <label className="block text-sm">
+            <span className="font-semibold">Season</span>
+            <input
+              className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
+              value={season}
+              onChange={(e) => setSeason(e.target.value)}
+              placeholder="2026/27"
             />
           </label>
 
@@ -585,6 +617,7 @@ export function AdminCompetitionWizard() {
         <div className="mt-6 space-y-4">
           <ul className="space-y-1 rounded-lg border border-rule px-4 py-3 text-sm">
             <li><span className="font-semibold">Name:</span> {name || "—"}</li>
+            <li><span className="font-semibold">Season:</span> {season || "—"}</li>
             <li><span className="font-semibold">Sport:</span> {SPORT_LABELS[sport]}</li>
             <li>
               <span className="font-semibold">Type:</span>{" "}
@@ -593,6 +626,11 @@ export function AdminCompetitionWizard() {
                 : `League · ${doubleRoundRobin ? "double" : "single"} round robin · Team of the Season`}
             </li>
             <li><span className="font-semibold">Teams:</span> {registered.length}</li>
+            <li>
+              <span className="font-semibold">Competition roster:</span>{" "}
+              max {maxSquadSize} players / {maxSubs} subs
+              {rosterPreset !== "custom" ? ` (${rosterPreset})` : ""}
+            </li>
             {titleHolder && <li><span className="font-semibold">Title holder:</span> {titleHolder}</li>}
             {draw && draw.byeCount > 0 && (
               <li className="text-accent">
@@ -639,6 +677,12 @@ export function AdminCompetitionWizard() {
               <span className="text-sm font-semibold text-red-700">{publishMessage}</span>
             )}
           </div>
+          {publishState === "done" && createdId && (
+            <p className="text-sm text-accent/70">
+              Scroll to <span className="font-semibold">Fill competition squads</span> to name
+              players for each of the {registered.length} clubs.
+            </p>
+          )}
         </div>
       )}
     </div>

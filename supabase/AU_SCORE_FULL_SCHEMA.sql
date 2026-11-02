@@ -374,7 +374,20 @@ CREATE TABLE IF NOT EXISTS public.tournament_teams (
   seed INTEGER,
   received_bye BOOLEAN NOT NULL DEFAULT false,
   registered_at TIMESTAMPTZ DEFAULT now(),
+  roster_locked_at TIMESTAMPTZ,
   UNIQUE(tournament_id, team_id)
+);
+
+-- Players nominated onto a competition side (club pool stays unlimited)
+CREATE TABLE IF NOT EXISTS public.tournament_rosters (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tournament_id UUID NOT NULL REFERENCES public.tournaments(id) ON DELETE CASCADE,
+  team_id UUID NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
+  player_id UUID NOT NULL REFERENCES public.players(id) ON DELETE CASCADE,
+  jersey_number INTEGER,
+  added_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (tournament_id, player_id),
+  UNIQUE (tournament_id, team_id, player_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.season_awards (
@@ -416,6 +429,8 @@ CREATE INDEX IF NOT EXISTS idx_bracket_fixtures_tournament ON public.bracket_fix
 CREATE INDEX IF NOT EXISTS idx_group_standings_group ON public.group_standings(group_id);
 CREATE INDEX IF NOT EXISTS idx_meet_events_tournament ON public.meet_events(tournament_id);
 CREATE INDEX IF NOT EXISTS idx_tournament_teams_tournament ON public.tournament_teams(tournament_id);
+CREATE INDEX IF NOT EXISTS idx_tournament_rosters_tournament ON public.tournament_rosters(tournament_id);
+CREATE INDEX IF NOT EXISTS idx_tournament_rosters_team ON public.tournament_rosters(tournament_id, team_id);
 
 -- ─── Platform roles ─────────────────────────────────────────────────────────
 
@@ -842,6 +857,7 @@ ALTER TABLE public.meet_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.period_scores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.set_scores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tournament_teams ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tournament_rosters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.season_awards ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.match_lineups ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.score_user_roles ENABLE ROW LEVEL SECURITY;
@@ -972,6 +988,13 @@ CREATE POLICY "Admins manage season_awards" ON public.season_awards
 DROP POLICY IF EXISTS "Admins manage tournament_teams" ON public.tournament_teams;
 CREATE POLICY "Admins manage tournament_teams" ON public.tournament_teams
   FOR ALL USING (private.can_manage_matches()) WITH CHECK (private.can_manage_matches());
+
+ALTER TABLE public.tournament_rosters ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public read tournament_rosters" ON public.tournament_rosters;
+CREATE POLICY "Public read tournament_rosters" ON public.tournament_rosters FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admins manage tournament_rosters" ON public.tournament_rosters;
+CREATE POLICY "Admins manage tournament_rosters" ON public.tournament_rosters
+  FOR ALL USING (private.is_score_admin()) WITH CHECK (private.is_score_admin());
 
 DROP POLICY IF EXISTS "Staff manage match_lineups" ON public.match_lineups;
 CREATE POLICY "Staff manage match_lineups" ON public.match_lineups
