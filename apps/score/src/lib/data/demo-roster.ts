@@ -2,6 +2,7 @@ import type { Department, Player, Team } from "@/lib/types/database";
 import { DEMO_DEPARTMENTS, DEMO_PLAYERS, DEMO_TEAMS } from "@/lib/data/demo";
 import { listGuestTeams, updateGuestTeamLogo } from "@/lib/data/demo-guest-teams";
 import type { SquadPlayer } from "@/lib/data/demo-squads";
+import { primaryPosition } from "@/lib/roster/positions";
 import { logoForSportId } from "@/lib/utils/sport-assets";
 
 /**
@@ -210,11 +211,11 @@ export function importDemoRoster(input: RosterImportInput): RosterImportResult {
           player_id: player.id,
           team_id: team.id,
           jersey_number: p.jersey_number ?? null,
-          squad_role: p.position ?? null,
+          squad_role: primaryPosition(p.position) ?? "Squad",
         },
       ];
-      result.registrations += 1;
     }
+    result.registrations += 1;
   }
 
   return result;

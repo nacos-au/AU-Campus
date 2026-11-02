@@ -7,6 +7,9 @@
  * markers ("1.", "2)", "-", "•") and a header row are ignored.
  */
 
+import { isMatricNumber, MATRIC_EXAMPLE, normaliseMatric } from "@/lib/roster/matric";
+import { formatPositions, parsePositionsField } from "@/lib/roster/positions";
+
 export interface ParsedTeam {
   line: number;
   raw: string;
@@ -24,7 +27,9 @@ export interface ParsedPlayer {
   first_name: string;
   last_name: string;
   matric_number: string | null;
+  /** Canonical labels joined with ", " when several were picked/pasted. */
   position: string | null;
+  positions: string[];
   jersey_number: number | null;
   /** Team named inline (when the list mixes teams). */
   team_name: string | null;
@@ -56,19 +61,6 @@ const LIST_MARKER = /^\s*(?:\d{1,3}\s*[.)\]:-]|[-•*–—>]|\(\d{1,3}\))\s+/;
 
 const HEADER_WORDS = /\b(name|names|team|teams|player|players|matric|position|pos|jersey|number|no\.?|dept|department|code|institution)\b/i;
 
-const POSITIONS = [
-  "goalkeeper", "gk", "keeper", "defender", "def", "centre back", "center back", "cb",
-  "left back", "lb", "right back", "rb", "full back", "wing back", "midfielder", "mid",
-  "cm", "cdm", "cam", "dm", "am", "winger", "lw", "rw", "forward", "fw", "striker", "st",
-  "cf", "attacker",
-  "guard", "point guard", "pg", "shooting guard", "sg", "small forward", "sf",
-  "power forward", "pf", "center", "centre", "c",
-  "setter", "libero", "outside hitter", "opposite", "opposite hitter", "middle blocker",
-  "singles", "doubles",
-  "sprinter", "hurdler", "jumper", "thrower", "distance", "middle distance", "relay",
-];
-
-const MATRIC_RE = /^(?=.*\d)[A-Za-z0-9]+(?:[\/-][A-Za-z0-9]+){1,4}$/;
 const JERSEY_RE = /^#?\s?(\d{1,3})$/;
 const DEPT_CODE_RE = /^[A-Z][A-Z0-9&]{1,6}$/;
 
@@ -77,7 +69,7 @@ function looksLikeDeptCode(s: string): boolean {
 }
 
 function looksLikePlayerField(s: string): boolean {
-  return MATRIC_RE.test(s) || JERSEY_RE.test(s) || Boolean(normalisePosition(s));
+  return isMatricNumber(s) || JERSEY_RE.test(s) || parsePositionsField(s).length > 0;
 }
 
 function looksLikeBareName(s: string): boolean {
@@ -112,7 +104,7 @@ function splitSingleLine(raw: string): string[] | null {
   const parts = raw.split(/\s*,\s*/).map((p) => p.trim()).filter(Boolean);
   if (parts.length < 2) return null;
 
-  // One player with fields: "Adaeze Okonkwo, AU/CS/2022/0142, Forward, 9"
+  // One player with fields: "Adaeze Okonkwo, AU23AC5696, Forward, 9"
   if (parts.some(looksLikePlayerField) && parts.length <= 6) return null;
   // One team with a code/department: "CSC FC, CSC, Computer Science"
   if (parts.some(looksLikeDeptCode) && parts.length <= 4) return null;
@@ -169,22 +161,6 @@ function titleCase(s: string): string {
   return s
     .toLowerCase()
     .replace(/(^|[\s'-])([a-z])/g, (_, pre: string, ch: string) => pre + ch.toUpperCase());
-}
-
-function normalisePosition(raw: string): string | null {
-  const key = raw.trim().toLowerCase().replace(/\s+/g, " ");
-  if (!POSITIONS.includes(key)) return null;
-  const MAP: Record<string, string> = {
-    gk: "Goalkeeper", keeper: "Goalkeeper", def: "Defender", cb: "Defender", lb: "Defender",
-    rb: "Defender", "centre back": "Defender", "center back": "Defender", "full back": "Defender",
-    "wing back": "Defender", mid: "Midfielder", cm: "Midfielder", cdm: "Midfielder",
-    cam: "Midfielder", dm: "Midfielder", am: "Midfielder", fw: "Forward", st: "Forward",
-    cf: "Forward", striker: "Forward", attacker: "Forward", winger: "Forward", lw: "Forward",
-    rw: "Forward", pg: "Guard", sg: "Guard", "point guard": "Guard", "shooting guard": "Guard",
-    sf: "Forward", pf: "Forward", "small forward": "Forward", "power forward": "Forward",
-    c: "Center", centre: "Center",
-  };
-  return MAP[key] ?? titleCase(key);
 }
 
 /* ────────────────────────────── Teams ────────────────────────────── */
@@ -293,14 +269,14 @@ export function parsePlayers(text: string, opts: ParsePlayersOptions = {}): Pars
 
     const issues: string[] = [];
     let matric: string | null = null;
-    let position: string | null = null;
+    const positions: string[] = [];
     let jersey: number | null = null;
     let team: string | null = null;
 
     // Name is the first field that isn't obviously something else.
     const rest = [...fields];
     let nameIdx = rest.findIndex(
-      (f) => !JERSEY_RE.test(f) && !MATRIC_RE.test(f) && !normalisePosition(f)
+      (f) => !JERSEY_RE.test(f) && !isMatricNumber(f) && parsePositionsField(f).length === 0
     );
     if (nameIdx < 0) nameIdx = 0;
     const fullName = rest.splice(nameIdx, 1)[0] ?? "";
@@ -311,21 +287,19 @@ export function parsePlayers(text: string, opts: ParsePlayersOptions = {}): Pars
         jersey = Number(j[1]);
         continue;
       }
-      if (MATRIC_RE.test(f) && !matric) {
-        matric = f.toUpperCase();
+      if (isMatricNumber(f) && !matric) {
+        matric = normaliseMatric(f);
         continue;
       }
-      const pos = normalisePosition(f);
-      if (pos && !position) {
-        position = pos;
+      const parsedPos = parsePositionsField(f);
+      if (parsedPos.length) {
+        for (const p of parsedPos) {
+          if (!positions.includes(p)) positions.push(p);
+        }
         continue;
       }
       if (known.includes(f.toLowerCase()) && !team) {
         team = f;
-        continue;
-      }
-      if (!position && !/\d/.test(f) && f.split(/\s+/).length <= 2) {
-        position = titleCase(f);
         continue;
       }
       if (!team) {
@@ -357,7 +331,8 @@ export function parsePlayers(text: string, opts: ParsePlayersOptions = {}): Pars
       first_name: first,
       last_name: last,
       matric_number: matric,
-      position,
+      position: formatPositions(positions),
+      positions,
       jersey_number: jersey,
       team_name: team,
       issues,
@@ -378,9 +353,9 @@ export const ROSTER_FORMAT_HINTS = {
     "Bio Wolves",
   ],
   players: [
-    "Adaeze Okonkwo, AU/CS/2022/0142, Forward, 9",
-    "Chidi Eze : Midfielder : 4",
+    `Adaeze Okonkwo, ${MATRIC_EXAMPLE}, Forward, 9`,
+    "Chidi Eze : Midfielder/Forward : 4",
     "Ngozi Adeyemi - GK - #1",
-    "Tunde Bakare",
+    "Tunde Bakare, AU22ME0142, Defender + Midfielder",
   ],
 } as const;

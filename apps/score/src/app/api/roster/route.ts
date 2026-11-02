@@ -79,6 +79,17 @@ export async function POST(request: Request) {
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
+  if (
+    players.length > 0 &&
+    result.registrations === 0 &&
+    result.players_created === 0 &&
+    result.errors.length > 0
+  ) {
+    return NextResponse.json(
+      { error: result.errors[0] ?? "Players were not registered.", result },
+      { status: 400 }
+    );
+  }
   return NextResponse.json({ ok: true, result });
 }
 

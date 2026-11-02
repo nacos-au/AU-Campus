@@ -4,8 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminRosterImport } from "@/components/admin/admin-roster-import";
 import { ImageUploadField, SportKeeperTabs } from "@/components/admin/image-upload-field";
 import { SPORTS } from "@/components/layout/branded-section";
-import { ROSTER_UPDATED_EVENT } from "@/lib/roster/parse-roster";
+import type { RosterImportResult } from "@/lib/data/demo-roster";
 import type { RosterPlayerRow } from "@/lib/data/demo-roster";
+import { MATRIC_EXAMPLE, MATRIC_HINT, isMatricNumber, normaliseMatric } from "@/lib/roster/matric";
+import { formatPositions, SPORT_POSITIONS } from "@/lib/roster/positions";
+import { ROSTER_UPDATED_EVENT } from "@/lib/roster/parse-roster";
 import type { Team } from "@/lib/types/database";
 import { SPORT_LABELS, type SportId } from "@/lib/utils/sport";
 import { cn } from "@/lib/utils/cn";
@@ -25,9 +28,11 @@ export function AdminPlayersPanel() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [formClubId, setFormClubId] = useState("");
-  const [position, setPosition] = useState("");
+  const [positions, setPositions] = useState<string[]>([]);
   const [jersey, setJersey] = useState("");
   const [matric, setMatric] = useState("");
+
+  const positionOptions = SPORT_POSITIONS[sport];
 
   const load = useCallback(async (forSport: SportId, teamId: string) => {
     try {
@@ -37,7 +42,13 @@ export function AdminPlayersPanel() {
       const json = (await res.json()) as {
         teams?: Team[];
         players?: RosterPlayerRow[];
+        error?: string;
       };
+      if (!res.ok) {
+        setTeams([]);
+        setPlayers([]);
+        return;
+      }
       setTeams(json.teams ?? []);
       setPlayers(json.players ?? []);
     } catch {
@@ -66,6 +77,12 @@ export function AdminPlayersPanel() {
     }
   }, [departmentTeams, formClubId]);
 
+  function togglePosition(label: string) {
+    setPositions((prev) =>
+      prev.includes(label) ? prev.filter((p) => p !== label) : [...prev, label]
+    );
+  }
+
   async function handleAddPlayer() {
     setError("");
     setMessage("");
@@ -77,6 +94,11 @@ export function AdminPlayersPanel() {
     }
     if (!formClubId) {
       setError("Pick a club.");
+      return;
+    }
+    const matricNorm = normaliseMatric(matric);
+    if (matric.trim() && !isMatricNumber(matric.trim())) {
+      setError(`Matric should look like ${MATRIC_EXAMPLE}.`);
       return;
     }
     setBusy(true);
@@ -91,26 +113,40 @@ export function AdminPlayersPanel() {
               first_name: first,
               last_name: last,
               team_id: formClubId,
-              position: position.trim() || null,
+              position: formatPositions(positions),
               jersey_number: jersey.trim() ? Number(jersey) : null,
-              matric_number: matric.trim() || null,
+              matric_number: matricNorm,
             },
           ],
         }),
       });
-      const json = (await res.json()) as { error?: string };
+      const json = (await res.json()) as {
+        error?: string;
+        result?: RosterImportResult;
+      };
       if (!res.ok) {
         setError(json.error ?? "Could not add player");
         return;
       }
+      const result = json.result;
+      if (result?.errors?.length) {
+        setError(result.errors.join(" · "));
+      }
+      if (!result?.registrations) {
+        setError((prev) => prev || "Player saved but not linked to the club squad — try again.");
+        await load(sport, clubId);
+        return;
+      }
       setFirstName("");
       setLastName("");
-      setPosition("");
+      setPositions([]);
       setJersey("");
       setMatric("");
       setMessage(`${first} ${last} registered.`);
+      // Show the club they just joined so the new row is visible.
+      setClubId(formClubId);
       window.dispatchEvent(new Event(ROSTER_UPDATED_EVENT));
-      await load(sport, clubId);
+      await load(sport, formClubId);
     } catch {
       setError("Could not add player");
     } finally {
@@ -134,6 +170,7 @@ export function AdminPlayersPanel() {
           setSport(id as SportId);
           setClubId("all");
           setFormClubId("");
+          setPositions([]);
         }}
       />
 
@@ -164,7 +201,7 @@ export function AdminPlayersPanel() {
           fixedSport={sport}
           hideSport
           title="Paste player list"
-          description="Bulk-register athletes from a spreadsheet or chat paste. Photos are attached afterwards from the squad list."
+          description={`Bulk-register athletes. Matric format ${MATRIC_EXAMPLE}. Positions: use fixed labels (Forward, GK/Midfielder, Setter + Libero).`}
         />
       ) : (
         <>
@@ -184,7 +221,7 @@ export function AdminPlayersPanel() {
             </select>
           </label>
 
-          <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+          <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
             <div className="table-card overflow-hidden">
               <ul className="divide-y divide-rule">
                 {players.length === 0 ? (
@@ -194,6 +231,7 @@ export function AdminPlayersPanel() {
                 ) : (
                   players.map((p) => {
                     const initials = `${p.first_name[0] ?? ""}${p.last_name[0] ?? ""}`.toUpperCase();
+                    const role = p.position || p.squad_role;
                     return (
                       <li key={`${p.id}-${p.team_id}`} className="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
                         <div className="min-w-0 flex-1">
@@ -205,7 +243,7 @@ export function AdminPlayersPanel() {
                           </p>
                           <p className="truncate text-xs text-accent/60">
                             {p.team_name}
-                            {p.squad_role ? ` · ${p.squad_role}` : ""}
+                            {role ? ` · ${role}` : ""}
                             {p.matric_number ? ` · ${p.matric_number}` : ""}
                           </p>
                         </div>
@@ -261,35 +299,49 @@ export function AdminPlayersPanel() {
                   ))}
                 </select>
               </label>
-              <div className="grid grid-cols-2 gap-3">
-                <label className="block text-sm">
-                  <span className="font-semibold">Position</span>
-                  <input
-                    className={inputClass}
-                    value={position}
-                    onChange={(e) => setPosition(e.target.value)}
-                    placeholder="Forward"
-                  />
-                </label>
-                <label className="block text-sm">
-                  <span className="font-semibold">Jersey</span>
-                  <input
-                    className={inputClass}
-                    value={jersey}
-                    onChange={(e) => setJersey(e.target.value.replace(/\D/g, "").slice(0, 3))}
-                    placeholder="9"
-                    inputMode="numeric"
-                  />
-                </label>
+
+              <div className="space-y-2">
+                <p className="text-sm font-semibold">Positions</p>
+                <p className="text-xs text-accent/55">Pick one or more for {SPORT_LABELS[sport]}.</p>
+                <div className="flex flex-wrap gap-2">
+                  {positionOptions.map((label) => {
+                    const on = positions.includes(label);
+                    return (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => togglePosition(label)}
+                        className={cn(
+                          "rounded-full px-3 py-1.5 font-display text-xs font-bold",
+                          on ? "btn-filled" : "border border-rule bg-white text-accent/70"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+
+              <label className="block text-sm">
+                <span className="font-semibold">Jersey</span>
+                <input
+                  className={inputClass}
+                  value={jersey}
+                  onChange={(e) => setJersey(e.target.value.replace(/\D/g, "").slice(0, 3))}
+                  placeholder="9"
+                  inputMode="numeric"
+                />
+              </label>
               <label className="block text-sm">
                 <span className="font-semibold">Matric</span>
                 <input
                   className={inputClass}
                   value={matric}
-                  onChange={(e) => setMatric(e.target.value)}
-                  placeholder="AU/CS/2022/0142"
+                  onChange={(e) => setMatric(e.target.value.toUpperCase())}
+                  placeholder={MATRIC_EXAMPLE}
                 />
+                <span className="mt-1 block text-xs text-accent/50">{MATRIC_HINT}</span>
               </label>
               <button
                 type="button"

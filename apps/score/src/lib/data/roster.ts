@@ -14,6 +14,7 @@ import {
   type RosterImportResult,
   type RosterPlayerRow,
 } from "@/lib/data/demo-roster";
+import { primaryPosition } from "@/lib/roster/positions";
 import { sportToDbId, type SportId } from "@/lib/utils/sport";
 
 export type { RosterImportInput, RosterImportResult, RosterPlayerRow } from "@/lib/data/demo-roster";
@@ -184,6 +185,11 @@ export async function importRoster(input: RosterImportInput): Promise<RosterImpo
 
       if (player) {
         result.players_existing += 1;
+        if (p.position) {
+          await (supabase.from("players") as ReturnType<typeof supabase.from>)
+            .update({ position: p.position } as Record<string, unknown>)
+            .eq("id", player.id);
+        }
       } else {
         const { data, error } = (await (supabase.from("players") as ReturnType<typeof supabase.from>)
           .insert({
@@ -205,17 +211,20 @@ export async function importRoster(input: RosterImportInput): Promise<RosterImpo
       }
 
       const key = `${player.id}:${team.id}`;
-      if (registered.has(key)) continue;
+      if (registered.has(key)) {
+        result.registrations += 1;
+        continue;
+      }
       const { error: regErr } = (await (supabase.from("player_sport_registry") as ReturnType<typeof supabase.from>)
         .insert({
           player_id: player.id,
           team_id: team.id,
           jersey_number: p.jersey_number ?? null,
-          squad_role: p.position ?? null,
+          squad_role: primaryPosition(p.position) ?? "Squad",
           is_active: true,
         } as Record<string, unknown>)) as { error: { message: string } | null };
       if (regErr) {
-        result.errors.push(`${first} ${last}: ${regErr.message}`);
+        result.errors.push(`${first} ${last}: squad register failed — ${regErr.message}`);
         continue;
       }
       registered.add(key);
@@ -235,7 +244,10 @@ export async function fetchPlayersForSport(
 
   const supabase = await createClient();
   const sportUuid = await resolveSportUuid(supabase, slug);
-  if (typeof sportUuid !== "string") return listDemoRosterPlayers(slug, teamId);
+  if (typeof sportUuid !== "string") {
+    // Live project misconfigured — do not silently show demo squads.
+    return [];
+  }
 
   let teamQuery = supabase
     .from("teams")
@@ -250,29 +262,54 @@ export async function fetchPlayersForSport(
   const teamIds = teams.map((t) => t.id);
   const teamName = new Map(teams.map((t) => [t.id, t.name]));
 
-  const { data: regs } = (await supabase
+  const { data: regs, error: regError } = (await supabase
     .from("player_sport_registry")
-    .select("player_id, team_id, jersey_number, squad_role, player:players(*)")
-    .in("team_id", teamIds)
-    .eq("is_active", true)) as {
+    .select("player_id, team_id, jersey_number, squad_role, is_active")
+    .in("team_id", teamIds)) as {
     data: Array<{
       player_id: string;
       team_id: string;
       jersey_number: number | null;
       squad_role: string | null;
-      player: Player | null;
+      is_active: boolean | null;
     }> | null;
+    error: { message: string } | null;
   };
 
-  return (regs ?? [])
-    .filter((r) => r.player)
-    .map((r) => ({
-      ...(r.player as Player),
-      team_id: r.team_id,
-      team_name: teamName.get(r.team_id) ?? "—",
-      jersey_number: r.jersey_number,
-      squad_role: r.squad_role,
-    }))
+  if (regError) {
+    console.error("[roster] player_sport_registry read failed:", regError.message);
+    return [];
+  }
+
+  const active = (regs ?? []).filter((r) => r.is_active !== false);
+  if (!active.length) return [];
+
+  const playerIds = [...new Set(active.map((r) => r.player_id))];
+  const { data: playerRows, error: playerError } = (await supabase
+    .from("players")
+    .select("*")
+    .in("id", playerIds)) as { data: Player[] | null; error: { message: string } | null };
+
+  if (playerError) {
+    console.error("[roster] players read failed:", playerError.message);
+    return [];
+  }
+
+  const byId = new Map((playerRows ?? []).map((p) => [p.id, p]));
+
+  return active
+    .map((r) => {
+      const player = byId.get(r.player_id);
+      if (!player) return null;
+      return {
+        ...player,
+        team_id: r.team_id,
+        team_name: teamName.get(r.team_id) ?? "—",
+        jersey_number: r.jersey_number,
+        squad_role: r.squad_role,
+      } satisfies RosterPlayerRow;
+    })
+    .filter((r): r is RosterPlayerRow => Boolean(r))
     .sort((a, b) => a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name));
 }
 

@@ -47,22 +47,22 @@ const SPORTS = [
 
 const PLAYERS_BY_DEPT: Record<string, Array<{ first_name: string; last_name: string; matric_number: string; position: string }>> = {
   CSC: [
-    { first_name: "Adaeze", last_name: "Okonkwo", matric_number: "AU/CS/2022/0142", position: "Forward" },
-    { first_name: "Chidi", last_name: "Eze", matric_number: "AU/CS/2021/0089", position: "Midfielder" },
-    { first_name: "Ngozi", last_name: "Adeyemi", matric_number: "AU/CS/2023/0201", position: "Goalkeeper" },
+    { first_name: "Adaeze", last_name: "Okonkwo", matric_number: "AU22CS0142", position: "Forward" },
+    { first_name: "Chidi", last_name: "Eze", matric_number: "AU21CS0089", position: "Midfielder" },
+    { first_name: "Ngozi", last_name: "Adeyemi", matric_number: "AU23CS0201", position: "Goalkeeper" },
   ],
   MEC: [
-    { first_name: "Tunde", last_name: "Bakare", matric_number: "AU/ME/2022/0067", position: "Forward" },
-    { first_name: "Fatima", last_name: "Ibrahim", matric_number: "AU/ME/2021/0034", position: "Defender" },
+    { first_name: "Tunde", last_name: "Bakare", matric_number: "AU22ME0067", position: "Forward" },
+    { first_name: "Fatima", last_name: "Ibrahim", matric_number: "AU21ME0034", position: "Defender" },
   ],
   EEE: [
-    { first_name: "Emeka", last_name: "Nwosu", matric_number: "AU/EE/2022/0118", position: "Midfielder" },
+    { first_name: "Emeka", last_name: "Nwosu", matric_number: "AU22EE0118", position: "Midfielder" },
   ],
   BIO: [
-    { first_name: "Amina", last_name: "Bello", matric_number: "AU/BS/2023/0156", position: "Forward" },
+    { first_name: "Amina", last_name: "Bello", matric_number: "AU23BS0156", position: "Forward" },
   ],
   LAW: [
-    { first_name: "Kelechi", last_name: "Okafor", matric_number: "AU/LW/2022/0078", position: "Defender" },
+    { first_name: "Kelechi", last_name: "Okafor", matric_number: "AU22LW0078", position: "Defender" },
   ],
 };
 

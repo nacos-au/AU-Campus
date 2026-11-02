@@ -269,9 +269,11 @@ export function AdminRosterImport({
               </p>
             ) : (
               <p className="mt-1">
-                <strong>First Last</strong> then any of: <strong>matric</strong> (AU/CS/2022/0142),{" "}
-                <strong>position</strong> (Forward, GK, Setter…), <strong>jersey</strong> (9 or #9) and, when
-                not importing into one team, the <strong>team name</strong>. Order doesn’t matter.
+                <strong>First Last</strong> then any of: <strong>matric</strong> (AU23AC5696),{" "}
+                <strong>position</strong> (Forward, GK/Midfielder, Setter + Libero), <strong>jersey</strong>{" "}
+                (9 or #9) and, when not importing into one team, the <strong>team name</strong>. Order
+                doesn’t matter. Multiple positions: join with <code className="rounded bg-surface px-1">/</code>{" "}
+                <code className="rounded bg-surface px-1">+</code> or commas.
               </p>
             )}
           </div>
