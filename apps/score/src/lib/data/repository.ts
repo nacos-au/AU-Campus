@@ -276,27 +276,33 @@ export async function fetchMatchEvents(matchId: string): Promise<DemoMatchEvent[
 
   if (!data?.length) return getEventsForMatch(matchId);
 
-  return data.map((row) => ({
-    id: row.id,
-    match_id: row.match_id,
-    player: {
-      id: row.player_id ?? "",
-      department_id: "unknown",
-      first_name: "",
-      last_name: "",
-      matric_number: null,
-      avatar_url: null,
-      position: null,
-    },
-    team_id: row.team_id ?? "",
-    team_name: "",
-    team_code: "",
-    team_logo_url: null,
-    event_type: row.event_type,
-    match_time: row.match_time,
-    period: row.period,
-    details: row.details,
-  }));
+  return data.map((row) => {
+    const details = row.details ?? {};
+    const fullName =
+      typeof details.player_name === "string" ? details.player_name : "";
+    const [first = "", ...rest] = fullName.split(" ");
+    return {
+      id: row.id,
+      match_id: row.match_id,
+      player: {
+        id: row.player_id ?? "",
+        department_id: "unknown",
+        first_name: first,
+        last_name: rest.join(" "),
+        matric_number: null,
+        avatar_url: null,
+        position: null,
+      },
+      team_id: row.team_id ?? "",
+      team_name: typeof details.team_name === "string" ? details.team_name : "",
+      team_code: typeof details.team_code === "string" ? details.team_code : "",
+      team_logo_url: null,
+      event_type: row.event_type,
+      match_time: row.match_time,
+      period: row.period,
+      details: row.details,
+    };
+  });
 }
 
 export async function fetchPeriodScores(matchId: string): Promise<PeriodScore[]> {
@@ -416,6 +422,11 @@ export interface CreateMatchEventInput {
 }
 
 export async function createMatchEvent(input: CreateMatchEventInput): Promise<{ id: string } | { error: string }> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    // Demo: events stay in the keeper localStorage; return a stable client-ish id.
+    return { id: `evt-demo-${Date.now().toString(36)}` };
+  }
+
   const supabase = await createClient();
   const { data, error } = await (supabase.from("match_events") as ReturnType<typeof supabase.from>).insert({
     match_id: input.match_id,
@@ -575,6 +586,8 @@ export interface CreateMatchInput {
   set_scores?: Array<{ set_number: number; home_games: number; away_games: number }>;
   /** Optional pre-match lineup graphic URL (simple sheet photo). */
   lineup_image_url?: string | null;
+  allows_extra_time?: boolean;
+  allows_penalty_shootout?: boolean;
 }
 
 async function resolveFriendlyTournamentId(
@@ -661,6 +674,8 @@ export async function createMatch(input: CreateMatchInput): Promise<{ id: string
       scope,
       venue_id: input.venue_id ?? null,
       lineup_image_url: input.lineup_image_url ?? null,
+      allows_extra_time: Boolean(input.allows_extra_time),
+      allows_penalty_shootout: Boolean(input.allows_penalty_shootout),
     } as Record<string, unknown>)
     .select("id")
     .single() as { data: { id: string } | null; error: { message: string } | null };
@@ -680,10 +695,17 @@ export async function createMatch(input: CreateMatchInput): Promise<{ id: string
 export interface UpdateMatchInput {
   home_score?: number;
   away_score?: number;
+  home_penalties?: number | null;
+  away_penalties?: number | null;
+  current_period?: string;
+  went_to_extra_time?: boolean;
   status?: "scheduled" | "live" | "completed";
   scheduled_at?: string;
   venue_id?: string | null;
   scope?: MatchScope;
+  allows_extra_time?: boolean;
+  allows_penalty_shootout?: boolean;
+  lineup_image_url?: string | null;
 }
 
 export async function updateMatch(
@@ -897,6 +919,8 @@ export interface CreateCompetitionInput {
   season: string;
   title_holder_name?: string | null;
   config: Record<string, unknown>;
+  /** When true, fixtures stay off the keeper open list. */
+  is_draft?: boolean;
   teams: Array<{ id: string; name: string; seed?: number }>;
   pairings?: Array<{
     round: string;
@@ -917,6 +941,8 @@ export interface CreateCompetitionInput {
     away: { id: string; name: string };
     scheduled_at: string;
     venue_id?: string | null;
+    allows_extra_time?: boolean;
+    allows_penalty_shootout?: boolean;
   }> | null;
 }
 
@@ -944,6 +970,11 @@ export async function createCompetition(
         ? "league"
         : "league";
 
+  const rules = {
+    extra_time: Boolean(input.config.extra_time),
+    penalty_shootout: Boolean(input.config.penalty_shootout),
+  };
+
   const { data: tournament, error: tErr } = await (supabase.from("tournaments") as ReturnType<typeof supabase.from>)
     .insert({
       name: input.name,
@@ -954,7 +985,8 @@ export async function createCompetition(
       season: input.season,
       config: input.config,
       title_holder_name: input.title_holder_name ?? null,
-      rules: {},
+      rules,
+      is_draft: Boolean(input.is_draft),
     } as Record<string, unknown>)
     .select("id")
     .single() as { data: { id: string } | null; error: { message: string } | null };
@@ -1062,6 +1094,8 @@ export async function createCompetition(
           venue_id: f.venue_id ?? null,
           scope: "official",
           competition_phase: `matchday_${i + 1}`,
+          allows_extra_time: Boolean(f.allows_extra_time),
+          allows_penalty_shootout: Boolean(f.allows_penalty_shootout),
         })) as Record<string, unknown>[]
       ) as { error: { message: string } | null };
     if (mErr) return { error: mErr.message };
@@ -1083,7 +1117,11 @@ function createDemoCompetition(input: CreateCompetitionInput): { id: string; fix
       format: input.competition_type === "cup" ? "knockout_only" : "league",
       competition_type: input.competition_type,
       season: input.season,
-      rules: {},
+      rules: {
+        extra_time: Boolean(input.config.extra_time),
+        penalty_shootout: Boolean(input.config.penalty_shootout),
+      },
+      is_draft: Boolean(input.is_draft),
       title_holder: input.title_holder_name
         ? { team_name: input.title_holder_name, season: "Previous" }
         : null,
@@ -1142,6 +1180,8 @@ function createDemoCompetition(input: CreateCompetitionInput): { id: string; fix
       tournament_id: id,
       tournament,
       competition_phase: `matchday_${i + 1}`,
+      allows_extra_time: Boolean(f.allows_extra_time),
+      allows_penalty_shootout: Boolean(f.allows_penalty_shootout),
     });
     fixtures += 1;
   }

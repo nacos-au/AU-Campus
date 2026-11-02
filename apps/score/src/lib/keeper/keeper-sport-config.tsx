@@ -79,7 +79,25 @@ function footballPrimaryScore(logs: KeeperLogEntry[], homeTeamId: string, awayTe
   let home = 0;
   let away = 0;
   for (const log of logs) {
+    // Shootout pens are tracked separately — don't inflate FT score.
+    if (log.period === "penalty_shootout") continue;
     if (log.event_type !== "goal" && log.event_type !== "penalty_scored") continue;
+    if (log.team_id === homeTeamId) home++;
+    else if (log.team_id === awayTeamId) away++;
+  }
+  return { home, away };
+}
+
+export function footballShootoutScore(
+  logs: KeeperLogEntry[],
+  homeTeamId: string,
+  awayTeamId: string
+) {
+  let home = 0;
+  let away = 0;
+  for (const log of logs) {
+    if (log.period !== "penalty_shootout") continue;
+    if (log.event_type !== "penalty_scored") continue;
     if (log.team_id === homeTeamId) home++;
     else if (log.team_id === awayTeamId) away++;
   }

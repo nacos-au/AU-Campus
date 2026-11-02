@@ -22,7 +22,8 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const gate = await requireAdmin();
+  // Keepers need to write live scores/periods; admin for venue/schedule edits.
+  const gate = await requireMatchStaff();
   if ("error" in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status });
   }
@@ -31,10 +32,17 @@ export async function PATCH(
   const body = (await request.json()) as {
     home_score?: number;
     away_score?: number;
+    home_penalties?: number | null;
+    away_penalties?: number | null;
+    current_period?: string;
+    went_to_extra_time?: boolean;
     status?: "scheduled" | "live" | "completed";
     scheduled_at?: string;
     venue_id?: string | null;
     scope?: MatchScope;
+    allows_extra_time?: boolean;
+    allows_penalty_shootout?: boolean;
+    lineup_image_url?: string | null;
   };
 
   const result = await updateMatch(id, body);

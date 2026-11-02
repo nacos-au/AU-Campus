@@ -63,6 +63,8 @@ export interface PostDemoMatchInput {
   tournament?: Tournament | null;
   competition_phase?: string | null;
   lineup_image_url?: string | null;
+  allows_extra_time?: boolean;
+  allows_penalty_shootout?: boolean;
   id?: string;
 }
 
@@ -98,6 +100,8 @@ export function postDemoMatch(input: PostDemoMatchInput): Match {
     home_penalties: input.home_penalties ?? null,
     away_penalties: input.away_penalties ?? null,
     lineup_image_url: input.lineup_image_url ?? null,
+    allows_extra_time: input.allows_extra_time ?? false,
+    allows_penalty_shootout: input.allows_penalty_shootout ?? false,
     scheduled_at: input.scheduled_at,
     started_at: input.status === "completed" ? input.scheduled_at : null,
     ended_at: input.status === "completed" ? new Date().toISOString() : null,

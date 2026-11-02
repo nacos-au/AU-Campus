@@ -207,6 +207,8 @@ export interface Tournament {
   rules: FootballRules;
   season: string;
   phases?: CompetitionTimelinePhase[];
+  /** Hidden from public/keepers until published. */
+  is_draft?: boolean;
 }
 
 export interface Match {
@@ -233,6 +235,10 @@ export interface Match {
   home_penalties?: number | null;
   away_penalties?: number | null;
   went_to_extra_time?: boolean;
+  /** If drawn after 90, continue to extra time (cup / knockout style). */
+  allows_extra_time?: boolean;
+  /** If still level (after ET or after 90 when no ET), go to pens. */
+  allows_penalty_shootout?: boolean;
   /** Simple pre-match lineup sheet / graphic URL. */
   lineup_image_url?: string | null;
   deleted_at?: string | null;

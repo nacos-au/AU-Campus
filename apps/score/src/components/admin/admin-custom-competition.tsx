@@ -21,6 +21,8 @@ type FixtureSlot = {
   teamBId: string;
   scheduledAt: string;
   venueId: string;
+  allowsExtraTime: boolean;
+  allowsPenaltyShootout: boolean;
 };
 
 function defaultKickoff(offsetHours = 0): string {
@@ -41,6 +43,8 @@ function makeSlots(count: number, prev: FixtureSlot[], defaultVenue: string): Fi
         teamBId: "",
         scheduledAt: defaultKickoff(i),
         venueId: defaultVenue,
+        allowsExtraTime: false,
+        allowsPenaltyShootout: true,
       }
     );
   }
@@ -65,6 +69,8 @@ export function AdminCustomCompetition({
   const [maxSubs, setMaxSubs] = useState(9);
   const [rosterPreset, setRosterPreset] = useState<"preseason" | "normal" | "custom">("preseason");
   const [penaltyShootout, setPenaltyShootout] = useState(true);
+  const [defaultExtraTime, setDefaultExtraTime] = useState(false);
+  const [isDraft, setIsDraft] = useState(false);
   const [defaultVenueId, setDefaultVenueId] = useState("");
 
   const [slots, setSlots] = useState<FixtureSlot[]>(() => makeSlots(4, [], ""));
@@ -254,8 +260,10 @@ export function AdminCustomCompetition({
             max_subs: maxSubs,
             starters: Math.max(1, maxSquadSize - maxSubs),
             penalty_shootout: penaltyShootout,
+            extra_time: defaultExtraTime,
             roster_preset: rosterPreset,
           },
+          is_draft: isDraft,
           teams: [...teamMap.values()],
           pairings: null,
           league_fixtures: null,
@@ -264,6 +272,8 @@ export function AdminCustomCompetition({
             away: { id: s.teamBId, name: teamName(s.teamBId) },
             scheduled_at: new Date(s.scheduledAt).toISOString(),
             venue_id: s.venueId,
+            allows_extra_time: s.allowsExtraTime,
+            allows_penalty_shootout: s.allowsPenaltyShootout,
           })),
         }),
       });
@@ -448,13 +458,37 @@ export function AdminCustomCompetition({
             </label>
           </>
         )}
-        <label className="flex items-center gap-2 text-sm sm:col-span-2">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={defaultExtraTime}
+            onChange={(e) => {
+              setDefaultExtraTime(e.target.checked);
+              setSlots((prev) => prev.map((s) => ({ ...s, allowsExtraTime: e.target.checked })));
+            }}
+          />
+          <span className="font-semibold">Default: extra time if drawn</span>
+        </label>
+        <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
             checked={penaltyShootout}
-            onChange={(e) => setPenaltyShootout(e.target.checked)}
+            onChange={(e) => {
+              setPenaltyShootout(e.target.checked);
+              setSlots((prev) =>
+                prev.map((s) => ({ ...s, allowsPenaltyShootout: e.target.checked }))
+              );
+            }}
           />
-          <span className="font-semibold">Penalty shootouts allowed</span>
+          <span className="font-semibold">Default: pens if still level</span>
+        </label>
+        <label className="flex items-center gap-2 text-sm sm:col-span-2">
+          <input
+            type="checkbox"
+            checked={isDraft}
+            onChange={(e) => setIsDraft(e.target.checked)}
+          />
+          <span className="font-semibold">Save as draft (hidden from keepers until you clear draft)</span>
         </label>
       </div>
 
@@ -535,6 +569,38 @@ export function AdminCustomCompetition({
                     </option>
                   ))}
                 </select>
+              </label>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-4 text-sm">
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={slot.allowsExtraTime}
+                  onChange={(e) =>
+                    setSlots((prev) =>
+                      prev.map((s, i) =>
+                        i === index ? { ...s, allowsExtraTime: e.target.checked } : s
+                      )
+                    )
+                  }
+                />
+                <span className="font-semibold">Extra time if drawn</span>
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={slot.allowsPenaltyShootout}
+                  onChange={(e) =>
+                    setSlots((prev) =>
+                      prev.map((s, i) =>
+                        i === index
+                          ? { ...s, allowsPenaltyShootout: e.target.checked }
+                          : s
+                      )
+                    )
+                  }
+                />
+                <span className="font-semibold">Pens if still level</span>
               </label>
             </div>
           </div>

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { Match } from "@/lib/types/database";
+import { FootballPeriodControls } from "@/components/keeper/football-period-controls";
 import { KeeperActionBar } from "@/components/keeper/keeper-action-bar";
 import { KeeperEventTimeline } from "@/components/keeper/keeper-event-timeline";
 import { KeeperRosterColumn } from "@/components/keeper/keeper-roster-column";
@@ -13,7 +14,11 @@ import {
   type KeeperLogEntry,
 } from "@/lib/keeper/keeper-events";
 import { getAthleteTeamMeta, getKeeperRosters } from "@/lib/keeper/keeper-rosters";
-import { getKeeperSportConfig, type KeeperTeamQuickAction } from "@/lib/keeper/keeper-sport-config";
+import {
+  footballShootoutScore,
+  getKeeperSportConfig,
+  type KeeperTeamQuickAction,
+} from "@/lib/keeper/keeper-sport-config";
 import { useKeeperLogs } from "@/lib/keeper/use-keeper-logs";
 import { useMatchClock } from "@/lib/keeper/use-match-clock";
 import { useMatchLifecycle } from "@/lib/match/use-match-lifecycle";
@@ -42,13 +47,19 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
     status: match.status as "scheduled" | "live" | "completed",
     scheduledAt: match.scheduled_at,
   });
-  const { clock, setTimeLost, setRunning, resetClock, stopClock, formatTime } = useMatchClock(match.id, {
-    period: match.current_period,
-  });
+  const { clock, setTimeLost, setRunning, resetClock, stopClock, setPeriod, formatTime } =
+    useMatchClock(match.id, {
+      period: match.current_period === "not_started" ? "half_1" : match.current_period,
+    });
   const { logs, addLog, removeLog, updateLog } = useKeeperLogs(match.id);
 
   const [selected, setSelected] = useState<{ side: Side; playerId: string } | null>(null);
   const [pendingFoul, setPendingFoul] = useState<string | null>(null);
+  const [subPrompt, setSubPrompt] = useState<{
+    side: Side;
+    playerOutId: string;
+    playerOutName: string;
+  } | null>(null);
   const [assistPrompt, setAssistPrompt] = useState<{
     logId: string;
     side: Side;
@@ -56,6 +67,11 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
   } | null>(null);
   const [finishPrompt, setFinishPrompt] = useState<{ logId: string; athleteName: string } | null>(null);
   const [finishTimeInput, setFinishTimeInput] = useState("");
+
+  const allowsEt = Boolean(match.allows_extra_time ?? match.tournament?.rules?.extra_time);
+  const allowsPens = Boolean(
+    match.allows_penalty_shootout ?? match.tournament?.rules?.penalty_shootout
+  );
 
   const rosters = useMemo(() => getKeeperRosters(match, sport), [match, sport]);
   const { home: homeSquad, away: awaySquad, singleLabel } = rosters;
@@ -89,8 +105,48 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
     await lifecycle.startMatch();
   }
 
+  async function syncPeriod(period: string) {
+    setPeriod(period, {
+      resetElapsed: period === "half_2" || period.startsWith("extra_time"),
+    });
+    try {
+      await fetch(`/api/matches/${match.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          current_period: period,
+          went_to_extra_time: period.startsWith("extra_time") || undefined,
+        }),
+      });
+    } catch {
+      /* local still works */
+    }
+  }
+
   async function handleEndMatch() {
     stopClock();
+    const pens = footballShootoutScore(
+      logs,
+      match.home_team_id ?? "",
+      match.away_team_id ?? ""
+    );
+    try {
+      await fetch(`/api/matches/${match.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "completed",
+          home_score: primaryScore.home,
+          away_score: primaryScore.away,
+          home_penalties: clock.period === "penalty_shootout" || pens.home || pens.away ? pens.home : null,
+          away_penalties: clock.period === "penalty_shootout" || pens.home || pens.away ? pens.away : null,
+          current_period: "full_time",
+          went_to_extra_time: allowsEt && logs.some((l) => l.period.startsWith("extra_time")),
+        }),
+      });
+    } catch {
+      /* ignore */
+    }
     await lifecycle.endMatch();
   }
 
@@ -181,6 +237,17 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
     if (!selected) return;
     const { player_name, player_id } = playerMeta(selected.side, selected.playerId);
 
+    if (eventType === "substitution" && sport === "football") {
+      setSubPrompt({
+        side: selected.side,
+        playerOutId: player_id,
+        playerOutName: player_name,
+      });
+      setSelected(null);
+      setPendingFoul(null);
+      return;
+    }
+
     if (eventType === "finish" && config.promptFinishTime) {
       const entry = pushLog(selected.side, eventType, player_id, player_name);
       setFinishPrompt({ logId: entry.id, athleteName: player_name });
@@ -199,6 +266,20 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
     pushLog(selected.side, eventType, player_id, player_name);
     setSelected(null);
     setPendingFoul(null);
+  }
+
+  function completeSub(playerInId: string) {
+    if (!subPrompt) return;
+    const incoming = playerMeta(subPrompt.side, playerInId);
+    pushLog(subPrompt.side, "substitution", subPrompt.playerOutId, subPrompt.playerOutName, {
+      details: {
+        player_out_id: subPrompt.playerOutId,
+        player_out_name: subPrompt.playerOutName,
+        player_in_id: playerInId,
+        player_in_name: incoming.player_name,
+      },
+    });
+    setSubPrompt(null);
   }
 
   function handleFoulChip(cardType: string) {
@@ -290,6 +371,12 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
                 {periodLabel}
               </span>
             )}
+            {sport === "football" && (
+              <div className="flex flex-wrap gap-1.5 text-[10px] font-bold uppercase tracking-wide text-accent/55">
+                {allowsEt && <span className="rounded-full border border-rule px-2 py-0.5">ET on</span>}
+                {allowsPens && <span className="rounded-full border border-rule px-2 py-0.5">Pens on</span>}
+              </div>
+            )}
             {config.showPrimaryScore && (
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span className="font-display text-lg font-extrabold tabular-nums">
@@ -333,6 +420,16 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
             />
           )}
         </div>
+        {sport === "football" && loggingEnabled && (
+          <div className="mt-3 border-t border-rule pt-3">
+            <FootballPeriodControls
+              period={clock.period}
+              allowsExtraTime={allowsEt}
+              allowsPenaltyShootout={allowsPens}
+              onSelect={(p) => void syncPeriod(p)}
+            />
+          </div>
+        )}
         {trackResults.length > 0 && (
           <ol className="mt-3 flex flex-wrap gap-2 border-t border-rule pt-3 text-xs font-bold">
             {trackResults.map((r) => (
@@ -366,6 +463,36 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
           </h2>
           <KeeperEventTimeline logs={logs} onRemove={handleRemove} />
         </section>
+      )}
+
+      {loggingEnabled && subPrompt && (
+        <div className="mb-4 rounded-xl border border-accent/30 bg-accent/5 p-4">
+          <p className="mb-3 text-center font-display text-sm font-bold">
+            {subPrompt.playerOutName} off — tap player coming on
+          </p>
+          <div className="flex flex-wrap justify-center gap-2">
+            {uniquePlayers(
+              squadFor(subPrompt.side).filter((p) => p.id !== subPrompt.playerOutId)
+            ).map((p) => (
+              <button
+                key={`sub-in-${p.id}`}
+                type="button"
+                onClick={() => completeSub(p.id)}
+                className="interactive-btn rounded-lg border border-rule bg-white px-3 py-2 font-display text-xs font-bold"
+              >
+                {p.jersey_number != null && <span className="mr-1 opacity-50">#{p.jersey_number}</span>}
+                {p.first_name} {p.last_name}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setSubPrompt(null)}
+              className="interactive-btn rounded-lg border border-dashed border-rule px-3 py-2 text-xs font-semibold opacity-60"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
 
       {loggingEnabled && assistPrompt && (

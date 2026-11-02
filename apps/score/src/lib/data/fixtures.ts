@@ -31,6 +31,7 @@ export async function fetchOpenCompetitionFixtures(sport?: SportId): Promise<Mat
       .filter((m) => !slug || m.sport_id === slug)
       .filter((m) => m.status === "scheduled" || m.status === "live" || m.status === "paused")
       .filter((m) => m.scope !== "pickup" && m.tournament?.category !== "friendly")
+      .filter((m) => !m.tournament?.is_draft)
       .map((m) => ({ ...m, tournament: nameFor(m) ?? m.tournament }))
       .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
   }
@@ -45,6 +46,7 @@ export async function fetchOpenCompetitionFixtures(sport?: SportId): Promise<Mat
     .is("deleted_at", null)
     .neq("scope", "pickup")
     .neq("tournament.category", "friendly")
+    .eq("tournament.is_draft", false)
     .order("scheduled_at", { ascending: true });
 
   if (sport) {

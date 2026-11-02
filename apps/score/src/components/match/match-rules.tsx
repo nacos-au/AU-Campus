@@ -5,11 +5,16 @@ import { dbIdToSport } from "@/lib/utils/sport";
 
 export function MatchRulesBanner({ match }: { match: Match }) {
   const tournament = match.tournament;
-  if (!tournament) return null;
-
-  const rules = formatFootballRules(tournament.rules);
+  const rules = formatFootballRules(tournament?.rules ?? {});
   const variant = match.match_variant;
   const phase = match.competition_phase;
+  const chips = [
+    ...rules,
+    match.allows_extra_time ? "Extra time if drawn" : null,
+    match.allows_penalty_shootout ? "Pens if still level" : null,
+  ].filter((x, i, arr): x is string => Boolean(x) && arr.indexOf(x) === i);
+
+  if (!phase && !variant && chips.length === 0) return null;
 
   return (
     <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
@@ -24,7 +29,7 @@ export function MatchRulesBanner({ match }: { match: Match }) {
             {variant}
           </span>
         )}
-        {rules.map((rule) => (
+        {chips.map((rule) => (
           <span key={rule} className="rounded-full border border-rule bg-surface px-3 py-1 text-xs font-semibold opacity-70">
             {rule}
           </span>

@@ -175,6 +175,20 @@ export function useMatchClock(matchId: string, initial?: Partial<MatchClockState
 
   const stopClock = () => persist(freezeRunning(clock));
 
+  const setPeriod = (period: string, opts?: { resetElapsed?: boolean }) => {
+    if (opts?.resetElapsed) {
+      persist({
+        elapsedSeconds: 0,
+        isRunning: false,
+        isTimeLost: false,
+        period,
+        runningStartedAt: null,
+      });
+      return;
+    }
+    persist({ ...freezeRunning(clock), period });
+  };
+
   const formatTime = () => {
     const total = display.elapsedSeconds;
     const m = Math.floor(total / 60);
@@ -190,6 +204,7 @@ export function useMatchClock(matchId: string, initial?: Partial<MatchClockState
     setTimeLost,
     resetClock,
     stopClock,
+    setPeriod,
     persist,
     formatTime,
     elapsedMinutes,

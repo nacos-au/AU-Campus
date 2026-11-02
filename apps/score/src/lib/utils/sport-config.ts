@@ -152,9 +152,13 @@ export function scoreUnitLabel(unit: SportConfig["scoreUnit"]): string | null {
 
 const PERIOD_LABELS: Record<SportId, Record<string, string>> = {
   football: {
-    half_1: "41' (+2m)",
-    half_2: "78'",
+    half_1: "1st half",
+    half_time: "Half-time",
+    half_2: "2nd half",
     full_time: "Full time",
+    extra_time_1: "ET 1st",
+    extra_time_2: "ET 2nd",
+    penalty_shootout: "Penalties",
     not_started: "Kickoff",
   },
   basketball: {

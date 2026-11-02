@@ -147,6 +147,7 @@ CREATE TABLE IF NOT EXISTS public.tournaments (
   title_holder_team_id UUID REFERENCES public.teams(id) ON DELETE SET NULL,
   title_holder_name VARCHAR(150),
   title_holder_season VARCHAR(20),
+  is_draft BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -181,6 +182,9 @@ CREATE TABLE IF NOT EXISTS public.matches (
   home_penalties INTEGER,
   away_penalties INTEGER,
   went_to_extra_time BOOLEAN DEFAULT false,
+  allows_extra_time BOOLEAN NOT NULL DEFAULT false,
+  allows_penalty_shootout BOOLEAN NOT NULL DEFAULT false,
+  lineup_image_url TEXT,
   competition_phase VARCHAR(30),
   match_variant VARCHAR(20) DEFAULT 'standard',
   competition_format VARCHAR(20) DEFAULT 'team_vs_team',

@@ -13,13 +13,19 @@ import { PodiumDisplay } from "@/components/match/podium-display";
 import { MatchLineupsSection } from "@/components/match/match-lineups-section";
 import { BrandedSection } from "@/components/layout/branded-section";
 import { PageContent } from "@/components/layout/page-content";
+import { MatchLiveEventsPoller } from "@/components/match/match-live-events-poller";
 import {
-  getEventsForMatch,
   getPeriodScoresForMatch,
   getSetScoresForMatch,
   getTrackResultsForMatch,
 } from "@/lib/data/demo-match-details";
-import { fetchMatchById } from "@/lib/data/repository";
+import {
+  fetchMatchById,
+  fetchMatchEvents,
+  fetchPeriodScores,
+  fetchSetScores,
+  fetchTrackResults,
+} from "@/lib/data/repository";
 import { dbIdToSport, parseSportParam } from "@/lib/utils/sport";
 import { getSportConfig, scoreUnitLabel } from "@/lib/utils/sport-config";
 import {
@@ -69,10 +75,13 @@ export default async function MatchPage({
   const matchSport = dbIdToSport(match.sport_id);
   const activeSport = parseSportParam(sport ?? matchSport);
   const config = getSportConfig(matchSport);
-  const events = getEventsForMatch(id);
-  const periodScores = getPeriodScoresForMatch(id);
-  const setScores = getSetScoresForMatch(id);
-  const trackResults = getTrackResultsForMatch(id);
+  const events = await fetchMatchEvents(id);
+  const livePeriodScores = await fetchPeriodScores(id);
+  const periodScores = livePeriodScores.length ? livePeriodScores : getPeriodScoresForMatch(id);
+  const liveSetScores = await fetchSetScores(id);
+  const setScores = liveSetScores.length ? liveSetScores : getSetScoresForMatch(id);
+  const liveTrack = await fetchTrackResults(id);
+  const trackResults = liveTrack.length ? liveTrack : getTrackResultsForMatch(id);
   const isLive = match.status === "live";
   const isCompleted = match.status === "completed";
   const homeName = match.home_team?.name ?? "Home";
@@ -169,7 +178,16 @@ export default async function MatchPage({
             </section>
           )}
 
-          {matchSport === "football" && events.length > 0 ? (
+          {isLive ? (
+            <MatchLiveEventsPoller
+              matchId={id}
+              initialEvents={events}
+              match={match}
+              sport={matchSport}
+              periodScores={periodScores}
+              isCompleted={isCompleted}
+            />
+          ) : matchSport === "football" && events.length > 0 ? (
             <FootballMatchTimeline
               events={events}
               homeTeamId={match.home_team_id ?? ""}
