@@ -53,6 +53,8 @@ export interface PostDemoMatchInput {
   scheduled_at: string;
   home_score: number;
   away_score: number;
+  home_penalties?: number | null;
+  away_penalties?: number | null;
   scope?: MatchScope;
   venue_id?: string | null;
   set_scores?: SetScore[];
@@ -60,6 +62,7 @@ export interface PostDemoMatchInput {
   /** Competition the fixture belongs to (defaults to the sport's Friendlies). */
   tournament?: Tournament | null;
   competition_phase?: string | null;
+  lineup_image_url?: string | null;
   id?: string;
 }
 
@@ -72,6 +75,11 @@ export function postDemoMatch(input: PostDemoMatchInput): Match {
   const venue = input.venue_id ? getDemoVenueById(input.venue_id) : null;
   postedSeq += 1;
 
+  const decidedOnPens =
+    input.home_penalties != null &&
+    input.away_penalties != null &&
+    input.status === "completed";
+
   const match: Match = {
     id: input.id ?? `match-posted-${Date.now()}-${postedSeq}`,
     tournament_id: input.tournament_id || tournament.id,
@@ -80,9 +88,16 @@ export function postDemoMatch(input: PostDemoMatchInput): Match {
     home_team_id: input.home_team_id,
     away_team_id: input.away_team_id,
     status: input.status,
-    current_period: input.status === "completed" ? "full_time" : "not_started",
+    current_period: decidedOnPens
+      ? "penalty_shootout"
+      : input.status === "completed"
+        ? "full_time"
+        : "not_started",
     home_score: input.home_score,
     away_score: input.away_score,
+    home_penalties: input.home_penalties ?? null,
+    away_penalties: input.away_penalties ?? null,
+    lineup_image_url: input.lineup_image_url ?? null,
     scheduled_at: input.scheduled_at,
     started_at: input.status === "completed" ? input.scheduled_at : null,
     ended_at: input.status === "completed" ? new Date().toISOString() : null,

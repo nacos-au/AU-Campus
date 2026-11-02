@@ -233,6 +233,8 @@ export interface Match {
   home_penalties?: number | null;
   away_penalties?: number | null;
   went_to_extra_time?: boolean;
+  /** Simple pre-match lineup sheet / graphic URL. */
+  lineup_image_url?: string | null;
   deleted_at?: string | null;
   home_team?: Team;
   away_team?: Team;

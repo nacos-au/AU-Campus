@@ -37,6 +37,11 @@ export function AdminCompetitionWizard() {
   const [byeConfirmed, setByeConfirmed] = useState(false);
   const [publishState, setPublishState] = useState<"idle" | "saving" | "done" | "error">("idle");
   const [publishMessage, setPublishMessage] = useState("");
+  /** Preseason default 25; normal comps 22 — admin can override. */
+  const [maxSquadSize, setMaxSquadSize] = useState(25);
+  const [maxSubs, setMaxSubs] = useState(9);
+  const [penaltyShootout, setPenaltyShootout] = useState(true);
+  const [rosterPreset, setRosterPreset] = useState<"preseason" | "normal" | "custom">("preseason");
 
   const sportDbId = sportToDbId(sport);
 
@@ -143,10 +148,16 @@ export function AdminCompetitionWizard() {
       competition_type: type,
       season: "2025/26",
       title_holder_name: titleHolder || null,
-      config:
-        type === "cup"
+      config: {
+        ...(type === "cup"
           ? { entrySize: resolvedEntrySize, groupStage, randomize, seed: drawSeed }
-          : { doubleRoundRobin },
+          : { doubleRoundRobin }),
+        max_squad_size: maxSquadSize,
+        max_subs: maxSubs,
+        starters: Math.max(1, maxSquadSize - maxSubs),
+        penalty_shootout: penaltyShootout,
+        roster_preset: rosterPreset,
+      },
       teams: registered,
       pairings: draw?.pairings ?? null,
       league_fixtures: league?.fixtures ?? null,
@@ -298,6 +309,72 @@ export function AdminCompetitionWizard() {
               placeholder="e.g. EEE Strikers (2024/25)"
             />
           </label>
+
+          <label className="block text-sm">
+            <span className="font-semibold">Roster preset</span>
+            <select
+              className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
+              value={rosterPreset}
+              onChange={(e) => {
+                const v = e.target.value as "preseason" | "normal" | "custom";
+                setRosterPreset(v);
+                if (v === "preseason") {
+                  setMaxSquadSize(25);
+                  setMaxSubs(9);
+                } else if (v === "normal") {
+                  setMaxSquadSize(22);
+                  setMaxSubs(9);
+                }
+              }}
+            >
+              <option value="preseason">Pre-season · 25 squad / 9 subs</option>
+              <option value="normal">Normal · 22 squad / 9 subs</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+
+          <label className="block text-sm">
+            <span className="font-semibold">Max squad size</span>
+            <input
+              type="number"
+              min={2}
+              max={40}
+              className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
+              value={maxSquadSize}
+              onChange={(e) => {
+                setRosterPreset("custom");
+                setMaxSquadSize(Number(e.target.value) || 0);
+              }}
+            />
+          </label>
+
+          <label className="block text-sm">
+            <span className="font-semibold">Max substitutes</span>
+            <input
+              type="number"
+              min={0}
+              max={20}
+              className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
+              value={maxSubs}
+              onChange={(e) => {
+                setRosterPreset("custom");
+                setMaxSubs(Number(e.target.value) || 0);
+              }}
+            />
+          </label>
+
+          {(sport === "football" || type === "cup") && (
+            <label className="flex items-center gap-2 text-sm sm:col-span-2">
+              <input
+                type="checkbox"
+                checked={penaltyShootout}
+                onChange={(e) => setPenaltyShootout(e.target.checked)}
+              />
+              <span className="font-semibold">
+                Penalty shootouts allowed (cups / drawn knockout ties)
+              </span>
+            </label>
+          )}
         </div>
       )}
 

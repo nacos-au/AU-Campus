@@ -18,10 +18,13 @@ export async function POST(request: Request) {
     scheduled_at?: string;
     home_score?: number;
     away_score?: number;
+    home_penalties?: number | null;
+    away_penalties?: number | null;
     scope?: MatchScope;
     venue_id?: string | null;
     tournament_id?: string | null;
     set_scores?: Array<{ set_number: number; home_games: number; away_games: number }>;
+    lineup_image_url?: string | null;
   };
 
   if (!body.sport_id || !body.home_team_id || !body.away_team_id) {
@@ -39,10 +42,13 @@ export async function POST(request: Request) {
     scheduled_at: body.scheduled_at ?? new Date().toISOString(),
     home_score: body.home_score ?? 0,
     away_score: body.away_score ?? 0,
+    home_penalties: body.home_penalties ?? null,
+    away_penalties: body.away_penalties ?? null,
     scope: body.scope ?? "pickup",
     venue_id: body.venue_id ?? null,
     tournament_id: body.tournament_id ?? null,
     set_scores: body.set_scores,
+    lineup_image_url: body.lineup_image_url ?? null,
   });
 
   if ("error" in result) {

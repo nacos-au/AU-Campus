@@ -15,6 +15,26 @@ export function MatchLineupsSection({
 }) {
   const sport = dbIdToSport(match.sport_id);
   const motm = match.status === "completed" ? getManOfTheMatch(match.id) : null;
+  const sheetUrl = match.lineup_image_url?.trim() || null;
+
+  if (sheetUrl && match.status !== "completed") {
+    return (
+      <section>
+        <h2 className="mb-4 font-display text-xl font-extrabold">Lineups</h2>
+        <div className="table-card overflow-hidden p-2 sm:p-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={sheetUrl}
+            alt="Pre-match lineup sheet"
+            className="mx-auto max-h-[28rem] w-full rounded-xl object-contain"
+          />
+        </div>
+        <p className="mt-2 text-center text-xs text-accent/55">
+          Official team sheet · published before kick-off
+        </p>
+      </section>
+    );
+  }
 
   if (sport === "football") {
     const hasPitch = Boolean(

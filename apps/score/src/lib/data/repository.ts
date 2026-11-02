@@ -563,10 +563,14 @@ export interface CreateMatchInput {
   scheduled_at: string;
   home_score: number;
   away_score: number;
+  home_penalties?: number | null;
+  away_penalties?: number | null;
   scope?: MatchScope;
   venue_id?: string | null;
   tournament_id?: string | null;
   set_scores?: Array<{ set_number: number; home_games: number; away_games: number }>;
+  /** Optional pre-match lineup graphic URL (simple sheet photo). */
+  lineup_image_url?: string | null;
 }
 
 async function resolveFriendlyTournamentId(
@@ -614,6 +618,11 @@ export async function createMatch(input: CreateMatchInput): Promise<{ id: string
     input.tournament_id ?? (await resolveFriendlyTournamentId(supabase, input.sport_id));
   if (typeof tournamentId === "object") return tournamentId;
 
+  const decidedOnPens =
+    input.home_penalties != null &&
+    input.away_penalties != null &&
+    input.status === "completed";
+
   const { data, error } = await (supabase.from("matches") as ReturnType<typeof supabase.from>)
     .insert({
       tournament_id: tournamentId,
@@ -621,14 +630,21 @@ export async function createMatch(input: CreateMatchInput): Promise<{ id: string
       home_team_id: input.home_team_id,
       away_team_id: input.away_team_id,
       status: input.status,
-      current_period: input.status === "completed" ? "full_time" : "not_started",
+      current_period: decidedOnPens
+        ? "penalty_shootout"
+        : input.status === "completed"
+          ? "full_time"
+          : "not_started",
       home_score: input.home_score,
       away_score: input.away_score,
+      home_penalties: input.home_penalties ?? null,
+      away_penalties: input.away_penalties ?? null,
       scheduled_at: input.scheduled_at,
       started_at: input.status === "completed" ? input.scheduled_at : null,
       ended_at: input.status === "completed" ? new Date().toISOString() : null,
       scope: input.scope ?? "pickup",
       venue_id: input.venue_id ?? null,
+      lineup_image_url: input.lineup_image_url ?? null,
     } as Record<string, unknown>)
     .select("id")
     .single() as { data: { id: string } | null; error: { message: string } | null };

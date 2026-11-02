@@ -35,8 +35,14 @@ export function AdminPlayersPanel() {
   const [positions, setPositions] = useState<string[]>([]);
   const [jersey, setJersey] = useState("");
   const [matric, setMatric] = useState("");
+  /** Soft cap while onboarding — competitions also store their own max_squad_size. */
+  const [rosterCap, setRosterCap] = useState(25);
 
   const positionOptions = SPORT_POSITION_DEFS[sport];
+  const clubSquadCount = useMemo(() => {
+    if (!formClubId) return 0;
+    return players.filter((p) => p.team_id === formClubId).length;
+  }, [players, formClubId]);
 
   const load = useCallback(async (forSport: SportId, teamId: string) => {
     try {
@@ -92,6 +98,10 @@ export function AdminPlayersPanel() {
     }
     if (!formClubId) {
       setError("Pick a club.");
+      return;
+    }
+    if (rosterCap > 0 && clubSquadCount >= rosterCap) {
+      setError(`Squad is full (${rosterCap}). Raise the roster cap or pick another club.`);
       return;
     }
     const matricNorm = normaliseMatric(matric);
@@ -299,6 +309,22 @@ export function AdminPlayersPanel() {
                     </option>
                   ))}
                 </select>
+              </label>
+              <label className="block text-sm">
+                <span className="font-semibold">Roster cap</span>
+                <select
+                  className={inputClass}
+                  value={rosterCap}
+                  onChange={(e) => setRosterCap(Number(e.target.value))}
+                >
+                  <option value={25}>Pre-season · 25</option>
+                  <option value={22}>Normal · 22</option>
+                  <option value={30}>30</option>
+                  <option value={18}>18</option>
+                </select>
+                <span className="mt-1 block text-xs text-accent/50">
+                  This club: {clubSquadCount}/{rosterCap} registered
+                </span>
               </label>
 
               <div className="space-y-2">

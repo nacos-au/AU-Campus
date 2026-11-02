@@ -133,6 +133,8 @@ export function AdminPostResultTool() {
           scheduled_at: new Date(scheduledAt).toISOString(),
           home_score: finished ? score.home_score : 0,
           away_score: finished ? score.away_score : 0,
+          home_penalties: finished ? score.home_penalties ?? null : null,
+          away_penalties: finished ? score.away_penalties ?? null : null,
           set_scores: finished ? score.set_scores : undefined,
           venue_id: venueId,
           scope,
@@ -142,9 +144,13 @@ export function AdminPostResultTool() {
       if (res.ok && json.ok && json.id) {
         setPublishState("done");
         setPublishedMatchId(json.id);
+        const pens =
+          finished && score.home_penalties != null && score.away_penalties != null
+            ? ` (pens ${score.home_penalties}\u2013${score.away_penalties})`
+            : "";
         setPublishMessage(
           finished
-            ? `${homeTeam.name} ${score.home_score}\u2013${score.away_score} ${resolvedAwayName} recorded.`
+            ? `${homeTeam.name} ${score.home_score}\u2013${score.away_score} ${resolvedAwayName}${pens} recorded.`
             : `${homeTeam.name} vs ${resolvedAwayName} scheduled.`
         );
       } else {
