@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Match } from "@/lib/types/database";
+import { AdminMatchLineupPanel } from "@/components/admin/admin-match-lineup-panel";
 import { FootballPeriodControls } from "@/components/keeper/football-period-controls";
 import { KeeperActionBar } from "@/components/keeper/keeper-action-bar";
 import { KeeperEventTimeline } from "@/components/keeper/keeper-event-timeline";
@@ -378,8 +379,34 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
     }));
   }, [logs, sport]);
 
+  const homeTeamId = match.home_team_id;
+  const awayTeamId = match.away_team_id;
+  const tournamentId = match.tournament_id;
+  const showLineupSetup =
+    Boolean(tournamentId) &&
+    lifecycle.status === "scheduled" &&
+    sport !== "track" &&
+    sport !== "tennis" &&
+    Boolean(homeTeamId && awayTeamId);
+
   return (
     <div className="mx-auto max-w-4xl">
+      {showLineupSetup && tournamentId && homeTeamId && awayTeamId && (
+        <div className="mb-4 grid gap-4 sm:grid-cols-2">
+          <AdminMatchLineupPanel
+            matchId={match.id}
+            tournamentId={tournamentId}
+            teamId={homeTeamId}
+            teamName={match.home_team?.name ?? "Team A"}
+          />
+          <AdminMatchLineupPanel
+            matchId={match.id}
+            tournamentId={tournamentId}
+            teamId={awayTeamId}
+            teamName={match.away_team?.name ?? "Team B"}
+          />
+        </div>
+      )}
       <div className="sticky top-0 z-20 -mx-4 mb-4 border-b border-rule bg-white/95 px-4 py-3 backdrop-blur sm:-mx-0 sm:rounded-xl sm:border sm:px-4">
         <MatchLifecycleControls
           status={lifecycle.status}

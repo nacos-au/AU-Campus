@@ -1,7 +1,17 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/roles";
-import { createMatch } from "@/lib/data/repository";
+import { requireAdmin, requireMatchStaff } from "@/lib/auth/roles";
+import { createMatch, listMatchesForAdmin } from "@/lib/data/repository";
 import type { MatchScope } from "@/lib/types/database";
+
+/** Live match list for admin edit / lineup tools. */
+export async function GET() {
+  const gate = await requireMatchStaff();
+  if ("error" in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status });
+  }
+  const matches = await listMatchesForAdmin();
+  return NextResponse.json({ matches });
+}
 
 /** Friendlies and one-off manual matches — admin only. Keepers fill competition fixtures. */
 export async function POST(request: Request) {

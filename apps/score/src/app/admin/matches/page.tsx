@@ -1,6 +1,7 @@
 import { AdminAwardsManager } from "@/components/admin/admin-awards-manager";
 import { AdminMatchManager } from "@/components/admin/admin-match-manager";
 import { AdminPostResultTool } from "@/components/admin/admin-post-result-tool";
+import { AdminSuspensionsManager } from "@/components/admin/admin-suspensions-manager";
 import { AdminVenueManager } from "@/components/admin/admin-venue-manager";
 
 export const metadata = { title: "Matches · Admin" };
@@ -16,6 +17,7 @@ export default function AdminMatchesPage() {
       </div>
       <AdminPostResultTool />
       <AdminMatchManager />
+      <AdminSuspensionsManager />
       <AdminVenueManager />
       <AdminAwardsManager />
     </div>

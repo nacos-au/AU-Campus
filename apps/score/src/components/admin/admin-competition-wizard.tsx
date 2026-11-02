@@ -174,6 +174,7 @@ export function AdminCompetitionWizard({
       },
       teams: registered,
       pairings: type === "cup" ? draw?.pairings ?? null : null,
+      future_rounds: type === "cup" ? draw?.futureRounds ?? null : null,
       league_fixtures: type === "league" ? league?.fixtures ?? null : null,
     };
 

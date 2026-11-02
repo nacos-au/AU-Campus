@@ -49,6 +49,42 @@ export const ROUND_NAMES: Record<number, { round: string; label: string }> = {
   2: { round: "final", label: "Final" },
 };
 
+/** Earliest → latest knockout rounds (power-of-two bracket). */
+export const ROUND_ORDER = [
+  "round_of_32",
+  "round_of_16",
+  "quarter_final",
+  "semi_final",
+  "final",
+] as const;
+
+export type KnockoutRound = (typeof ROUND_ORDER)[number];
+
+export function nextKnockoutRound(round: string): KnockoutRound | null {
+  const i = ROUND_ORDER.indexOf(round as KnockoutRound);
+  if (i < 0 || i >= ROUND_ORDER.length - 1) return null;
+  return ROUND_ORDER[i + 1];
+}
+
+export function knockoutRoundLabel(round: string): string {
+  const found = Object.values(ROUND_NAMES).find((r) => r.round === round);
+  return found?.label ?? round.replace(/_/g, " ");
+}
+
+/**
+ * Winner of pairing `position` in round R feeds into
+ * `floor(position / 2)` in the next round — home if even, away if odd.
+ */
+export function nextBracketSlot(position: number): {
+  position: number;
+  side: "home" | "away";
+} {
+  return {
+    position: Math.floor(position / 2),
+    side: position % 2 === 0 ? "home" : "away",
+  };
+}
+
 export interface DrawPairing {
   round: string;
   round_label: string;

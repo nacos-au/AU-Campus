@@ -897,6 +897,18 @@ CREATE POLICY "Public read group_standings" ON public.group_standings FOR SELECT
 DROP POLICY IF EXISTS "Public read bracket_fixtures" ON public.bracket_fixtures;
 CREATE POLICY "Public read bracket_fixtures" ON public.bracket_fixtures FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Staff manage bracket_fixtures" ON public.bracket_fixtures;
+CREATE POLICY "Staff manage bracket_fixtures" ON public.bracket_fixtures
+  FOR ALL USING (private.can_manage_matches()) WITH CHECK (private.can_manage_matches());
+
+ALTER TABLE public.player_suspensions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Public read player_suspensions" ON public.player_suspensions;
+CREATE POLICY "Public read player_suspensions" ON public.player_suspensions
+  FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admins manage player_suspensions" ON public.player_suspensions;
+CREATE POLICY "Admins manage player_suspensions" ON public.player_suspensions
+  FOR ALL USING (private.is_score_admin()) WITH CHECK (private.is_score_admin());
+
 DROP POLICY IF EXISTS "Public read meet_events" ON public.meet_events;
 CREATE POLICY "Public read meet_events" ON public.meet_events FOR SELECT USING (true);
 

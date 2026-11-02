@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { VenueSelect } from "@/components/admin/venue-select";
-import { DEMO_MATCHES } from "@/lib/data/demo";
+import { AdminMatchLineupPanel } from "@/components/admin/admin-match-lineup-panel";
+import type { Match } from "@/lib/types/database";
 import { dbIdToSport, SPORT_LABELS, type SportId } from "@/lib/utils/sport";
 
 type EditableMatch = {
@@ -14,10 +15,15 @@ type EditableMatch = {
   home_score: number;
   away_score: number;
   status: string;
+  tournament_id: string | null;
+  home_team_id: string;
+  away_team_id: string;
+  home_team_name: string;
+  away_team_name: string;
 };
 
 /**
- * Edit / soft-delete existing fixtures — venue, scores, status.
+ * Edit / soft-delete existing fixtures — venue, scores, status, lineups.
  * Available to admin and record keepers via the same APIs.
  */
 export function AdminMatchManager() {
@@ -30,19 +36,49 @@ export function AdminMatchManager() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/matches");
+      const json = (await res.json()) as { matches?: Match[]; error?: string };
+      if (!res.ok) {
+        setError(json.error ?? "Could not load matches");
+        setMatches([]);
+        return;
+      }
+      const rows: EditableMatch[] = (json.matches ?? [])
+        .filter((m) => Boolean(m.home_team_id && m.away_team_id))
+        .map((m) => ({
+          id: m.id,
+          label: `${m.home_team?.name ?? "Team A"} vs ${m.away_team?.name ?? "Team B"}${
+            m.tournament?.name ? ` · ${m.tournament.name}` : ""
+          }`,
+          sport: dbIdToSport(m.sport_id),
+          venue_id: m.venue_id ?? "",
+          home_score: m.home_score,
+          away_score: m.away_score,
+          status: m.status,
+          tournament_id: m.tournament_id ?? null,
+          home_team_id: m.home_team_id as string,
+          away_team_id: m.away_team_id as string,
+          home_team_name: m.home_team?.name ?? "Team A",
+          away_team_name: m.away_team?.name ?? "Team B",
+        }));
+      setMatches(rows);
+    } catch {
+      setError("Network error loading matches");
+      setMatches([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const rows: EditableMatch[] = DEMO_MATCHES.filter((m) => !m.deleted_at).map((m) => ({
-      id: m.id,
-      label: `${m.home_team?.name ?? "Home"} vs ${m.away_team?.name ?? "Away"}`,
-      sport: dbIdToSport(m.sport_id),
-      venue_id: m.venue_id ?? "",
-      home_score: m.home_score,
-      away_score: m.away_score,
-      status: m.status,
-    }));
-    setMatches(rows);
-  }, []);
+    void load();
+  }, [load]);
 
   const selected = useMemo(
     () => matches.find((m) => m.id === selectedId) ?? null,
@@ -111,10 +147,22 @@ export function AdminMatchManager() {
 
   return (
     <div className="table-card p-6">
-      <h2 className="font-display text-lg font-extrabold">Edit match</h2>
-      <p className="mt-1 text-sm opacity-70">
-        Change venue, scores, or status. Soft-delete removes it from lists without wiping history.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-lg font-extrabold">Edit match</h2>
+          <p className="mt-1 text-sm opacity-70">
+            Change venue, scores, or status. Soft-delete removes it from lists without wiping history.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void load()}
+          disabled={loading}
+          className="rounded-lg border border-rule px-3 py-1.5 text-xs font-bold disabled:opacity-40"
+        >
+          {loading ? "Loading…" : "Refresh"}
+        </button>
+      </div>
 
       <label className="mt-4 block text-sm">
         <span className="font-semibold">Match</span>
@@ -122,8 +170,9 @@ export function AdminMatchManager() {
           className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
           value={selectedId}
           onChange={(e) => setSelectedId(e.target.value)}
+          disabled={loading}
         >
-          <option value="">Select match</option>
+          <option value="">{loading ? "Loading matches…" : "Select match"}</option>
           {matches.map((m) => (
             <option key={m.id} value={m.id}>
               [{SPORT_LABELS[m.sport]}] {m.label}
@@ -131,6 +180,10 @@ export function AdminMatchManager() {
           ))}
         </select>
       </label>
+
+      {!loading && matches.length === 0 && (
+        <p className="mt-3 text-sm text-accent/60">No active matches in the live database.</p>
+      )}
 
       {selected && (
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -148,7 +201,7 @@ export function AdminMatchManager() {
             </select>
           </label>
           <label className="block text-sm">
-            <span className="font-semibold">Home score</span>
+            <span className="font-semibold">Team A score</span>
             <input
               type="number"
               min={0}
@@ -158,7 +211,7 @@ export function AdminMatchManager() {
             />
           </label>
           <label className="block text-sm">
-            <span className="font-semibold">Away score</span>
+            <span className="font-semibold">Team B score</span>
             <input
               type="number"
               min={0}
@@ -167,6 +220,23 @@ export function AdminMatchManager() {
               onChange={(e) => setAwayScore(Number(e.target.value))}
             />
           </label>
+        </div>
+      )}
+
+      {selected && selected.tournament_id && (
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <AdminMatchLineupPanel
+            matchId={selected.id}
+            tournamentId={selected.tournament_id}
+            teamId={selected.home_team_id}
+            teamName={selected.home_team_name}
+          />
+          <AdminMatchLineupPanel
+            matchId={selected.id}
+            tournamentId={selected.tournament_id}
+            teamId={selected.away_team_id}
+            teamName={selected.away_team_name}
+          />
         </div>
       )}
 

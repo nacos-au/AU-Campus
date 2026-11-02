@@ -22,7 +22,6 @@ import {
   getMeetEventsForSport,
   getTournamentForSport,
 } from "@/lib/data/demo-competition";
-import { DEMO_PLAYERS } from "@/lib/data/demo";
 import {
   getCreatedDemoTournament,
   nextMatchday,
@@ -111,7 +110,7 @@ export async function fetchTournamentForSport(sportDbId: string): Promise<Tourna
 
   const supabase = await createClient();
   const { data: sports } = await supabase.from("sports").select("id").limit(1);
-  if (!sports?.length) return getTournamentForSport(sportDbId);
+  if (!sports?.length) return null;
 
   const { data } = await supabase
     .from("tournaments")
@@ -121,7 +120,7 @@ export async function fetchTournamentForSport(sportDbId: string): Promise<Tourna
     .limit(1)
     .maybeSingle() as { data: TournamentRow | null };
 
-  if (!data) return getTournamentForSport(sportDbId);
+  if (!data) return null;
   return {
     id: data.id,
     name: data.name,
@@ -139,7 +138,7 @@ export async function fetchGroupStandings(sportDbId: string): Promise<GroupStand
 
   const supabase = await createClient();
   const sportUuid = await resolveSportUuid(supabase, sportDbId);
-  if (typeof sportUuid !== "string") return getGroupStandingsForSport(sportDbId);
+  if (typeof sportUuid !== "string") return [];
 
   // Prefer latest league/event tournament for this sport (skip drafts when column exists).
   const { data: tournamentRows } = (await supabase
@@ -153,7 +152,7 @@ export async function fetchGroupStandings(sportDbId: string): Promise<GroupStand
   };
 
   const tournament = (tournamentRows ?? []).find((t) => t.is_draft !== true) ?? null;
-  if (!tournament) return getGroupStandingsForSport(sportDbId);
+  if (!tournament) return [];
 
   const { data: teamRows } = (await supabase
     .from("tournament_teams")
@@ -179,7 +178,7 @@ export async function fetchGroupStandings(sportDbId: string): Promise<GroupStand
     .eq("status", "completed")
     .is("deleted_at", null)) as { data: Match[] | null };
 
-  if (!teamRows?.length) return getGroupStandingsForSport(sportDbId);
+  if (!teamRows?.length) return [];
 
   const { recomputeStandingsFromMatches } = await import("@/lib/competition/standings");
   const teams = teamRows.map((r) => {
@@ -195,7 +194,6 @@ export async function fetchGroupStandings(sportDbId: string): Promise<GroupStand
   });
 
   const table = recomputeStandingsFromMatches(matches ?? [], teams);
-  if (!table.some((r) => r.played > 0)) return getGroupStandingsForSport(sportDbId);
 
   // Shape as a single synthetic group for the existing standings UI.
   return table.map((row) => ({
@@ -218,7 +216,7 @@ export async function fetchBracketFixtures(sportDbId: string): Promise<BracketFi
     .eq("tournament_id", tournament.id)
     .order("sort_order") as { data: BracketRow[] | null };
 
-  if (!data?.length) return getBracketFixturesForSport(sportDbId);
+  if (!data?.length) return [];
 
   return data.map((row) => ({
     id: row.id,
@@ -258,7 +256,7 @@ export async function fetchMeetEvents(sportDbId: string): Promise<MeetEventFixtu
     .eq("tournament_id", tournament.id)
     .order("sort_order") as { data: MeetEventRow[] | null };
 
-  if (!data?.length) return getMeetEventsForSport(sportDbId);
+  if (!data?.length) return [];
 
   return data.map((row) => ({
     id: row.id,
@@ -282,8 +280,26 @@ export async function fetchMatchById(id: string): Promise<Match | null> {
     .is("deleted_at", null)
     .maybeSingle() as { data: Match | null };
 
-  if (!data) return getDemoMatchById(id);
-  return data as unknown as Match;
+  return (data as unknown as Match) ?? null;
+}
+
+/** Admin/keeper match list from live DB (never falls back to demo theatre). */
+export async function listMatchesForAdmin(limit = 200): Promise<Match[]> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    return listAllDemoMatches().filter((m) => !m.deleted_at).slice(0, limit);
+  }
+
+  const supabase = await createClient();
+  const { data } = (await supabase
+    .from("matches")
+    .select(
+      "*, venue:venues(*), home_team:teams!home_team_id(*), away_team:teams!away_team_id(*), tournament:tournaments(*)"
+    )
+    .is("deleted_at", null)
+    .order("scheduled_at", { ascending: false })
+    .limit(limit)) as { data: Match[] | null };
+
+  return (data ?? []) as Match[];
 }
 
 export async function fetchMatchesForHeadToHead(
@@ -339,7 +355,7 @@ export async function fetchMatchEvents(matchId: string): Promise<DemoMatchEvent[
     }> | null;
   };
 
-  if (!data?.length) return getEventsForMatch(matchId);
+  if (!data?.length) return [];
 
   return data.map((row) => {
     const details = row.details ?? {};
@@ -382,7 +398,7 @@ export async function fetchPeriodScores(matchId: string): Promise<PeriodScore[]>
     data: Array<{ period: string; label: string; home_score: number; away_score: number }> | null;
   };
 
-  if (!data?.length) return getPeriodScoresForMatch(matchId);
+  if (!data?.length) return [];
   return data.map((r) => ({
     period: r.period,
     label: r.label,
@@ -403,7 +419,7 @@ export async function fetchSetScores(matchId: string): Promise<SetScore[]> {
     data: Array<{ set_number: number; home_games: number; away_games: number; tiebreak: boolean | null }> | null;
   };
 
-  if (!data?.length) return getSetScoresForMatch(matchId);
+  if (!data?.length) return [];
   return data.map((r) => ({
     set_number: r.set_number,
     home_games: r.home_games,
@@ -429,7 +445,7 @@ export async function fetchTrackResults(matchId: string): Promise<TrackResult[]>
     }> | null;
   };
 
-  if (!data?.length) return getTrackResultsForMatch(matchId);
+  if (!data?.length) return [];
 
   return data.map((r, i) => ({
     rank: r.finish_rank ?? i + 1,
@@ -460,20 +476,19 @@ export async function fetchSquadForTeam(teamId: string, sportId: string): Promis
     }> | null;
   };
 
-  if (!data?.length) return getSquadForTeam(teamId, sportId);
+  if (!data?.length) return [];
 
   const squad: SquadPlayer[] = [];
   for (const row of data) {
     const joined = Array.isArray(row.player) ? row.player[0] : row.player;
-    const player = joined ?? DEMO_PLAYERS.find((p) => p.id === row.player_id);
-    if (!player) continue;
+    if (!joined) continue;
     squad.push({
-      ...player,
+      ...joined,
       jersey_number: row.jersey_number ?? undefined,
-      squad_role: row.squad_role ?? player.position ?? "Squad",
+      squad_role: row.squad_role ?? joined.position ?? "Squad",
     });
   }
-  return squad.length ? squad : getSquadForTeam(teamId, sportId);
+  return squad;
 }
 
 export interface CreateMatchEventInput {
@@ -556,7 +571,7 @@ export async function fetchSeasonAwards(sportDbId: string, season = "2025/26"): 
     .eq("published", true)
     .order("award_type") as { data: SeasonAwardRow[] | null };
 
-  if (!data?.length) return getAwardsForSport(sportDbId);
+  if (!data?.length) return [];
   return data.map(mapSeasonAwardRow);
 }
 
@@ -793,6 +808,12 @@ export async function updateMatch(
     .is("deleted_at", null) as { error: { message: string } | null };
 
   if (error) return { error: error.message };
+
+  if (patch.status === "completed") {
+    const { advanceBracketAfterMatchComplete } = await import("@/lib/data/bracket-advance");
+    await advanceBracketAfterMatchComplete(matchId);
+  }
+
   return { ok: true };
 }
 
@@ -995,6 +1016,12 @@ export interface CreateCompetitionInput {
     away: { id: string; name: string } | null;
     is_bye: boolean;
   }> | null;
+  /** Cup: TBD placeholder rounds after the first (persisted into bracket_fixtures). */
+  future_rounds?: Array<{
+    round: string;
+    round_label: string;
+    count: number;
+  }> | null;
   league_fixtures?: Array<{
     matchweek: number;
     home: { id: string; name: string };
@@ -1103,23 +1130,68 @@ export async function createCompetition(
       fixtures += 1;
     }
 
-    const { error: bErr } = await (supabase.from("bracket_fixtures") as ReturnType<typeof supabase.from>)
-      .insert(
-        input.pairings.map((p, i) => ({
+    const firstRoundRows = input.pairings.map((p, i) => ({
+      tournament_id: tournament.id,
+      round: p.round,
+      round_label: p.round_label,
+      match_id: p.is_bye ? null : matchIds[playable.indexOf(p)] ?? null,
+      home_team_id: p.home?.id ?? null,
+      away_team_id: p.away?.id ?? null,
+      home_display_name: p.home?.name ?? null,
+      away_display_name: p.is_bye ? "BYE" : (p.away?.name ?? null),
+      status: p.is_bye ? "completed" : "scheduled",
+      bracket_mode: "team",
+      sort_order: i,
+    }));
+
+    // Seed later rounds as TBD so public brackets show full shape and winners can advance.
+    const laterRows: Array<Record<string, unknown>> = [];
+    let baseSort = firstRoundRows.length;
+    for (const fr of input.future_rounds ?? []) {
+      for (let i = 0; i < fr.count; i++) {
+        laterRows.push({
           tournament_id: tournament.id,
-          round: p.round,
-          round_label: p.round_label,
-          match_id: p.is_bye ? null : matchIds[playable.indexOf(p)] ?? null,
-          home_team_id: p.home?.id ?? null,
-          away_team_id: p.away?.id ?? null,
-          home_display_name: p.home?.name ?? null,
-          away_display_name: p.is_bye ? "BYE" : (p.away?.name ?? null),
-          status: p.is_bye ? "completed" : "scheduled",
+          round: fr.round,
+          round_label: fr.round_label,
+          match_id: null,
+          home_team_id: null,
+          away_team_id: null,
+          home_display_name: "TBD",
+          away_display_name: "TBD",
+          status: "scheduled",
           bracket_mode: "team",
           sort_order: i,
-        })) as Record<string, unknown>[]
-      ) as { error: { message: string } | null };
+        });
+      }
+      baseSort += fr.count;
+    }
+    void baseSort;
+
+    const { error: bErr } = await (supabase.from("bracket_fixtures") as ReturnType<typeof supabase.from>)
+      .insert([...firstRoundRows, ...laterRows] as Record<string, unknown>[]) as {
+      error: { message: string } | null;
+    };
     if (bErr) return { error: bErr.message };
+
+    // Place first-round bye winners into the next round immediately.
+    const { nextBracketSlot, nextKnockoutRound } = await import(
+      "@/lib/competition/competition-builder"
+    );
+    for (const [i, p] of input.pairings.entries()) {
+      if (!p.is_bye || !p.home) continue;
+      const nextRound = nextKnockoutRound(p.round);
+      if (!nextRound) continue;
+      const slot = nextBracketSlot(i);
+      const sidePatch =
+        slot.side === "home"
+          ? { home_team_id: p.home.id, home_display_name: p.home.name }
+          : { away_team_id: p.home.id, away_display_name: p.home.name };
+      await (supabase.from("bracket_fixtures") as ReturnType<typeof supabase.from>)
+        .update(sidePatch as Record<string, unknown>)
+        .eq("tournament_id", tournament.id)
+        .eq("round", nextRound)
+        .eq("sort_order", slot.position);
+    }
   }
 
   if (input.league_fixtures?.length) {
