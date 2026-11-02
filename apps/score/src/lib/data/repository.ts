@@ -136,8 +136,73 @@ export async function fetchTournamentForSport(sportDbId: string): Promise<Tourna
 
 export async function fetchGroupStandings(sportDbId: string): Promise<GroupStandingRow[]> {
   if (!hasSupabaseConfig() || (await getScoreDemoMode())) return getGroupStandingsForSport(sportDbId);
-  // Live path: join tournament_groups + group_standings + teams — fallback to demo until seeded
-  return getGroupStandingsForSport(sportDbId);
+
+  const supabase = await createClient();
+  const sportUuid = await resolveSportUuid(supabase, sportDbId);
+  if (typeof sportUuid !== "string") return getGroupStandingsForSport(sportDbId);
+
+  // Prefer latest league/event tournament for this sport (skip drafts when column exists).
+  const { data: tournamentRows } = (await supabase
+    .from("tournaments")
+    .select("id, name, category, is_draft")
+    .eq("sport_id", sportUuid)
+    .neq("category", "friendly")
+    .order("created_at", { ascending: false })
+    .limit(5)) as {
+    data: Array<{ id: string; name: string; category: string; is_draft?: boolean | null }> | null;
+  };
+
+  const tournament = (tournamentRows ?? []).find((t) => t.is_draft !== true) ?? null;
+  if (!tournament) return getGroupStandingsForSport(sportDbId);
+
+  const { data: teamRows } = (await supabase
+    .from("tournament_teams")
+    .select("team_id, team:teams(id, name, logo_url, department:departments(short_code))")
+    .eq("tournament_id", tournament.id)) as {
+    data: Array<{
+      team_id: string;
+      team:
+        | {
+            id: string;
+            name: string;
+            logo_url: string | null;
+            department: { short_code: string } | { short_code: string }[] | null;
+          }
+        | null;
+    }> | null;
+  };
+
+  const { data: matches } = (await supabase
+    .from("matches")
+    .select("*")
+    .eq("tournament_id", tournament.id)
+    .eq("status", "completed")
+    .is("deleted_at", null)) as { data: Match[] | null };
+
+  if (!teamRows?.length) return getGroupStandingsForSport(sportDbId);
+
+  const { recomputeStandingsFromMatches } = await import("@/lib/competition/standings");
+  const teams = teamRows.map((r) => {
+    const dept = Array.isArray(r.team?.department)
+      ? r.team?.department[0]
+      : r.team?.department;
+    return {
+      id: r.team_id,
+      name: r.team?.name ?? "Unknown",
+      short_code: dept?.short_code ?? null,
+      logo_url: r.team?.logo_url ?? null,
+    };
+  });
+
+  const table = recomputeStandingsFromMatches(matches ?? [], teams);
+  if (!table.some((r) => r.played > 0)) return getGroupStandingsForSport(sportDbId);
+
+  // Shape as a single synthetic group for the existing standings UI.
+  return table.map((row) => ({
+    ...row,
+    group_id: tournament.id,
+    group_name: tournament.name,
+  }));
 }
 
 export async function fetchBracketFixtures(sportDbId: string): Promise<BracketFixture[]> {

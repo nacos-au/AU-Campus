@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Match } from "@/lib/types/database";
 import { FootballPeriodControls } from "@/components/keeper/football-period-controls";
@@ -21,6 +21,7 @@ import {
 } from "@/lib/keeper/keeper-sport-config";
 import { useKeeperLogs } from "@/lib/keeper/use-keeper-logs";
 import { useMatchClock } from "@/lib/keeper/use-match-clock";
+import type { SquadPlayer } from "@/lib/data/demo-squads";
 import { useMatchLifecycle } from "@/lib/match/use-match-lifecycle";
 import { computeTrackResultsFromLogs, parseTimeToMs } from "@/lib/match/track-from-logs";
 import { scoreClass } from "@/lib/match/score-highlight";
@@ -73,8 +74,36 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
     match.allows_penalty_shootout ?? match.tournament?.rules?.penalty_shootout
   );
 
-  const rosters = useMemo(() => getKeeperRosters(match, sport), [match, sport]);
-  const { home: homeSquad, away: awaySquad, singleLabel } = rosters;
+  const fallbackRosters = useMemo(() => getKeeperRosters(match, sport), [match, sport]);
+  const [homeSquad, setHomeSquad] = useState<SquadPlayer[]>(fallbackRosters.home);
+  const [awaySquad, setAwaySquad] = useState<SquadPlayer[]>(fallbackRosters.away);
+  const singleLabel = fallbackRosters.singleLabel;
+
+  useEffect(() => {
+    setHomeSquad(fallbackRosters.home);
+    setAwaySquad(fallbackRosters.away);
+  }, [fallbackRosters]);
+
+  useEffect(() => {
+    if (sport === "track" || sport === "tennis") return;
+    let cancelled = false;
+    async function loadLiveRosters() {
+      try {
+        const res = await fetch(`/api/matches/${match.id}/roster`);
+        if (!res.ok) return;
+        const json = (await res.json()) as { home?: SquadPlayer[]; away?: SquadPlayer[] };
+        if (cancelled) return;
+        if (json.home?.length) setHomeSquad(json.home);
+        if (json.away?.length) setAwaySquad(json.away);
+      } catch {
+        /* keep fallback */
+      }
+    }
+    void loadLiveRosters();
+    return () => {
+      cancelled = true;
+    };
+  }, [match.id, sport]);
 
   const logPeriod = sport === "football" ? clock.period : match.current_period;
 
