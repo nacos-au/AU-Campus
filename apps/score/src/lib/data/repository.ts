@@ -23,7 +23,11 @@ import {
   getTournamentForSport,
 } from "@/lib/data/demo-competition";
 import { DEMO_PLAYERS } from "@/lib/data/demo";
-import { nextMatchday, registerDemoTournament } from "@/lib/data/demo-competitions-store";
+import {
+  getCreatedDemoTournament,
+  nextMatchday,
+  registerDemoTournament,
+} from "@/lib/data/demo-competitions-store";
 import { resolveSportUuid } from "@/lib/data/sport-ids";
 import {
   getDemoMatchById,
@@ -609,13 +613,21 @@ async function resolveFriendlyTournamentId(
  */
 export async function createMatch(input: CreateMatchInput): Promise<{ id: string } | { error: string }> {
   if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
-    const match = postDemoMatch(input);
+    const created = getCreatedDemoTournament(input.tournament_id ?? "");
+    const match = postDemoMatch({
+      ...input,
+      tournament: created ?? undefined,
+      scope: input.tournament_id ? (input.scope ?? "official") : input.scope,
+    });
     return { id: match.id };
   }
 
   const supabase = await createClient();
+  const sportUuid = await resolveSportUuid(supabase, input.sport_id);
+  if (typeof sportUuid !== "string") return sportUuid;
+
   const tournamentId =
-    input.tournament_id ?? (await resolveFriendlyTournamentId(supabase, input.sport_id));
+    input.tournament_id ?? (await resolveFriendlyTournamentId(supabase, sportUuid));
   if (typeof tournamentId === "object") return tournamentId;
 
   const decidedOnPens =
@@ -623,10 +635,14 @@ export async function createMatch(input: CreateMatchInput): Promise<{ id: string
     input.away_penalties != null &&
     input.status === "completed";
 
+  const scope = input.tournament_id
+    ? (input.scope ?? "official")
+    : (input.scope ?? "pickup");
+
   const { data, error } = await (supabase.from("matches") as ReturnType<typeof supabase.from>)
     .insert({
       tournament_id: tournamentId,
-      sport_id: input.sport_id,
+      sport_id: sportUuid,
       home_team_id: input.home_team_id,
       away_team_id: input.away_team_id,
       status: input.status,
@@ -642,7 +658,7 @@ export async function createMatch(input: CreateMatchInput): Promise<{ id: string
       scheduled_at: input.scheduled_at,
       started_at: input.status === "completed" ? input.scheduled_at : null,
       ended_at: input.status === "completed" ? new Date().toISOString() : null,
-      scope: input.scope ?? "pickup",
+      scope,
       venue_id: input.venue_id ?? null,
       lineup_image_url: input.lineup_image_url ?? null,
     } as Record<string, unknown>)
@@ -877,7 +893,7 @@ export async function softDeleteGuestTeam(id: string): Promise<{ ok: true } | { 
 export interface CreateCompetitionInput {
   name: string;
   sport_id: string;
-  competition_type: "league" | "cup";
+  competition_type: "league" | "cup" | "event";
   season: string;
   title_holder_name?: string | null;
   config: Record<string, unknown>;
@@ -912,12 +928,21 @@ export async function createCompetition(
   const sportUuid = await resolveSportUuid(supabase, input.sport_id);
   if (typeof sportUuid !== "string") return sportUuid;
 
+  const category =
+    input.competition_type === "cup" ? "knockout_cup" : "league";
+  const format =
+    input.competition_type === "cup"
+      ? "knockout_only"
+      : input.competition_type === "event"
+        ? "league"
+        : "league";
+
   const { data: tournament, error: tErr } = await (supabase.from("tournaments") as ReturnType<typeof supabase.from>)
     .insert({
       name: input.name,
       sport_id: sportUuid,
-      category: input.competition_type === "cup" ? "knockout_cup" : "league",
-      format: input.competition_type === "cup" ? "knockout_only" : "league",
+      category,
+      format,
       competition_type: input.competition_type,
       season: input.season,
       config: input.config,

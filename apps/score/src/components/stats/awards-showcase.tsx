@@ -11,7 +11,7 @@ export function AwardsShowcase({
 }: {
   awards: SeasonAward[];
   sport: SportId;
-  competitionType?: "league" | "cup";
+  competitionType?: "league" | "cup" | "event";
 }) {
   if (awards.length === 0) return null;
 

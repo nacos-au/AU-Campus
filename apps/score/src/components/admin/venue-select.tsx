@@ -55,7 +55,7 @@ export function VenueSelect({
       </select>
       {sportSlug && venues.filter((v) => v.is_active).length === 0 && (
         <span className="mt-1 block text-xs font-semibold text-accent">
-          No venues for this sport yet — add them in Admin → Venues.
+          No venues for this sport yet — add them under Competitions → Campus venues.
         </span>
       )}
     </label>

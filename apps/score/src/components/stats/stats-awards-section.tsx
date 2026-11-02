@@ -17,7 +17,7 @@ export function StatsAwardsSection({
   sport: SportId;
   initialAwards: SeasonAward[];
   competitionId?: string;
-  competitionType?: "league" | "cup";
+  competitionType?: "league" | "cup" | "event";
 }) {
   const [awards, setAwards] = useState(initialAwards);
 

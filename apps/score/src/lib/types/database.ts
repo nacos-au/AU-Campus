@@ -201,8 +201,8 @@ export interface Tournament {
   sport_id: string;
   category: "league" | "knockout_cup" | "group_knockout" | "friendly";
   format?: "league" | "group_knockout" | "knockout_only";
-  /** league → Team of the Season; cup → Team of the Tournament */
-  competition_type?: "league" | "cup";
+  /** league → Team of the Season; cup → Team of the Tournament; event → manual fixtures */
+  competition_type?: "league" | "cup" | "event";
   title_holder?: TitleHolder | null;
   rules: FootballRules;
   season: string;

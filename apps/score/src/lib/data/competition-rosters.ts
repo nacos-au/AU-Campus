@@ -10,6 +10,7 @@ import {
 } from "@/lib/data/demo-competitions-store";
 import { findDemoTeam, listDemoRosterPlayers } from "@/lib/data/demo-roster";
 import { getTournamentsForSport } from "@/lib/data/demo-competition";
+import { listAllDemoMatches } from "@/lib/data/demo-match-store";
 import { resolveSportUuid } from "@/lib/data/sport-ids";
 import type { Player, Tournament } from "@/lib/types/database";
 
@@ -18,7 +19,7 @@ export type CompetitionListItem = {
   name: string;
   sport_id: string;
   season: string;
-  competition_type: "league" | "cup" | null;
+  competition_type: "league" | "cup" | "event" | null;
   max_squad_size: number;
   max_subs: number;
   team_count: number;
@@ -115,7 +116,7 @@ export async function listCompetitions(sportDbId?: string): Promise<CompetitionL
       name: string;
       sport_id: string;
       season: string;
-      competition_type: "league" | "cup" | null;
+      competition_type: "league" | "cup" | "event" | null;
       config: Record<string, unknown> | null;
     }> | null;
     error: { message: string } | null;
@@ -204,7 +205,7 @@ export async function getCompetitionDetail(tournamentId: string): Promise<{
       name: string;
       sport_id: string;
       season: string;
-      competition_type: "league" | "cup" | null;
+      competition_type: "league" | "cup" | "event" | null;
       config: Record<string, unknown> | null;
     } | null;
     error: { message: string } | null;
@@ -453,6 +454,71 @@ export async function addToCompetitionRoster(input: {
     return { error: error.message };
   }
   return { ok: true };
+}
+
+export type CompetitionFixtureRow = {
+  id: string;
+  home_team_id: string | null;
+  away_team_id: string | null;
+  home_team_name: string;
+  away_team_name: string;
+  scheduled_at: string;
+  venue_name: string | null;
+  status: string;
+};
+
+export async function listCompetitionFixtures(
+  tournamentId: string
+): Promise<CompetitionFixtureRow[]> {
+  if (await inDemo()) {
+    return listAllDemoMatches()
+      .filter((m) => m.tournament_id === tournamentId && !m.deleted_at)
+      .map((m) => ({
+        id: m.id,
+        home_team_id: m.home_team_id,
+        away_team_id: m.away_team_id,
+        home_team_name: m.home_team?.name ?? "Home",
+        away_team_name: m.away_team?.name ?? "Away",
+        scheduled_at: m.scheduled_at,
+        venue_name: m.venue?.name ?? null,
+        status: m.status,
+      }))
+      .sort(
+        (a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
+      );
+  }
+
+  const supabase = await createClient();
+  const { data } = (await supabase
+    .from("matches")
+    .select(
+      "id, home_team_id, away_team_id, scheduled_at, status, home_team:teams!home_team_id(name), away_team:teams!away_team_id(name), venue:venues(name)"
+    )
+    .eq("tournament_id", tournamentId)
+    .is("deleted_at", null)
+    .order("scheduled_at", { ascending: true })) as {
+    data: Array<{
+      id: string;
+      home_team_id: string | null;
+      away_team_id: string | null;
+      scheduled_at: string;
+      status: string;
+      home_team: { name: string } | null;
+      away_team: { name: string } | null;
+      venue: { name: string } | null;
+    }> | null;
+  };
+
+  return (data ?? []).map((m) => ({
+    id: m.id,
+    home_team_id: m.home_team_id,
+    away_team_id: m.away_team_id,
+    home_team_name: m.home_team?.name ?? "Home",
+    away_team_name: m.away_team?.name ?? "Away",
+    scheduled_at: m.scheduled_at,
+    venue_name: m.venue?.name ?? null,
+    status: m.status,
+  }));
 }
 
 export async function removeFromCompetitionRoster(

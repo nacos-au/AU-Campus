@@ -58,7 +58,7 @@ export function awardTypeLabel(type: AwardType, customLabel?: string | null): st
  */
 export function awardTypeLabelFor(
   type: AwardType,
-  competitionType: "league" | "cup" = "league",
+  competitionType: "league" | "cup" | "event" = "league",
   customLabel?: string | null
 ): string {
   if (type === "custom" && customLabel?.trim()) return customLabel.trim();

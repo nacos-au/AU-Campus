@@ -33,7 +33,7 @@ export function AdminCompetitionWizard({
   const [name, setName] = useState("Inter-Faculty Pre-season 2026/27");
   const [season, setSeason] = useState("2026/27");
   const [sport, setSport] = useState<SportId>("football");
-  const [type, setType] = useState<CompetitionType>("league");
+  const [type, setType] = useState<CompetitionType>("event");
   const [entrySize, setEntrySize] = useState<CupEntrySize | "auto">("auto");
   const [groupStage, setGroupStage] = useState(false);
   const [doubleRoundRobin, setDoubleRoundRobin] = useState(true);
@@ -142,7 +142,11 @@ export function AdminCompetitionWizard({
           <span className="block font-display text-base font-extrabold text-accent">
             “{name.trim()}” · {registered.length} teams
           </span>
-          <span className="mt-1 block">This creates live fixtures.</span>
+          <span className="mt-1 block">
+            {type === "event"
+              ? "Creates the competition shell. You’ll add known fixtures next."
+              : "This creates live fixtures."}
+          </span>
         </>
       ),
       confirmLabel: "Publish",
@@ -159,7 +163,9 @@ export function AdminCompetitionWizard({
       config: {
         ...(type === "cup"
           ? { entrySize: resolvedEntrySize, groupStage, randomize, seed: drawSeed }
-          : { doubleRoundRobin }),
+          : type === "league"
+            ? { doubleRoundRobin }
+            : { manual_fixtures: true }),
         max_squad_size: maxSquadSize,
         max_subs: maxSubs,
         starters: Math.max(1, maxSquadSize - maxSubs),
@@ -167,8 +173,8 @@ export function AdminCompetitionWizard({
         roster_preset: rosterPreset,
       },
       teams: registered,
-      pairings: draw?.pairings ?? null,
-      league_fixtures: league?.fixtures ?? null,
+      pairings: type === "cup" ? draw?.pairings ?? null : null,
+      league_fixtures: type === "league" ? league?.fixtures ?? null : null,
     };
 
     try {
@@ -186,7 +192,9 @@ export function AdminCompetitionWizard({
       if (res.ok && json.ok) {
         setPublishState("done");
         setPublishMessage(
-          `${json.message ?? "Competition created."} Next: fill each club’s competition squad below.`
+          type === "event"
+            ? `${json.message ?? "Competition created."} Next: schedule fixtures, then fill squads.`
+            : `${json.message ?? "Competition created."} Next: fill each club’s competition squad below.`
         );
         if (json.id) {
           setCreatedId(json.id);
@@ -208,9 +216,23 @@ export function AdminCompetitionWizard({
   const steps: { id: Step; label: string }[] = [
     { id: "basics", label: "1 · Format" },
     { id: "teams", label: "2 · Teams" },
-    { id: "draw", label: type === "cup" ? "3 · Draw" : "3 · Schedule" },
+    {
+      id: "draw",
+      label:
+        type === "cup" ? "3 · Draw" : type === "league" ? "3 · Schedule" : "3 · Fixtures",
+    },
     { id: "confirm", label: "4 · Publish" },
   ];
+
+  const canPublish =
+    Boolean(name.trim()) &&
+    registered.length >= 2 &&
+    !tooManyTeams &&
+    !needsByeConfirm &&
+    publishState !== "saving" &&
+    (type === "event" ||
+      (type === "league" && Boolean(league)) ||
+      (type === "cup" && Boolean(draw)));
 
   return (
     <div className="table-card p-6">
@@ -219,10 +241,9 @@ export function AdminCompetitionWizard({
         Create Competition
       </h2>
       <p className="mt-1 text-sm opacity-70">
-        Non-friendly only — pick from the teams already in this sport (including ones you
-        just imported). Leagues crown a <strong>Team of the Season</strong>; cups a{" "}
-        <strong>Team of the Tournament</strong>. Published fixtures open immediately for
-        keepers. Friendlies stay in the tool below.
+        Register clubs into a competition. Use <strong>Event / matchday</strong> when the
+        fixtures are already known (one game each, idle sides OK). Leagues and cups auto-build
+        a schedule; keepers pick up official fixtures after you publish.
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -288,6 +309,7 @@ export function AdminCompetitionWizard({
               value={type}
               onChange={(e) => setType(e.target.value as CompetitionType)}
             >
+              <option value="event">Event / matchday (manual fixtures)</option>
               <option value="league">League (round robin · Team of the Season)</option>
               <option value="cup">Cup (knockout · Team of the Tournament)</option>
             </select>
@@ -321,7 +343,7 @@ export function AdminCompetitionWizard({
                 <span className="font-semibold">Group stage before knockouts</span>
               </label>
             </>
-          ) : (
+          ) : type === "league" ? (
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -330,6 +352,11 @@ export function AdminCompetitionWizard({
               />
               <span className="font-semibold">Home &amp; away (double round robin)</span>
             </label>
+          ) : (
+            <p className="rounded-lg bg-accent/5 px-3 py-2 text-sm text-accent sm:col-span-2">
+              Odd team counts are fine — e.g. 9 clubs with 4 matches and one side resting.
+              You enter each fixture yourself after publish (home, away, kick-off, venue).
+            </p>
           )}
 
           <label className="block text-sm sm:col-span-2">
@@ -490,7 +517,26 @@ export function AdminCompetitionWizard({
 
       {step === "draw" && (
         <div className="mt-6 space-y-4">
-          {type === "cup" ? (
+          {type === "event" ? (
+            <div className="rounded-lg border border-rule px-4 py-3 text-sm">
+              <p className="font-display font-bold">Manual fixture list</p>
+              <p className="mt-1 opacity-70">
+                No auto schedule. After publish, use <strong>Schedule fixtures</strong> on this
+                page to add each known match (kick-off + campus venue). Teams that aren’t named
+                in a fixture simply don’t play — no bye advancement.
+              </p>
+              <p className="mt-2">
+                <span className="font-display font-bold">{registered.length}</span> clubs registered
+                {registered.length % 2 === 1 && (
+                  <span className="opacity-70">
+                    {" "}
+                    · with one game each that leaves{" "}
+                    <span className="font-semibold">1 club idle</span>
+                  </span>
+                )}
+              </p>
+            </div>
+          ) : type === "cup" ? (
             <>
               <div className="flex flex-wrap items-center gap-2">
                 <label className="flex items-center gap-2 text-sm">
@@ -623,7 +669,9 @@ export function AdminCompetitionWizard({
               <span className="font-semibold">Type:</span>{" "}
               {type === "cup"
                 ? `Cup · Round of ${resolvedEntrySize}${groupStage ? " with group stage" : ""} · Team of the Tournament`
-                : `League · ${doubleRoundRobin ? "double" : "single"} round robin · Team of the Season`}
+                : type === "event"
+                  ? "Event / matchday · manual fixtures (idle sides OK)"
+                  : `League · ${doubleRoundRobin ? "double" : "single"} round robin · Team of the Season`}
             </li>
             <li><span className="font-semibold">Teams:</span> {registered.length}</li>
             <li>
@@ -659,13 +707,7 @@ export function AdminCompetitionWizard({
             <button
               type="button"
               onClick={handlePublish}
-              disabled={
-                !name.trim() ||
-                registered.length < 2 ||
-                tooManyTeams ||
-                needsByeConfirm ||
-                publishState === "saving"
-              }
+              disabled={!canPublish}
               className="btn-filled rounded-lg border px-4 py-2 font-display text-sm font-bold disabled:opacity-40"
             >
               {publishState === "saving" ? "Publishing…" : "Publish competition"}
@@ -679,8 +721,17 @@ export function AdminCompetitionWizard({
           </div>
           {publishState === "done" && createdId && (
             <p className="text-sm text-accent/70">
-              Scroll to <span className="font-semibold">Fill competition squads</span> to name
-              players for each of the {registered.length} clubs.
+              {type === "event" ? (
+                <>
+                  Scroll to <span className="font-semibold">Schedule fixtures</span> to add the
+                  known matches, then fill squads.
+                </>
+              ) : (
+                <>
+                  Scroll to <span className="font-semibold">Fill competition squads</span> to name
+                  players for each of the {registered.length} clubs.
+                </>
+              )}
             </p>
           )}
         </div>

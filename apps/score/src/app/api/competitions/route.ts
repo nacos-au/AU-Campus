@@ -29,8 +29,16 @@ export async function POST(request: Request) {
   if (!Array.isArray(body.teams) || body.teams.length < 2) {
     return NextResponse.json({ error: "At least 2 teams are required" }, { status: 400 });
   }
-  if (!["league", "cup"].includes(body.competition_type)) {
-    return NextResponse.json({ error: "competition_type must be league or cup" }, { status: 400 });
+  if (!["league", "cup", "event"].includes(body.competition_type)) {
+    return NextResponse.json(
+      { error: "competition_type must be league, cup, or event" },
+      { status: 400 }
+    );
+  }
+
+  if (body.competition_type === "event") {
+    body.pairings = null;
+    body.league_fixtures = null;
   }
 
   const demo = await getScoreDemoMode();
@@ -41,7 +49,9 @@ export async function POST(request: Request) {
 
   const fixtureNote = result.fixtures
     ? ` ${result.fixtures} fixture${result.fixtures === 1 ? "" : "s"} are now open for keepers.`
-    : "";
+    : body.competition_type === "event"
+      ? " Add the known fixtures next (date, time, venue)."
+      : "";
   return NextResponse.json({
     ok: true,
     id: result.id,

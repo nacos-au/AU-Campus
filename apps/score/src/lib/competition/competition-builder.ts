@@ -14,7 +14,8 @@
  *   needed; an odd team count just means one team rests each matchweek.
  */
 
-export type CompetitionType = "league" | "cup";
+/** event = registered sides + manually scheduled fixtures (no auto league/cup draw). */
+export type CompetitionType = "league" | "cup" | "event";
 
 export type CupEntrySize = 2 | 4 | 8 | 16 | 32;
 

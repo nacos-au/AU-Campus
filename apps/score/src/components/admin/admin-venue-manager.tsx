@@ -84,9 +84,10 @@ export function AdminVenueManager() {
 
   return (
     <div className="table-card p-6">
-      <h2 className="font-display text-lg font-extrabold">Match venues</h2>
+      <h2 className="font-display text-lg font-extrabold">Campus venues</h2>
       <p className="mt-1 text-sm opacity-70">
-        Admin presets only. Soft-deleted venues stay on past matches but leave the dropdown.
+        Onboard the uni locations keepers and schedule pick from (e.g. Main Field, Joked Field).
+        Soft-deleted venues stay on past matches but leave the dropdown.
       </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
