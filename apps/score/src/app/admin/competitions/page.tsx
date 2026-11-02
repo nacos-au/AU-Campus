@@ -26,6 +26,10 @@ export default function AdminCompetitionsPage() {
       <AdminCustomCompetition onCreated={onCreated} />
       <AdminVenueManager />
       <AdminCompetitionSquadsPanel focusCompetitionId={focusId} />
+      <p className="text-sm text-accent/60">
+        After fixtures exist, open a match from Keeper or Matches to submit the starting XI from
+        each competition squad. Live scoring (periods, ET/pens, subs) runs in the keeper console.
+      </p>
 
       <div>
         <button
