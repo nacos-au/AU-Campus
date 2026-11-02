@@ -911,6 +911,13 @@ export interface CreateCompetitionInput {
     home: { id: string; name: string };
     away: { id: string; name: string };
   }> | null;
+  /** Custom / event: fully specified fixtures with kick-off + venue. */
+  manual_fixtures?: Array<{
+    home: { id: string; name: string };
+    away: { id: string; name: string };
+    scheduled_at: string;
+    venue_id?: string | null;
+  }> | null;
 }
 
 /**
@@ -1039,6 +1046,28 @@ export async function createCompetition(
     fixtures += input.league_fixtures.length;
   }
 
+  if (input.manual_fixtures?.length) {
+    const { error: mErr } = await (supabase.from("matches") as ReturnType<typeof supabase.from>)
+      .insert(
+        input.manual_fixtures.map((f, i) => ({
+          tournament_id: tournament.id,
+          sport_id: sportUuid,
+          home_team_id: f.home.id,
+          away_team_id: f.away.id,
+          status: "scheduled",
+          current_period: "not_started",
+          home_score: 0,
+          away_score: 0,
+          scheduled_at: f.scheduled_at,
+          venue_id: f.venue_id ?? null,
+          scope: "official",
+          competition_phase: `matchday_${i + 1}`,
+        })) as Record<string, unknown>[]
+      ) as { error: { message: string } | null };
+    if (mErr) return { error: mErr.message };
+    fixtures += input.manual_fixtures.length;
+  }
+
   return { id: tournament.id, fixtures };
 }
 
@@ -1096,6 +1125,23 @@ function createDemoCompetition(input: CreateCompetitionInput): { id: string; fix
       tournament_id: id,
       tournament,
       competition_phase: `matchweek_${f.matchweek}`,
+    });
+    fixtures += 1;
+  }
+  for (const [i, f] of (input.manual_fixtures ?? []).entries()) {
+    postDemoMatch({
+      sport_id: input.sport_id,
+      home_team_id: f.home.id,
+      away_team_id: f.away.id,
+      status: "scheduled",
+      scheduled_at: f.scheduled_at,
+      home_score: 0,
+      away_score: 0,
+      scope: "official",
+      venue_id: f.venue_id ?? null,
+      tournament_id: id,
+      tournament,
+      competition_phase: `matchday_${i + 1}`,
     });
     fixtures += 1;
   }

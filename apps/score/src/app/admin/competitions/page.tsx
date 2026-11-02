@@ -4,11 +4,13 @@ import { useCallback, useState } from "react";
 import { AdminCompetitionSchedulePanel } from "@/components/admin/admin-competition-schedule-panel";
 import { AdminCompetitionSquadsPanel } from "@/components/admin/admin-competition-squads-panel";
 import { AdminCompetitionWizard } from "@/components/admin/admin-competition-wizard";
+import { AdminCustomCompetition } from "@/components/admin/admin-custom-competition";
 import { AdminKeeperCalendar } from "@/components/admin/admin-keeper-calendar";
 import { AdminVenueManager } from "@/components/admin/admin-venue-manager";
 
 export default function AdminCompetitionsPage() {
   const [focusId, setFocusId] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const onCreated = useCallback((id: string) => setFocusId(id), []);
 
   return (
@@ -16,16 +18,31 @@ export default function AdminCompetitionsPage() {
       <div>
         <h2 className="font-display text-2xl font-extrabold tracking-tight">Competitions</h2>
         <p className="mt-1 max-w-2xl text-sm text-accent/70">
-          Create an event with the clubs you need, add campus venues, schedule the known
-          fixtures, then fill each competition squad. Keepers pick up official fixtures from
-          the calendar.
+          Custom comps: set fixture count → fill empty boxes with clubs, dates, and venues →
+          publish. Then fill squads. Keepers pick up the fixtures.
         </p>
       </div>
-      <AdminCompetitionWizard onCreated={onCreated} />
+
+      <AdminCustomCompetition onCreated={onCreated} />
       <AdminVenueManager />
-      <AdminCompetitionSchedulePanel focusCompetitionId={focusId} />
       <AdminCompetitionSquadsPanel focusCompetitionId={focusId} />
-      <AdminKeeperCalendar />
+
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          className="font-display text-sm font-bold text-accent/70 underline-offset-2 hover:underline"
+        >
+          {showAdvanced ? "Hide" : "Show"} league / cup builder &amp; add-on fixtures
+        </button>
+        {showAdvanced && (
+          <div className="mt-4 space-y-8">
+            <AdminCompetitionWizard onCreated={onCreated} />
+            <AdminCompetitionSchedulePanel focusCompetitionId={focusId} />
+            <AdminKeeperCalendar />
+          </div>
+        )}
+      </div>
     </div>
   );
 }

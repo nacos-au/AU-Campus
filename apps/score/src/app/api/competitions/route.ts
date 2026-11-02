@@ -41,6 +41,23 @@ export async function POST(request: Request) {
     body.league_fixtures = null;
   }
 
+  if (body.manual_fixtures?.length) {
+    for (const f of body.manual_fixtures) {
+      if (!f.home?.id || !f.away?.id || !f.scheduled_at) {
+        return NextResponse.json(
+          { error: "Each fixture needs home, away, and kick-off" },
+          { status: 400 }
+        );
+      }
+      if (f.home.id === f.away.id) {
+        return NextResponse.json(
+          { error: "A fixture cannot have the same team twice" },
+          { status: 400 }
+        );
+      }
+    }
+  }
+
   const demo = await getScoreDemoMode();
   const result = await createCompetition(body);
   if ("error" in result) {
@@ -49,8 +66,8 @@ export async function POST(request: Request) {
 
   const fixtureNote = result.fixtures
     ? ` ${result.fixtures} fixture${result.fixtures === 1 ? "" : "s"} are now open for keepers.`
-    : body.competition_type === "event"
-      ? " Add the known fixtures next (date, time, venue)."
+    : body.competition_type === "event" && !body.manual_fixtures?.length
+      ? " Add fixtures next, or recreate with the custom builder."
       : "";
   return NextResponse.json({
     ok: true,
