@@ -353,9 +353,9 @@ export const ROSTER_FORMAT_HINTS = {
     "Bio Wolves",
   ],
   players: [
-    `Adaeze Okonkwo, ${MATRIC_EXAMPLE}, Forward, 9`,
-    "Chidi Eze : Midfielder/Forward : 4",
+    `Adaeze Okonkwo, ${MATRIC_EXAMPLE}, ST, 9`,
+    "Chidi Eze : CAM/LW : 4",
     "Ngozi Adeyemi - GK - #1",
-    "Tunde Bakare, AU22ME0142, Defender + Midfielder",
+    "Tunde Bakare, AU22ME0142, CB + CDM",
   ],
 } as const;

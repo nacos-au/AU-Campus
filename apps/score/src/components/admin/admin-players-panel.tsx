@@ -7,7 +7,11 @@ import { SPORTS } from "@/components/layout/branded-section";
 import type { RosterImportResult } from "@/lib/data/demo-roster";
 import type { RosterPlayerRow } from "@/lib/data/demo-roster";
 import { MATRIC_EXAMPLE, MATRIC_HINT, isMatricNumber, normaliseMatric } from "@/lib/roster/matric";
-import { formatPositions, SPORT_POSITIONS } from "@/lib/roster/positions";
+import {
+  formatPositions,
+  formatPositionsDisplay,
+  SPORT_POSITION_DEFS,
+} from "@/lib/roster/positions";
 import { ROSTER_UPDATED_EVENT } from "@/lib/roster/parse-roster";
 import type { Team } from "@/lib/types/database";
 import { SPORT_LABELS, type SportId } from "@/lib/utils/sport";
@@ -32,7 +36,7 @@ export function AdminPlayersPanel() {
   const [jersey, setJersey] = useState("");
   const [matric, setMatric] = useState("");
 
-  const positionOptions = SPORT_POSITIONS[sport];
+  const positionOptions = SPORT_POSITION_DEFS[sport];
 
   const load = useCallback(async (forSport: SportId, teamId: string) => {
     try {
@@ -76,12 +80,6 @@ export function AdminPlayersPanel() {
       setFormClubId(departmentTeams[0].id);
     }
   }, [departmentTeams, formClubId]);
-
-  function togglePosition(label: string) {
-    setPositions((prev) =>
-      prev.includes(label) ? prev.filter((p) => p !== label) : [...prev, label]
-    );
-  }
 
   async function handleAddPlayer() {
     setError("");
@@ -201,7 +199,7 @@ export function AdminPlayersPanel() {
           fixedSport={sport}
           hideSport
           title="Paste player list"
-          description={`Bulk-register athletes. Matric format ${MATRIC_EXAMPLE}. Positions: use fixed labels (Forward, GK/Midfielder, Setter + Libero).`}
+          description={`Bulk-register athletes. Matric format ${MATRIC_EXAMPLE}. Positions use SofaScore codes (GK, CB, ST, PG…) — join several with / or + (e.g. CAM/LW).`}
         />
       ) : (
         <>
@@ -231,7 +229,10 @@ export function AdminPlayersPanel() {
                 ) : (
                   players.map((p) => {
                     const initials = `${p.first_name[0] ?? ""}${p.last_name[0] ?? ""}`.toUpperCase();
-                    const role = p.position || p.squad_role;
+                    const role =
+                      formatPositionsDisplay(p.position) ||
+                      formatPositionsDisplay(p.squad_role) ||
+                      p.squad_role;
                     return (
                       <li key={`${p.id}-${p.team_id}`} className="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-5">
                         <div className="min-w-0 flex-1">
@@ -301,26 +302,49 @@ export function AdminPlayersPanel() {
               </label>
 
               <div className="space-y-2">
-                <p className="text-sm font-semibold">Positions</p>
-                <p className="text-xs text-accent/55">Pick one or more for {SPORT_LABELS[sport]}.</p>
-                <div className="flex flex-wrap gap-2">
-                  {positionOptions.map((label) => {
-                    const on = positions.includes(label);
-                    return (
-                      <button
-                        key={label}
-                        type="button"
-                        onClick={() => togglePosition(label)}
-                        className={cn(
-                          "rounded-full px-3 py-1.5 font-display text-xs font-bold",
-                          on ? "btn-filled" : "border border-rule bg-white text-accent/70"
-                        )}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
-                </div>
+                <label className="block text-sm">
+                  <span className="font-semibold">Position</span>
+                  <span className="mt-0.5 block text-xs text-accent/55">
+                    SofaScore codes for {SPORT_LABELS[sport]}. Add more than one if needed.
+                  </span>
+                  <select
+                    className={cn(inputClass, "font-mono")}
+                    value=""
+                    onChange={(e) => {
+                      const abbr = e.target.value;
+                      if (!abbr) return;
+                      setPositions((prev) => (prev.includes(abbr) ? prev : [...prev, abbr]));
+                    }}
+                  >
+                    <option value="">Select position…</option>
+                    {positionOptions.map((p) => (
+                      <option key={p.abbr} value={p.abbr} disabled={positions.includes(p.abbr)}>
+                        {p.abbr} — {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {positions.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {positions.map((abbr) => {
+                      const def = positionOptions.find((p) => p.abbr === abbr);
+                      return (
+                        <button
+                          key={abbr}
+                          type="button"
+                          title={def ? `${def.abbr} — ${def.name}` : abbr}
+                          onClick={() => setPositions((prev) => prev.filter((p) => p !== abbr))}
+                          className="inline-flex items-center gap-1 rounded-full btn-filled px-2.5 py-1 font-mono text-[11px] font-bold"
+                        >
+                          {abbr}
+                          <span aria-hidden className="opacity-70">
+                            ×
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <label className="block text-sm">

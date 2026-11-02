@@ -270,10 +270,10 @@ export function AdminRosterImport({
             ) : (
               <p className="mt-1">
                 <strong>First Last</strong> then any of: <strong>matric</strong> (AU23AC5696),{" "}
-                <strong>position</strong> (Forward, GK/Midfielder, Setter + Libero), <strong>jersey</strong>{" "}
+                <strong>position</strong> SofaScore codes (GK, CB, ST, PG, OH…), <strong>jersey</strong>{" "}
                 (9 or #9) and, when not importing into one team, the <strong>team name</strong>. Order
-                doesn’t matter. Multiple positions: join with <code className="rounded bg-surface px-1">/</code>{" "}
-                <code className="rounded bg-surface px-1">+</code> or commas.
+                doesn’t matter. Several positions: <code className="rounded bg-surface px-1">CAM/LW</code>{" "}
+                or <code className="rounded bg-surface px-1">S + L</code>.
               </p>
             )}
           </div>
