@@ -153,8 +153,8 @@ export function AdminCompetitionSchedulePanel({
         Schedule fixtures
       </h2>
       <p className="mt-1 text-sm opacity-70">
-        Add known matches to a competition — kick-off and campus venue. One club can sit out;
-        they just won&apos;t appear in a fixture.
+        Add known matches — kick-off and campus venue. Sides are neutral (no home/away). One
+        club can sit out; they just won&apos;t appear in a fixture.
       </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -196,7 +196,7 @@ export function AdminCompetitionSchedulePanel({
         <>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="block text-sm">
-              <span className="font-semibold">Home</span>
+              <span className="font-semibold">Team</span>
               <select
                 className={inputClass}
                 value={homeId}
@@ -211,7 +211,7 @@ export function AdminCompetitionSchedulePanel({
               </select>
             </label>
             <label className="block text-sm">
-              <span className="font-semibold">Away</span>
+              <span className="font-semibold">Team</span>
               <select
                 className={inputClass}
                 value={awayId}

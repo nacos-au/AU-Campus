@@ -10,12 +10,15 @@ import { cn } from "@/lib/utils/cn";
 
 export const COMPETITION_CREATED_EVENT = "au-score-competition-created";
 
-type SlotSide = "home" | "away";
+/** Stored as home/away in DB; campus events treat both as neutral sides. */
+type SlotSide = "a" | "b";
 
 type FixtureSlot = {
   key: string;
-  homeId: string;
-  awayId: string;
+  /** Left side (DB home_team_id) — not “home advantage” on campus events */
+  teamAId: string;
+  /** Right side (DB away_team_id) */
+  teamBId: string;
   scheduledAt: string;
   venueId: string;
 };
@@ -34,8 +37,8 @@ function makeSlots(count: number, prev: FixtureSlot[], defaultVenue: string): Fi
     next.push(
       existing ?? {
         key: `fx-${Date.now().toString(36)}-${i}`,
-        homeId: "",
-        awayId: "",
+        teamAId: "",
+        teamBId: "",
         scheduledAt: defaultKickoff(i),
         venueId: defaultVenue,
       }
@@ -134,8 +137,8 @@ export function AdminCustomCompetition({
   const usedIds = useMemo(() => {
     const s = new Set<string>();
     for (const fx of slots) {
-      if (fx.homeId) s.add(fx.homeId);
-      if (fx.awayId) s.add(fx.awayId);
+      if (fx.teamAId) s.add(fx.teamAId);
+      if (fx.teamBId) s.add(fx.teamBId);
     }
     for (const id of idleIds) if (id) s.add(id);
     return s;
@@ -153,9 +156,9 @@ export function AdminCustomCompetition({
       setSlots((prev) =>
         prev.map((s, i) => {
           if (i !== picker.index) return s;
-          const other = picker.side === "home" ? s.awayId : s.homeId;
+          const other = picker.side === "a" ? s.teamBId : s.teamAId;
           if (other === teamId) return s;
-          return picker.side === "home" ? { ...s, homeId: teamId } : { ...s, awayId: teamId };
+          return picker.side === "a" ? { ...s, teamAId: teamId } : { ...s, teamBId: teamId };
         })
       );
     } else {
@@ -170,7 +173,7 @@ export function AdminCustomCompetition({
       setSlots((prev) =>
         prev.map((s, i) => {
           if (i !== target.index) return s;
-          return target.side === "home" ? { ...s, homeId: "" } : { ...s, awayId: "" };
+          return target.side === "a" ? { ...s, teamAId: "" } : { ...s, teamBId: "" };
         })
       );
     } else {
@@ -178,8 +181,16 @@ export function AdminCustomCompetition({
     }
   }
 
+  function swapSides(index: number) {
+    setSlots((prev) =>
+      prev.map((s, i) =>
+        i === index ? { ...s, teamAId: s.teamBId, teamBId: s.teamAId } : s
+      )
+    );
+  }
+
   const fixturesReady = slots.every(
-    (s) => s.homeId && s.awayId && s.homeId !== s.awayId && s.scheduledAt && s.venueId
+    (s) => s.teamAId && s.teamBId && s.teamAId !== s.teamBId && s.scheduledAt && s.venueId
   );
   const idleReady = idleIds.every((id) => Boolean(id));
   const canPublish =
@@ -196,7 +207,7 @@ export function AdminCustomCompetition({
     const teamMap = new Map<string, { id: string; name: string; seed: number }>();
     let seed = 1;
     for (const s of slots) {
-      for (const id of [s.homeId, s.awayId]) {
+      for (const id of [s.teamAId, s.teamBId]) {
         if (!teamMap.has(id)) {
           teamMap.set(id, { id, name: teamName(id), seed: seed++ });
         }
@@ -235,6 +246,8 @@ export function AdminCustomCompetition({
           season: season.trim() || "2026/27",
           config: {
             manual_fixtures: true,
+            /** Campus events: sides are neutral — no home advantage. */
+            sides: "neutral",
             fixture_count: slots.length,
             idle_count: idleIds.filter(Boolean).length,
             max_squad_size: maxSquadSize,
@@ -247,8 +260,8 @@ export function AdminCustomCompetition({
           pairings: null,
           league_fixtures: null,
           manual_fixtures: slots.map((s) => ({
-            home: { id: s.homeId, name: teamName(s.homeId) },
-            away: { id: s.awayId, name: teamName(s.awayId) },
+            home: { id: s.teamAId, name: teamName(s.teamAId) },
+            away: { id: s.teamBId, name: teamName(s.teamBId) },
             scheduled_at: new Date(s.scheduledAt).toISOString(),
             venue_id: s.venueId,
           })),
@@ -314,7 +327,8 @@ export function AdminCustomCompetition({
       </h2>
       <p className="mt-1 text-sm opacity-70">
         Set how many matches (and idle clubs), then fill the empty boxes — dates, venues, teams.
-        One publish creates the whole competition.
+        Campus events are <strong>neutral</strong> (no home/away); leagues can still use home sides
+        later. One publish creates the whole competition.
       </p>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -464,17 +478,25 @@ export function AdminCustomCompetition({
             </p>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
               <TeamBox
-                teamId={slot.homeId}
-                label="Home"
-                onOpen={() => setPicker({ kind: "fixture", index, side: "home" })}
+                teamId={slot.teamAId}
+                label="Team"
+                onOpen={() => setPicker({ kind: "fixture", index, side: "a" })}
               />
-              <span className="hidden items-center px-1 font-display text-xs font-bold text-accent/35 sm:flex">
-                vs
-              </span>
+              <div className="flex items-center justify-center gap-2 sm:flex-col sm:px-1">
+                <span className="font-display text-xs font-bold text-accent/35">vs</span>
+                <button
+                  type="button"
+                  title="Swap sides"
+                  onClick={() => swapSides(index)}
+                  className="rounded-full border border-rule px-2 py-0.5 text-[10px] font-bold text-accent/55 hover:bg-surface"
+                >
+                  Swap
+                </button>
+              </div>
               <TeamBox
-                teamId={slot.awayId}
-                label="Away"
-                onOpen={() => setPicker({ kind: "fixture", index, side: "away" })}
+                teamId={slot.teamBId}
+                label="Team"
+                onOpen={() => setPicker({ kind: "fixture", index, side: "b" })}
               />
             </div>
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
@@ -591,9 +613,9 @@ export function AdminCustomCompetition({
                 const taken = usedIds.has(t.id);
                 const current =
                   picker.kind === "fixture"
-                    ? picker.side === "home"
-                      ? slots[picker.index]?.homeId
-                      : slots[picker.index]?.awayId
+                    ? picker.side === "a"
+                      ? slots[picker.index]?.teamAId
+                      : slots[picker.index]?.teamBId
                     : idleIds[picker.index];
                 const isCurrent = current === t.id;
                 return (
