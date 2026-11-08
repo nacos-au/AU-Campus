@@ -5,9 +5,11 @@ import { MatchesFilters } from "@/components/layout/filters-bar";
 import { PageContent } from "@/components/layout/page-content";
 import { getTournamentForSport } from "@/lib/data/demo-competition";
 import { getMatchesBySport, getSportConfig } from "@/lib/data/get-by-sport";
+import { fetchPublicMatches } from "@/lib/data/repository";
 import { getScoreDemoMode } from "@/lib/data/mode";
 import { parseSportParam, sportToDbId } from "@/lib/utils/sport";
 import type { Match } from "@/lib/types/database";
+import Link from "next/link";
 
 function formatMatchDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -27,6 +29,8 @@ function groupMatchesByDate(matches: Match[]): Map<string, Match[]> {
   return groups;
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function MatchesPage({
   searchParams,
 }: {
@@ -37,7 +41,26 @@ export default async function MatchesPage({
   const config = getSportConfig(activeSport);
   const demo = await getScoreDemoMode();
   const tournament = getTournamentForSport(sportToDbId(activeSport), competition);
-  const matches = demo ? getMatchesBySport(activeSport, tournament?.id) : [];
+
+  const matches = demo
+    ? getMatchesBySport(activeSport, tournament?.id)
+    : (
+        await fetchPublicMatches({
+          sportDbId: sportToDbId(activeSport),
+          status: ["live", "paused", "scheduled", "completed"],
+          limit: 80,
+        })
+      )
+        .filter((m) => !tournament?.id || m.tournament_id === tournament.id)
+        // Live first, then by kickoff
+        .sort((a, b) => {
+          const rank = (s: string) => (s === "live" || s === "paused" ? 0 : s === "scheduled" ? 1 : 2);
+          const d = rank(a.status) - rank(b.status);
+          if (d !== 0) return d;
+          return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime();
+        });
+
+  const liveCount = matches.filter((m) => m.status === "live" || m.status === "paused").length;
   const grouped = groupMatchesByDate(matches);
 
   return (
@@ -49,11 +72,25 @@ export default async function MatchesPage({
         <MatchweekNav label={config.dateNavLabel} range={config.dateNavRange} />
 
         <div className="mx-auto max-w-[1200px] bg-wrapper px-4 pb-16 pt-2 sm:px-6">
+          {liveCount > 0 && (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-accent/20 bg-white px-4 py-3">
+              <p className="font-display text-sm font-bold">
+                {liveCount} live fixture{liveCount === 1 ? "" : "s"} right now
+              </p>
+              <Link
+                href={`/live?sport=${activeSport}`}
+                className="text-sm font-bold text-accent hover:underline"
+              >
+                Open Live
+              </Link>
+            </div>
+          )}
+
           {grouped.size === 0 ? (
             <div className="table-card p-10 text-center opacity-70">
               {demo
                 ? `No ${config.label.toLowerCase()} fixtures scheduled yet.`
-                : "No live fixtures yet. Run the Score SQL migration and seed, or switch to Demo in the header."}
+                : "No fixtures yet. Publish a competition or open Live once a keeper starts a match."}
             </div>
           ) : (
             Array.from(grouped.entries()).map(([date, dayMatches]) => (

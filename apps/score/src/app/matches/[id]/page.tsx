@@ -178,7 +178,7 @@ export default async function MatchPage({
             </section>
           )}
 
-          {isLive ? (
+          {isLive || match.status === "paused" ? (
             <MatchLiveEventsPoller
               matchId={id}
               initialEvents={events}

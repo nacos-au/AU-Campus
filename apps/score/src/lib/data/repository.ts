@@ -520,7 +520,92 @@ export async function createMatchEvent(input: CreateMatchEventInput): Promise<{ 
 
   if (error) return { error: error.message };
   if (!data) return { error: "No event created" };
+
+  // Keep the match scoreboard in sync so the public page shows live goals.
+  if (
+    input.event_type === "goal" ||
+    input.event_type === "penalty_scored" ||
+    input.event_type === "own_goal"
+  ) {
+    await recomputeMatchScoreFromEvents(input.match_id);
+  }
+
   return { id: data.id };
+}
+
+async function recomputeMatchScoreFromEvents(matchId: string): Promise<void> {
+  const supabase = await createClient();
+  const { data: match } = (await supabase
+    .from("matches")
+    .select("id, home_team_id, away_team_id")
+    .eq("id", matchId)
+    .maybeSingle()) as {
+    data: { id: string; home_team_id: string | null; away_team_id: string | null } | null;
+  };
+  if (!match) return;
+
+  const { data: events } = (await supabase
+    .from("match_events")
+    .select("event_type, team_id, is_void")
+    .eq("match_id", matchId)
+    .eq("is_void", false)) as {
+    data: Array<{ event_type: string; team_id: string | null; is_void: boolean }> | null;
+  };
+
+  let home = 0;
+  let away = 0;
+  for (const e of events ?? []) {
+    if (e.event_type !== "goal" && e.event_type !== "penalty_scored" && e.event_type !== "own_goal") {
+      continue;
+    }
+    if (e.event_type === "own_goal") {
+      // Credit the opposing side.
+      if (e.team_id === match.home_team_id) away += 1;
+      else if (e.team_id === match.away_team_id) home += 1;
+      continue;
+    }
+    if (e.team_id === match.home_team_id) home += 1;
+    else if (e.team_id === match.away_team_id) away += 1;
+  }
+
+  await (supabase.from("matches") as ReturnType<typeof supabase.from>)
+    .update({ home_score: home, away_score: away } as Record<string, unknown>)
+    .eq("id", matchId);
+}
+
+/** Public fixture list for Matches home + Live page. */
+export async function fetchPublicMatches(opts?: {
+  sportDbId?: string;
+  status?: Array<"scheduled" | "live" | "paused" | "completed">;
+  limit?: number;
+}): Promise<Match[]> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    let rows = listAllDemoMatches().filter((m) => !m.deleted_at);
+    if (opts?.sportDbId) rows = rows.filter((m) => m.sport_id === opts.sportDbId);
+    if (opts?.status?.length) rows = rows.filter((m) => opts.status!.includes(m.status as "scheduled" | "live" | "paused" | "completed"));
+    return rows.slice(0, opts?.limit ?? 100);
+  }
+
+  const supabase = await createClient();
+  let query = supabase
+    .from("matches")
+    .select(
+      "*, venue:venues(*), home_team:teams!home_team_id(*, department:departments(*)), away_team:teams!away_team_id(*, department:departments(*)), tournament:tournaments(*)"
+    )
+    .is("deleted_at", null)
+    .order("scheduled_at", { ascending: true })
+    .limit(opts?.limit ?? 100);
+
+  if (opts?.sportDbId) {
+    const sportUuid = await resolveSportUuid(supabase, opts.sportDbId);
+    if (typeof sportUuid === "string") query = query.eq("sport_id", sportUuid);
+  }
+  if (opts?.status?.length) {
+    query = query.in("status", opts.status);
+  }
+
+  const { data } = (await query) as { data: Match[] | null };
+  return (data ?? []) as Match[];
 }
 
 type SeasonAwardRow = {
@@ -786,6 +871,10 @@ export interface UpdateMatchInput {
   allows_extra_time?: boolean;
   allows_penalty_shootout?: boolean;
   lineup_image_url?: string | null;
+  clock_elapsed_seconds?: number;
+  clock_is_running?: boolean;
+  clock_is_time_lost?: boolean;
+  clock_running_started_at?: string | null;
 }
 
 export async function updateMatch(

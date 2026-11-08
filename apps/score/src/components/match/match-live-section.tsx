@@ -13,16 +13,29 @@ export function MatchLiveSection({
   events,
   status,
   sport,
+  liveTime,
+  clockRunning,
+  clockTimeLost,
 }: {
   match: Match;
   events: DemoMatchEvent[];
   status: LifecycleStatus;
   sport: SportId;
+  liveTime?: string;
+  clockRunning?: boolean;
+  clockTimeLost?: boolean;
 }) {
   if (sport === "football") {
     return (
       <div className="mt-8">
-        <MatchLivePanel match={match} events={events} status={status} />
+        <MatchLivePanel
+          match={match}
+          events={events}
+          status={status}
+          liveTime={liveTime}
+          clockRunning={clockRunning}
+          clockTimeLost={clockTimeLost}
+        />
       </div>
     );
   }

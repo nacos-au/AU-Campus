@@ -241,6 +241,11 @@ export interface Match {
   allows_penalty_shootout?: boolean;
   /** Simple pre-match lineup sheet / graphic URL. */
   lineup_image_url?: string | null;
+  /** Published keeper clock for public spectators. */
+  clock_elapsed_seconds?: number | null;
+  clock_is_running?: boolean | null;
+  clock_is_time_lost?: boolean | null;
+  clock_running_started_at?: string | null;
   deleted_at?: string | null;
   home_team?: Team;
   away_team?: Team;

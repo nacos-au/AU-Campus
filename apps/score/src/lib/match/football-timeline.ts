@@ -114,5 +114,10 @@ export function buildFootballTimeline(
 }
 
 export function playerShortName(first: string, last: string): string {
-  return `${first[0]}. ${last}`;
+  const f = (first ?? "").trim();
+  const l = (last ?? "").trim();
+  if (!f && !l) return "—";
+  if (!l) return f;
+  if (!f) return l;
+  return `${f[0]}. ${l}`;
 }

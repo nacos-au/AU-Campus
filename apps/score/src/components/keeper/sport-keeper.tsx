@@ -49,10 +49,14 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
     status: match.status as "scheduled" | "live" | "completed",
     scheduledAt: match.scheduled_at,
   });
-  const { clock, setTimeLost, setRunning, resetClock, stopClock, setPeriod, formatTime } =
-    useMatchClock(match.id, {
-      period: match.current_period === "not_started" ? "half_1" : match.current_period,
-    });
+  const { clock, setTimeLost, setRunning, startRunning, stopClock, setPeriod, formatTime } =
+    useMatchClock(
+      match.id,
+      {
+        period: match.current_period === "not_started" ? "half_1" : match.current_period,
+      },
+      { syncToServer: true }
+    );
   const { logs, addLog, removeLog, updateLog } = useKeeperLogs(match.id);
 
   const [selected, setSelected] = useState<{ side: Side; playerId: string } | null>(null);
@@ -131,7 +135,8 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
   const loggingEnabled = lifecycle.isLive;
 
   async function handleStartMatch() {
-    resetClock(sport === "football" ? "half_1" : match.current_period);
+    // Kick off the published clock immediately so spectators tick 1s/s.
+    startRunning(sport === "football" ? "half_1" : match.current_period);
     await lifecycle.startMatch();
   }
 

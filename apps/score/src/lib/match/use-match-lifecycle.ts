@@ -19,6 +19,14 @@ function loadState(matchId: string, initialStatus: LifecycleStatus): MatchLifecy
   if (typeof window === "undefined") {
     return { status: initialStatus, startedAt: null, endedAt: null };
   }
+  // Prefer server truth when the match is already live/completed.
+  if (initialStatus === "live" || initialStatus === "completed") {
+    return {
+      status: initialStatus,
+      startedAt: initialStatus === "live" ? new Date().toISOString() : null,
+      endedAt: initialStatus === "completed" ? new Date().toISOString() : null,
+    };
+  }
   try {
     const raw = localStorage.getItem(storageKey(matchId));
     if (raw) return JSON.parse(raw) as MatchLifecycleState;
@@ -96,6 +104,28 @@ export function useMatchLifecycle(
     }
   }, [matchId, persist, state]);
 
+  const reconcileFromServer = useCallback(
+    (status: LifecycleStatus) => {
+      setState((prev) => {
+        if (prev.status === status) return prev;
+        const next: MatchLifecycleState = {
+          status,
+          startedAt:
+            status === "live" ? prev.startedAt ?? new Date().toISOString() : prev.startedAt,
+          endedAt:
+            status === "completed" ? prev.endedAt ?? new Date().toISOString() : prev.endedAt,
+        };
+        try {
+          localStorage.setItem(storageKey(matchId), JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
+    },
+    [matchId]
+  );
+
   return {
     status: state.status,
     startedAt: state.startedAt,
@@ -105,5 +135,6 @@ export function useMatchLifecycle(
     isCompleted: state.status === "completed",
     startMatch,
     endMatch,
+    reconcileFromServer,
   };
 }

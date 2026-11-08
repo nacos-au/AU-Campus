@@ -116,7 +116,10 @@ function TimelineEventRow({
   const { event, scoreLabel } = item;
   const isSub = event.event_type === "substitution";
   const isCard = event.event_type.includes("card");
-  const playerName = playerShortName(event.player.first_name, event.player.last_name);
+  const isTeamAction = ["corner", "foul", "offside"].includes(event.event_type) && !event.player.id;
+  const playerName = isTeamAction
+    ? event.team_name || eventTypeLabel(event.event_type)
+    : playerShortName(event.player.first_name, event.player.last_name);
   const assistName =
     event.details?.assist_player_name != null
       ? String(event.details.assist_player_name)
@@ -125,6 +128,7 @@ function TimelineEventRow({
     event.details?.player_out_name != null ? String(event.details.player_out_name) : null;
   const foulLabel =
     event.details?.foul_label != null ? String(event.details.foul_label) : "Foul";
+  const actionLabel = isTeamAction ? eventTypeLabel(event.event_type) : undefined;
 
   const icon = <EventIcon event={event} />;
   const time = (
@@ -143,8 +147,8 @@ function TimelineEventRow({
           sport={sport}
           playerId={event.player.id}
           primary={playerName}
-          secondary={isSub ? outName : assistName}
-          secondaryMuted={isSub || Boolean(assistName)}
+          secondary={isSub ? outName : assistName ?? actionLabel}
+          secondaryMuted={isSub || Boolean(assistName) || Boolean(actionLabel)}
           trailing={isCard ? foulLabel : undefined}
           trailingBefore={false}
         />
@@ -158,8 +162,8 @@ function TimelineEventRow({
         sport={sport}
         playerId={event.player.id}
         primary={playerName}
-        secondary={isSub ? outName : assistName}
-        secondaryMuted={isSub || Boolean(assistName)}
+        secondary={isSub ? outName : assistName ?? actionLabel}
+        secondaryMuted={isSub || Boolean(assistName) || Boolean(actionLabel)}
         trailing={isCard ? foulLabel : undefined}
         trailingBefore
         align="right"
@@ -195,9 +199,13 @@ function PlayerBlock({
       {trailing && trailingBefore && (
         <span className="mr-1.5 text-accent/50">{trailing}</span>
       )}
-      <Link href={`/players/${playerId}?sport=${sport}`} className="font-display font-bold text-accent hover:underline">
-        {primary}
-      </Link>
+      {playerId ? (
+        <Link href={`/players/${playerId}?sport=${sport}`} className="font-display font-bold text-accent hover:underline">
+          {primary}
+        </Link>
+      ) : (
+        <span className="font-display font-bold text-accent">{primary}</span>
+      )}
       {secondary && (
         <span className={cn("ml-1.5", secondaryMuted ? "text-accent/40" : "text-accent/60")}>
           {secondary}
@@ -218,10 +226,32 @@ function ScoreBadge({ score }: { score: string }) {
   );
 }
 
+function eventTypeLabel(type: string): string {
+  switch (type) {
+    case "corner":
+      return "Corner";
+    case "offside":
+      return "Offside";
+    case "foul":
+      return "Foul";
+    case "save":
+      return "Save";
+    case "warning":
+      return "Warning";
+    case "penalty_missed":
+      return "Pen miss";
+    case "own_goal":
+      return "OG";
+    default:
+      return type.replace(/_/g, " ");
+  }
+}
+
 function EventIcon({ event }: { event: DemoMatchEvent }) {
   const cls = "h-4 w-4 shrink-0 text-accent sm:h-5 sm:w-5";
   switch (event.event_type) {
     case "goal":
+    case "own_goal":
       return <GoalBallIcon className={cls} />;
     case "penalty_scored":
       return <PenaltyGoalIcon className={cls} />;
@@ -233,7 +263,39 @@ function EventIcon({ event }: { event: DemoMatchEvent }) {
       return <YellowCardIcon />;
     case "red_card":
       return <RedCardIcon />;
+    case "corner":
+      return (
+        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-accent/40 font-display text-[9px] font-extrabold">
+          C
+        </span>
+      );
+    case "offside":
+      return (
+        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-accent/40 font-display text-[9px] font-extrabold">
+          OS
+        </span>
+      );
+    case "save":
+      return (
+        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-accent/40 font-display text-[9px] font-extrabold">
+          SV
+        </span>
+      );
+    case "foul":
+    case "warning":
+      return (
+        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-accent/40 font-display text-[9px] font-extrabold">
+          F
+        </span>
+      );
     default:
-      return <GoalBallIcon className={cls} />;
+      return (
+        <span
+          className="inline-flex max-w-[4.5rem] shrink-0 truncate rounded-full border border-accent/30 px-1.5 py-0.5 font-display text-[9px] font-bold uppercase"
+          title={eventTypeLabel(event.event_type)}
+        >
+          {eventTypeLabel(event.event_type)}
+        </span>
+      );
   }
 }

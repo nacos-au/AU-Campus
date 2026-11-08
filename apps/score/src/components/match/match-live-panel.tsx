@@ -20,16 +20,26 @@ export function MatchLivePanel({
   match,
   events,
   status,
+  liveTime,
+  clockRunning,
+  clockTimeLost,
 }: {
   match: Match;
   events: DemoMatchEvent[];
   status: LifecycleStatus;
+  /** When provided (public poller), prefer over localStorage clock. */
+  liveTime?: string;
+  clockRunning?: boolean;
+  clockTimeLost?: boolean;
 }) {
   const isLive = status === "live";
   const totalMinutes = match.went_to_extra_time ? 120 : 90;
   const { elapsedMinutes, formatTime, clock } = useMatchClock(match.id, {
     period: match.current_period,
-  });
+  }, { spectator: liveTime != null });
+  const displayTime = liveTime ?? formatTime();
+  const running = clockRunning ?? clock.isRunning;
+  const timeLost = clockTimeLost ?? clock.isTimeLost;
   const progress = Math.min(100, (elapsedMinutes / totalMinutes) * 100);
   const markers = eventsToMarkers(events, "football");
   const homeCode = match.home_team?.department?.short_code ?? "H";
@@ -52,7 +62,7 @@ export function MatchLivePanel({
               scheduledAt={match.scheduled_at}
               currentPeriod={match.current_period}
               sport="football"
-              liveTime={isLive ? formatTime() : undefined}
+              liveTime={isLive ? displayTime : undefined}
             />
             <div className="mt-2 flex items-center justify-center gap-3 sm:gap-4">
               <span className={cn("text-4xl sm:text-5xl", scoreClass(match.home_score, match.away_score, "home", "lg", "dark"))}>
@@ -74,8 +84,8 @@ export function MatchLivePanel({
         {isLive && (
           <div className="mt-4 flex justify-center">
             <MatchClockStatusBadge
-              isRunning={clock.isRunning}
-              isTimeLost={clock.isTimeLost}
+              isRunning={running}
+              isTimeLost={timeLost}
               clockOnLabel="Playing"
               clockOffLabel="Time lost"
             />
