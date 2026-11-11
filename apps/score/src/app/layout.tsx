@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     template: "%s | AU Score",
   },
   description:
-    "Campus sports matches, league tables, and player statistics for university athletics.",
+    "Live campus sports matches, league tables, and player statistics for university athletics.",
   openGraph: {
     title: "AU Score — Campus Sports",
     description:
