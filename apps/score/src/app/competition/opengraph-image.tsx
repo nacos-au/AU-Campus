@@ -9,13 +9,18 @@ import { parseSportParam, sportToDbId, SPORT_LABELS } from "@/lib/utils/sport";
 export const alt = "AU Score competition";
 export const size = POSTER.size;
 export const contentType = "image/png";
+export const dynamic = "force-dynamic";
 
-export default async function Image({
-  searchParams,
-}: {
-  searchParams: Promise<{ sport?: string; competition?: string }>;
+/** Build-time OG has no request searchParams — default to football. */
+export default async function Image(props: {
+  searchParams?: Promise<{ sport?: string; competition?: string }> | { sport?: string; competition?: string };
 }) {
-  const { sport, competition } = await searchParams;
+  const raw = props.searchParams;
+  const sp = raw ? await Promise.resolve(raw) : {};
+  const sport = typeof sp === "object" && sp && "sport" in sp ? sp.sport : undefined;
+  const competition =
+    typeof sp === "object" && sp && "competition" in sp ? sp.competition : undefined;
+
   const activeSport = parseSportParam(sport);
   const sportDbId = sportToDbId(activeSport);
   const demo = await getScoreDemoMode();
