@@ -1031,14 +1031,68 @@ export async function softDeleteMatch(matchId: string): Promise<{ ok: true } | {
 export async function updateMatchStatus(
   matchId: string,
   status: "scheduled" | "live" | "completed" | "postponed",
-  opts?: { postpone_reason?: string | null }
+  opts?: { postpone_reason?: string | null; freshKickoff?: boolean }
 ): Promise<{ ok: true } | { error: string }> {
+  if (status === "live" && opts?.freshKickoff) {
+    return resetMatchForKickoff(matchId);
+  }
   return updateMatch(matchId, {
     status,
     ...(status === "postponed"
       ? { postpone_reason: opts?.postpone_reason?.trim() || "Match postponed" }
       : { postpone_reason: null }),
   });
+}
+
+/** Wipe prior theatre and open the clock at 00:00 for a clean kick-off. */
+export async function resetMatchForKickoff(
+  matchId: string
+): Promise<{ ok: true } | { error: string }> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    return updateDemoMatch(matchId, {
+      status: "live",
+      home_score: 0,
+      away_score: 0,
+      home_penalties: null,
+      away_penalties: null,
+      current_period: "half_1",
+    })
+      ? { ok: true }
+      : { error: "Match not found" };
+  }
+
+  const supabase = await createClient();
+
+  // Drop previous events so the public log starts empty.
+  await (supabase.from("match_events") as ReturnType<typeof supabase.from>)
+    .delete()
+    .eq("match_id", matchId);
+
+  const { error } = await (supabase.from("matches") as ReturnType<typeof supabase.from>)
+    .update({
+      status: "live",
+      started_at: new Date().toISOString(),
+      ended_at: null,
+      home_score: 0,
+      away_score: 0,
+      home_penalties: null,
+      away_penalties: null,
+      current_period: "half_1",
+      went_to_extra_time: false,
+      postpone_reason: null,
+      clock_elapsed_seconds: 0,
+      clock_is_running: true,
+      clock_is_time_lost: false,
+      clock_running_started_at: new Date().toISOString(),
+      clock_stoppage_seconds: 0,
+      clock_boarded_stoppage_minutes: 0,
+      clock_time_lost_started_at: null,
+    } as Record<string, unknown>)
+    .eq("id", matchId)
+    .is("deleted_at", null) as { error: { message: string } | null };
+
+  if (error) return { error: error.message };
+  return { ok: true };
 }
 
 // ─── Venues ─────────────────────────────────────────────────────────────────

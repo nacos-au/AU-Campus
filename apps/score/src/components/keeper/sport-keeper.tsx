@@ -74,7 +74,7 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
     },
     { syncToServer: true }
   );
-  const { logs, addLog, removeLog, updateLog } = useKeeperLogs(match.id);
+  const { logs, addLog, removeLog, updateLog, clearLogs } = useKeeperLogs(match.id);
 
   const [selected, setSelected] = useState<{ side: Side; playerId: string } | null>(null);
   const [pendingFoul, setPendingFoul] = useState<string | null>(null);
@@ -161,7 +161,8 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
   const loggingEnabled = lifecycle.isLive;
 
   async function handleStartMatch() {
-    // Kick off the published clock immediately so spectators tick 1s/s.
+    // Every kick-off starts from scratch: empty log, 00:00, zero score (server wipe).
+    clearLogs();
     startRunning(sport === "football" ? "half_1" : match.current_period);
     await lifecycle.startMatch();
   }

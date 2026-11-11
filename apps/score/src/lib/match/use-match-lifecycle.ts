@@ -78,7 +78,7 @@ export function useMatchLifecycle(
       await fetch(`/api/matches/${matchId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "live" }),
+        body: JSON.stringify({ status: "live", fresh_kickoff: true }),
       });
     } catch {
       /* demo/local still works */

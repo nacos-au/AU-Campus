@@ -251,5 +251,9 @@ export function useKeeperLogs(matchId: string) {
     [matchId]
   );
 
-  return { logs, addLog, removeLog, updateLog, hydrated, persistLocal };
+  const clearLogs = useCallback(() => {
+    persistLocal([]);
+  }, [persistLocal]);
+
+  return { logs, addLog, removeLog, updateLog, clearLogs, hydrated, persistLocal };
 }

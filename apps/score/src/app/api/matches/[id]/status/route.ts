@@ -15,6 +15,8 @@ export async function PATCH(
   const body = (await request.json()) as {
     status?: string;
     postpone_reason?: string | null;
+    /** When starting live: wipe prior events/scores/clock so kick-off is clean. */
+    fresh_kickoff?: boolean;
   };
 
   if (!body.status || !["scheduled", "live", "completed", "postponed"].includes(body.status)) {
@@ -28,7 +30,10 @@ export async function PATCH(
   const result = await updateMatchStatus(
     id,
     body.status as "scheduled" | "live" | "completed" | "postponed",
-    { postpone_reason: body.postpone_reason }
+    {
+      postpone_reason: body.postpone_reason,
+      freshKickoff: body.status === "live" ? body.fresh_kickoff !== false : false,
+    }
   );
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });
