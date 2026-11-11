@@ -15,7 +15,7 @@ CREATE SCHEMA IF NOT EXISTS private;
 
 -- ─── Enums ──────────────────────────────────────────────────────────────────
 
-DO $$ BEGIN CREATE TYPE public.match_status AS ENUM ('scheduled', 'live', 'paused', 'completed', 'cancelled');
+DO $$ BEGIN CREATE TYPE public.match_status AS ENUM ('scheduled', 'live', 'paused', 'completed', 'cancelled', 'postponed');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 DO $$ BEGIN CREATE TYPE public.tournament_category AS ENUM ('league', 'knockout_cup', 'friendly');
@@ -189,6 +189,10 @@ CREATE TABLE IF NOT EXISTS public.matches (
   allows_extra_time BOOLEAN NOT NULL DEFAULT false,
   allows_penalty_shootout BOOLEAN NOT NULL DEFAULT false,
   lineup_image_url TEXT,
+  referee_name TEXT,
+  assistant_referee_1 TEXT,
+  assistant_referee_2 TEXT,
+  postpone_reason TEXT,
   competition_phase VARCHAR(30),
   match_variant VARCHAR(20) DEFAULT 'standard',
   competition_format VARCHAR(20) DEFAULT 'team_vs_team',
@@ -427,9 +431,22 @@ CREATE TABLE IF NOT EXISTS public.match_lineups (
   match_id UUID NOT NULL REFERENCES public.matches(id) ON DELETE CASCADE,
   team_id UUID NOT NULL REFERENCES public.teams(id) ON DELETE CASCADE,
   players JSONB NOT NULL DEFAULT '[]',
+  status TEXT NOT NULL DEFAULT 'predicted' CHECK (status IN ('predicted', 'confirmed')),
+  published_at TIMESTAMPTZ,
   submitted_by UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
   submitted_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(match_id, team_id)
+);
+
+CREATE TABLE IF NOT EXISTS public.score_feedback (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  page_path TEXT,
+  match_id UUID REFERENCES public.matches(id) ON DELETE SET NULL,
+  category TEXT NOT NULL DEFAULT 'bug' CHECK (category IN ('bug', 'idea', 'other')),
+  message TEXT NOT NULL,
+  contact_email TEXT,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_match_lineups_match ON public.match_lineups(match_id);
@@ -868,6 +885,7 @@ ALTER TABLE public.tournament_teams ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tournament_rosters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.season_awards ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.match_lineups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.score_feedback ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.score_user_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.score_admins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.score_admin_sports ENABLE ROW LEVEL SECURITY;
@@ -927,6 +945,11 @@ CREATE POLICY "Public read tournament_teams" ON public.tournament_teams FOR SELE
 
 DROP POLICY IF EXISTS "Public read match_lineups" ON public.match_lineups;
 CREATE POLICY "Public read match_lineups" ON public.match_lineups FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public insert score_feedback" ON public.score_feedback;
+CREATE POLICY "Public insert score_feedback" ON public.score_feedback
+  FOR INSERT TO anon, authenticated
+  WITH CHECK (char_length(trim(message)) BETWEEN 3 AND 4000);
 
 DROP POLICY IF EXISTS "Public read published season_awards" ON public.season_awards;
 CREATE POLICY "Public read published season_awards" ON public.season_awards

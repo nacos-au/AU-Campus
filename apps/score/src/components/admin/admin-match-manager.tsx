@@ -15,12 +15,19 @@ type EditableMatch = {
   home_score: number;
   away_score: number;
   status: string;
+  scheduled_at: string;
   tournament_id: string | null;
   home_team_id: string;
   away_team_id: string;
   home_team_name: string;
   away_team_name: string;
+  referee_name: string;
+  assistant_referee_1: string;
+  assistant_referee_2: string;
+  postpone_reason: string;
 };
+
+type StatusOption = "scheduled" | "live" | "completed" | "postponed";
 
 /**
  * Edit / soft-delete existing fixtures — venue, scores, status, lineups.
@@ -32,7 +39,11 @@ export function AdminMatchManager() {
   const [venueId, setVenueId] = useState("");
   const [homeScore, setHomeScore] = useState(0);
   const [awayScore, setAwayScore] = useState(0);
-  const [status, setStatus] = useState<"scheduled" | "live" | "completed">("scheduled");
+  const [status, setStatus] = useState<StatusOption>("scheduled");
+  const [referee, setReferee] = useState("");
+  const [ar1, setAr1] = useState("");
+  const [ar2, setAr2] = useState("");
+  const [postponeReason, setPostponeReason] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -61,11 +72,16 @@ export function AdminMatchManager() {
           home_score: m.home_score,
           away_score: m.away_score,
           status: m.status,
+          scheduled_at: m.scheduled_at,
           tournament_id: m.tournament_id ?? null,
           home_team_id: m.home_team_id as string,
           away_team_id: m.away_team_id as string,
           home_team_name: m.home_team?.name ?? "Team A",
           away_team_name: m.away_team?.name ?? "Team B",
+          referee_name: m.referee_name ?? "",
+          assistant_referee_1: m.assistant_referee_1 ?? "",
+          assistant_referee_2: m.assistant_referee_2 ?? "",
+          postpone_reason: m.postpone_reason ?? "",
         }));
       setMatches(rows);
     } catch {
@@ -91,12 +107,24 @@ export function AdminMatchManager() {
     setHomeScore(selected.home_score);
     setAwayScore(selected.away_score);
     setStatus(
-      selected.status === "live" || selected.status === "completed" ? selected.status : "scheduled"
+      selected.status === "live" ||
+        selected.status === "completed" ||
+        selected.status === "postponed"
+        ? selected.status
+        : "scheduled"
     );
+    setReferee(selected.referee_name);
+    setAr1(selected.assistant_referee_1);
+    setAr2(selected.assistant_referee_2);
+    setPostponeReason(selected.postpone_reason);
   }, [selected]);
 
   async function handleSave() {
     if (!selectedId) return;
+    if (status === "postponed" && !postponeReason.trim()) {
+      setError("Add a postpone reason before saving.");
+      return;
+    }
     setBusy(true);
     setError("");
     setMessage("");
@@ -109,6 +137,11 @@ export function AdminMatchManager() {
         home_score: homeScore,
         away_score: awayScore,
         status,
+        referee_name: referee.trim() || null,
+        assistant_referee_1: ar1.trim() || null,
+        assistant_referee_2: ar2.trim() || null,
+        postpone_reason:
+          status === "postponed" ? postponeReason.trim() || "Match postponed" : null,
       }),
     });
     const json = (await res.json()) as { error?: string };
@@ -122,7 +155,17 @@ export function AdminMatchManager() {
     setMatches((prev) =>
       prev.map((m) =>
         m.id === selectedId
-          ? { ...m, venue_id: venueId, home_score: homeScore, away_score: awayScore, status }
+          ? {
+              ...m,
+              venue_id: venueId,
+              home_score: homeScore,
+              away_score: awayScore,
+              status,
+              referee_name: referee.trim(),
+              assistant_referee_1: ar1.trim(),
+              assistant_referee_2: ar2.trim(),
+              postpone_reason: status === "postponed" ? postponeReason.trim() : "",
+            }
           : m
       )
     );
@@ -151,7 +194,7 @@ export function AdminMatchManager() {
         <div>
           <h2 className="font-display text-lg font-extrabold">Edit match</h2>
           <p className="mt-1 text-sm opacity-70">
-            Change venue, scores, or status. Soft-delete removes it from lists without wiping history.
+            Change venue, scores, officials, or status. Soft-delete removes it from lists without wiping history.
           </p>
         </div>
         <button
@@ -193,11 +236,12 @@ export function AdminMatchManager() {
             <select
               className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
               value={status}
-              onChange={(e) => setStatus(e.target.value as typeof status)}
+              onChange={(e) => setStatus(e.target.value as StatusOption)}
             >
               <option value="scheduled">Scheduled</option>
               <option value="live">Live</option>
               <option value="completed">Completed</option>
+              <option value="postponed">Postponed</option>
             </select>
           </label>
           <label className="block text-sm">
@@ -220,6 +264,45 @@ export function AdminMatchManager() {
               onChange={(e) => setAwayScore(Number(e.target.value))}
             />
           </label>
+          <label className="block text-sm">
+            <span className="font-semibold">Referee</span>
+            <input
+              className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
+              value={referee}
+              onChange={(e) => setReferee(e.target.value)}
+              placeholder="Optional"
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="font-semibold">Assistant referee 1</span>
+            <input
+              className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
+              value={ar1}
+              onChange={(e) => setAr1(e.target.value)}
+              placeholder="Optional"
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="font-semibold">Assistant referee 2</span>
+            <input
+              className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
+              value={ar2}
+              onChange={(e) => setAr2(e.target.value)}
+              placeholder="Optional"
+            />
+          </label>
+          {status === "postponed" && (
+            <label className="block text-sm sm:col-span-2">
+              <span className="font-semibold">Postpone reason</span>
+              <textarea
+                className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
+                rows={2}
+                value={postponeReason}
+                onChange={(e) => setPostponeReason(e.target.value)}
+                placeholder="Weather, pitch, …"
+              />
+            </label>
+          )}
         </div>
       )}
 
@@ -230,12 +313,14 @@ export function AdminMatchManager() {
             tournamentId={selected.tournament_id}
             teamId={selected.home_team_id}
             teamName={selected.home_team_name}
+            scheduledAt={selected.scheduled_at}
           />
           <AdminMatchLineupPanel
             matchId={selected.id}
             tournamentId={selected.tournament_id}
             teamId={selected.away_team_id}
             teamName={selected.away_team_name}
+            scheduledAt={selected.scheduled_at}
           />
         </div>
       )}

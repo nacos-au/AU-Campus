@@ -105,6 +105,7 @@ export function MatchLiveEventsPoller({
         periodScores={periodScores}
         isCompleted={completed}
         sport={sport}
+        boardedStoppageMinutes={match.clock_boarded_stoppage_minutes}
       />
     );
   }

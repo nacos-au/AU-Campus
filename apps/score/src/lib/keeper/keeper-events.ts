@@ -48,8 +48,27 @@ export function toDemoMatchEvent(entry: KeeperLogEntry, player: Player): DemoMat
 
 export function entryLabel(entry: KeeperLogEntry): string {
   const action = formatEventLabel(entry.event_type);
-  if (entry.event_type === "corner" || entry.event_type === "timeout" || entry.event_type === "point_won") {
-    return `${entry.team_name} — ${action}`;
+  if (
+    entry.event_type === "corner" ||
+    entry.event_type === "timeout" ||
+    entry.event_type === "point_won" ||
+    entry.event_type === "foul" ||
+    entry.event_type === "stoppage_boarded"
+  ) {
+    if (entry.event_type === "stoppage_boarded") {
+      const mins = Number(entry.details?.minutes ?? entry.details?.boarded_minutes);
+      return Number.isFinite(mins) && mins > 0 ? `Additional time +${mins}` : "Additional time";
+    }
+    return `${entry.team_name || "Team"} — ${action}`;
+  }
+  if (entry.event_type === "substitution") {
+    const outName =
+      typeof entry.details?.player_out_name === "string"
+        ? entry.details.player_out_name
+        : entry.player_name;
+    const inName =
+      typeof entry.details?.player_in_name === "string" ? entry.details.player_in_name : "?";
+    return `${outName} → ${inName}`;
   }
   const base = `${entry.player_name} — ${action}`;
   if (entry.assist_player_name) return `${base} (assist: ${entry.assist_player_name})`;

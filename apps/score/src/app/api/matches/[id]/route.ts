@@ -36,13 +36,17 @@ export async function PATCH(
     away_penalties?: number | null;
     current_period?: string;
     went_to_extra_time?: boolean;
-    status?: "scheduled" | "live" | "completed";
+    status?: "scheduled" | "live" | "completed" | "postponed";
     scheduled_at?: string;
     venue_id?: string | null;
     scope?: MatchScope;
     allows_extra_time?: boolean;
     allows_penalty_shootout?: boolean;
     lineup_image_url?: string | null;
+    referee_name?: string | null;
+    assistant_referee_1?: string | null;
+    assistant_referee_2?: string | null;
+    postpone_reason?: string | null;
   };
 
   const result = await updateMatch(id, body);

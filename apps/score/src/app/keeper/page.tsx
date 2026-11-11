@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { FeedbackLauncher } from "@/components/feedback/feedback-launcher";
 import { KeeperClient } from "@/components/keeper/keeper-client";
 import { BrandedSection } from "@/components/layout/branded-section";
 import { PageContent } from "@/components/layout/page-content";
@@ -21,6 +22,7 @@ export default async function KeeperPage() {
           <KeeperClient canAccess={canAccess} isAdmin={isAdmin} />
         </Suspense>
       </PageContent>
+      <FeedbackLauncher />
     </>
   );
 }

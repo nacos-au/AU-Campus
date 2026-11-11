@@ -14,6 +14,8 @@ import { MatchLineupsSection } from "@/components/match/match-lineups-section";
 import { BrandedSection } from "@/components/layout/branded-section";
 import { PageContent } from "@/components/layout/page-content";
 import { MatchLiveEventsPoller } from "@/components/match/match-live-events-poller";
+import { ShareControls } from "@/components/share/share-controls";
+import { FeedbackLauncher } from "@/components/feedback/feedback-launcher";
 import {
   getPeriodScoresForMatch,
   getSetScoresForMatch,
@@ -128,11 +130,17 @@ export default async function MatchPage({
         <div className="border-b border-rule py-10">
           <div className="mx-auto max-w-[1200px] px-4 text-center sm:px-6">
             <p className="mb-4 flex flex-wrap items-center justify-center gap-2 text-sm opacity-70">
-              <MatchLifecycleBadge
-                matchId={match.id}
-                initialStatus={match.status as "scheduled" | "live" | "completed"}
-                scheduledAt={match.scheduled_at}
-              />
+              {match.status === "postponed" ? (
+                <span className="rounded-full bg-amber-100 px-3 py-1 font-display text-xs font-bold text-amber-900">
+                  Postponed
+                </span>
+              ) : (
+                <MatchLifecycleBadge
+                  matchId={match.id}
+                  initialStatus={match.status as "scheduled" | "live" | "completed"}
+                  scheduledAt={match.scheduled_at}
+                />
+              )}
               <Link href={`/competition?sport=${matchSport}`} className="hover:underline">
                 {match.tournament?.name}
               </Link>
@@ -141,6 +149,13 @@ export default async function MatchPage({
 
             <MatchPageLiveBlock match={match} events={events} sport={matchSport} isEventSport={config.isEventSport} />
             <PenaltyShootoutScore match={match} />
+            <div className="mt-5 flex justify-center">
+              <ShareControls
+                title={title}
+                path={`/matches/${id}`}
+                posterPath={`/matches/${id}/opengraph-image`}
+              />
+            </div>
           </div>
         </div>
 
@@ -197,6 +212,7 @@ export default async function MatchPage({
               periodScores={periodScores}
               isCompleted={isCompleted}
               sport={matchSport}
+              boardedStoppageMinutes={match.clock_boarded_stoppage_minutes}
             />
           ) : (
             <MatchEventsList
@@ -244,6 +260,7 @@ export default async function MatchPage({
           {!config.isEventSport && <MatchInfoPanel match={match} meta={matchMeta} />}
         </div>
       </PageContent>
+      <FeedbackLauncher matchId={match.id} />
     </>
   );
 }

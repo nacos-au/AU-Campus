@@ -1,11 +1,12 @@
 import { ImageResponse } from "next/og";
-import { fetchMatchById } from "@/lib/data/repository";
-import { OG } from "@/lib/og/brand";
+import { fetchMatchById, fetchMatchEvents } from "@/lib/data/repository";
+import { formatKickoffShort, POSTER, statusPosterLabel } from "@/lib/posters/brand";
+import { PosterShell } from "@/lib/posters/frame";
 import { dbIdToSport } from "@/lib/utils/sport";
 import { getSportConfig } from "@/lib/utils/sport-config";
 
 export const alt = "AU Score match";
-export const size = OG.size;
+export const size = POSTER.size;
 export const contentType = "image/png";
 
 export default async function Image({
@@ -20,65 +21,104 @@ export default async function Image({
   const home = match?.home_team?.name ?? "Home";
   const away = match?.away_team?.name ?? "Away";
   const hs = match?.home_score ?? 0;
-  const as = match?.away_score ?? 0;
+  const as_ = match?.away_score ?? 0;
   const status = match?.status ?? "scheduled";
-  const title = config.isEventSport ? home : `${home} vs ${away}`;
+  const badge = statusPosterLabel(status);
+  const competition = match?.tournament?.name ?? config.label;
+  const venue = match?.venue?.name ?? "";
+  const kickoff = formatKickoffShort(match?.scheduled_at);
+  const isPre = status === "scheduled" || status === "postponed";
+  const showScore = !config.isEventSport && !isPre;
+
+  const events = match ? await fetchMatchEvents(id) : [];
+  const scorers = events
+    .filter((e) => e.event_type === "goal" || e.event_type === "penalty_scored")
+    .slice(0, 4)
+    .map((e) => {
+      const name = e.player
+        ? `${e.player.first_name?.[0] ?? ""}. ${e.player.last_name ?? ""}`.trim()
+        : "Goal";
+      return `${name} ${e.match_time}`;
+    });
+
+  const pens =
+    match?.home_penalties != null && match?.away_penalties != null
+      ? `Pens ${match.home_penalties}–${match.away_penalties}`
+      : null;
 
   return new ImageResponse(
     (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          padding: 56,
-          background: `linear-gradient(150deg, ${OG.bg} 0%, ${OG.accent} 92%)`,
-          color: OG.ink,
-          fontFamily: "sans-serif",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: 3, opacity: 0.85 }}>
-            AU SCORE
-          </div>
-          <div
-            style={{
-              fontSize: 20,
-              fontWeight: 700,
-              textTransform: "uppercase",
-              padding: "8px 16px",
-              border: `1px solid ${OG.rule}`,
-              borderRadius: 8,
-            }}
-          >
-            {status}
-          </div>
-        </div>
+      <PosterShell badge={badge} footer={competition}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <div style={{ fontSize: 22, color: POSTER.muted }}>{config.label}</div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          <div style={{ fontSize: 22, opacity: 0.75 }}>{config.label}</div>
-          <div style={{ fontSize: 48, fontWeight: 800, lineHeight: 1.15 }}>{title}</div>
-          {!config.isEventSport && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 28,
-                fontSize: 72,
-                fontWeight: 800,
-              }}
-            >
-              <span>{hs}</span>
-              <span style={{ opacity: 0.45, fontSize: 40 }}>—</span>
-              <span>{as}</span>
+          {config.isEventSport ? (
+            <div style={{ fontSize: 56, fontWeight: 800, lineHeight: 1.1, color: POSTER.cream }}>
+              {home}
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 24,
+                }}
+              >
+                <div style={{ fontSize: 40, fontWeight: 800, color: POSTER.cream, maxWidth: 420 }}>
+                  {home}
+                </div>
+                {showScore ? (
+                  <div style={{ fontSize: 72, fontWeight: 800 }}>{hs}</div>
+                ) : null}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 24,
+                }}
+              >
+                <div style={{ fontSize: 40, fontWeight: 800, color: POSTER.cream, maxWidth: 420 }}>
+                  {away}
+                </div>
+                {showScore ? (
+                  <div style={{ fontSize: 72, fontWeight: 800 }}>{as_}</div>
+                ) : null}
+              </div>
+            </div>
+          )}
+
+          {isPre ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+              {kickoff ? (
+                <div style={{ fontSize: 26, fontWeight: 700, color: POSTER.gold }}>{kickoff}</div>
+              ) : null}
+              {venue ? <div style={{ fontSize: 22, color: POSTER.muted }}>{venue}</div> : null}
+              {status === "postponed" && match?.postpone_reason ? (
+                <div style={{ fontSize: 20, color: "#fbbf24" }}>{match.postpone_reason}</div>
+              ) : (
+                <div style={{ fontSize: 20, color: POSTER.muted }}>Predicted XI on match page</div>
+              )}
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+              {pens ? (
+                <div style={{ fontSize: 24, fontWeight: 700, color: POSTER.gold }}>{pens}</div>
+              ) : null}
+              {scorers.length > 0 ? (
+                <div style={{ fontSize: 20, color: POSTER.muted }}>{scorers.join("  ·  ")}</div>
+              ) : (
+                <div style={{ fontSize: 20, color: POSTER.muted }}>
+                  {status === "live" || status === "paused" ? "Follow live on AU Score" : "Full time"}
+                </div>
+              )}
             </div>
           )}
         </div>
-
-        <div style={{ fontSize: 20, opacity: 0.65 }}>Share from AU Score</div>
-      </div>
+      </PosterShell>
     ),
     { ...size }
   );

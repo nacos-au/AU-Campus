@@ -73,6 +73,11 @@ export function MatchLivePanel({
                 {match.away_score}
               </span>
             </div>
+            {isLive && (match.clock_boarded_stoppage_minutes ?? 0) > 0 && (
+              <p className="mt-2 font-display text-sm font-extrabold tracking-wide text-white/80">
+                +{match.clock_boarded_stoppage_minutes} added
+              </p>
+            )}
           </div>
           <TeamBlock
             name={match.away_team?.name ?? "Away"}

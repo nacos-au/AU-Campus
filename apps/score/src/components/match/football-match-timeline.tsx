@@ -25,6 +25,7 @@ export function FootballMatchTimeline({
   periodScores,
   isCompleted,
   sport,
+  boardedStoppageMinutes,
 }: {
   events: DemoMatchEvent[];
   homeTeamId: string;
@@ -34,6 +35,7 @@ export function FootballMatchTimeline({
   periodScores: PeriodScore[];
   isCompleted: boolean;
   sport: SportId;
+  boardedStoppageMinutes?: number | null;
 }) {
   const items = buildFootballTimeline(
     events,
@@ -41,7 +43,8 @@ export function FootballMatchTimeline({
     periodScores,
     homeScore,
     awayScore,
-    isCompleted
+    isCompleted,
+    { boardedStoppageMinutes }
   );
 
   if (items.length === 0) {
@@ -116,7 +119,10 @@ function TimelineEventRow({
   const { event, scoreLabel } = item;
   const isSub = event.event_type === "substitution";
   const isCard = event.event_type.includes("card");
-  const isTeamAction = ["corner", "foul", "offside"].includes(event.event_type) && !event.player.id;
+  const isTeamAction =
+    ["corner", "foul", "offside", "shot_on_target"].includes(event.event_type) && !event.player.id;
+  const isDisallowed =
+    event.event_type === "disallowed_goal" || event.event_type === "disallowed";
   const playerName = isTeamAction
     ? event.team_name || eventTypeLabel(event.event_type)
     : playerShortName(event.player.first_name, event.player.last_name);
@@ -126,9 +132,24 @@ function TimelineEventRow({
       : null;
   const outName =
     event.details?.player_out_name != null ? String(event.details.player_out_name) : null;
+  const inName =
+    event.details?.player_in_name != null ? String(event.details.player_in_name) : null;
   const foulLabel =
     event.details?.foul_label != null ? String(event.details.foul_label) : "Foul";
-  const actionLabel = isTeamAction ? eventTypeLabel(event.event_type) : undefined;
+  const actionLabel = isTeamAction
+    ? eventTypeLabel(event.event_type)
+    : isDisallowed
+      ? "Disallowed"
+      : event.event_type === "own_goal"
+        ? "OG"
+        : event.event_type === "shot_on_target"
+          ? "SOT"
+          : undefined;
+  const secondary = isSub
+    ? inName
+      ? `${outName ?? playerName} → ${inName}`
+      : outName
+    : assistName ?? actionLabel;
 
   const icon = <EventIcon event={event} />;
   const time = (
@@ -146,8 +167,8 @@ function TimelineEventRow({
         <PlayerBlock
           sport={sport}
           playerId={event.player.id}
-          primary={playerName}
-          secondary={isSub ? outName : assistName ?? actionLabel}
+          primary={isSub && outName ? outName : playerName}
+          secondary={secondary}
           secondaryMuted={isSub || Boolean(assistName) || Boolean(actionLabel)}
           trailing={isCard ? foulLabel : undefined}
           trailingBefore={false}
@@ -161,8 +182,8 @@ function TimelineEventRow({
       <PlayerBlock
         sport={sport}
         playerId={event.player.id}
-        primary={playerName}
-        secondary={isSub ? outName : assistName ?? actionLabel}
+        primary={isSub && outName ? outName : playerName}
+        secondary={secondary}
         secondaryMuted={isSub || Boolean(assistName) || Boolean(actionLabel)}
         trailing={isCard ? foulLabel : undefined}
         trailingBefore
@@ -242,6 +263,11 @@ function eventTypeLabel(type: string): string {
       return "Pen miss";
     case "own_goal":
       return "OG";
+    case "shot_on_target":
+      return "SOT";
+    case "disallowed_goal":
+    case "disallowed":
+      return "Disallowed";
     default:
       return type.replace(/_/g, " ");
   }
@@ -251,8 +277,16 @@ function EventIcon({ event }: { event: DemoMatchEvent }) {
   const cls = "h-4 w-4 shrink-0 text-accent sm:h-5 sm:w-5";
   switch (event.event_type) {
     case "goal":
-    case "own_goal":
       return <GoalBallIcon className={cls} />;
+    case "own_goal":
+      return <GoalBallIcon className={cn(cls, "opacity-70")} />;
+    case "disallowed_goal":
+    case "disallowed":
+      return (
+        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-red-400/60 font-display text-[8px] font-extrabold text-red-700 line-through">
+          G
+        </span>
+      );
     case "penalty_scored":
       return <PenaltyGoalIcon className={cls} />;
     case "penalty_missed":
@@ -279,6 +313,12 @@ function EventIcon({ event }: { event: DemoMatchEvent }) {
       return (
         <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-accent/40 font-display text-[9px] font-extrabold">
           SV
+        </span>
+      );
+    case "shot_on_target":
+      return (
+        <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-accent/40 font-display text-[9px] font-extrabold">
+          ST
         </span>
       );
     case "foul":

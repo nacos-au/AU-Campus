@@ -10,6 +10,7 @@ import { WorldCupBracket } from "@/components/competition/world-cup-bracket";
 import { TitleHolderBanner } from "@/components/competition/title-holder-banner";
 import { CompetitionPageFilters } from "@/components/layout/filters-bar";
 import { StandingsTable } from "@/components/standings/standings-table";
+import { ShareControls } from "@/components/share/share-controls";
 import {
   formatTournamentRules,
   getBracketFixturesForTournament,
@@ -96,7 +97,24 @@ function CompetitionDetails({
   );
 }
 
-export const metadata = { title: "Competition" };
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ sport?: string; competition?: string }>;
+}) {
+  const { sport, competition } = await searchParams;
+  const activeSport = parseSportParam(sport);
+  const qs = new URLSearchParams({ sport: activeSport });
+  if (competition) qs.set("competition", competition);
+  return {
+    title: "Competition",
+    openGraph: {
+      title: `${SPORT_LABELS[activeSport]} competition`,
+      images: [{ url: `/competition/opengraph-image?${qs.toString()}` }],
+    },
+    twitter: { card: "summary_large_image" as const },
+  };
+}
 
 export default async function CompetitionPage({
   searchParams,
@@ -107,6 +125,8 @@ export default async function CompetitionPage({
   const activeSport = parseSportParam(sport);
   const sportDbId = sportToDbId(activeSport);
   const demo = await getScoreDemoMode();
+  const shareQs = new URLSearchParams({ sport: activeSport });
+  if (competition) shareQs.set("competition", competition);
 
   const tournament = demo
     ? getTournamentForSport(sportDbId, competition)
@@ -150,6 +170,14 @@ export default async function CompetitionPage({
         <CompetitionPageFilters sport={activeSport} competitionId={tournament.id} />
 
         <div className="mx-auto max-w-[1200px] space-y-10 px-4 py-8 sm:px-6">
+          <div className="flex justify-end">
+            <ShareControls
+              title={tournament.name}
+              path={`/competition?${shareQs.toString()}`}
+              posterPath={`/competition/opengraph-image?${shareQs.toString()}`}
+            />
+          </div>
+
           {tournament.title_holder && (
             <TitleHolderBanner holder={tournament.title_holder} />
           )}

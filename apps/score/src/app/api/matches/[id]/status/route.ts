@@ -12,13 +12,24 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const body = (await request.json()) as { status?: string };
+  const body = (await request.json()) as {
+    status?: string;
+    postpone_reason?: string | null;
+  };
 
-  if (!body.status || !["scheduled", "live", "completed"].includes(body.status)) {
+  if (!body.status || !["scheduled", "live", "completed", "postponed"].includes(body.status)) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 
-  const result = await updateMatchStatus(id, body.status as "scheduled" | "live" | "completed");
+  if (body.status === "postponed" && !body.postpone_reason?.trim()) {
+    return NextResponse.json({ error: "postpone_reason required" }, { status: 400 });
+  }
+
+  const result = await updateMatchStatus(
+    id,
+    body.status as "scheduled" | "live" | "completed" | "postponed",
+    { postpone_reason: body.postpone_reason }
+  );
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }

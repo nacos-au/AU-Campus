@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import {
   ArrowLeftRight,
+  Ban,
   CircleDot,
   CornerDownRight,
   Flag,
@@ -9,6 +10,7 @@ import {
   Target,
   Timer,
   Trophy,
+  UserX,
   XCircle,
   Zap,
 } from "lucide-react";
@@ -81,6 +83,11 @@ function footballPrimaryScore(logs: KeeperLogEntry[], homeTeamId: string, awayTe
   for (const log of logs) {
     // Shootout pens are tracked separately — don't inflate FT score.
     if (log.period === "penalty_shootout") continue;
+    if (log.event_type === "own_goal") {
+      if (log.team_id === homeTeamId) away++;
+      else if (log.team_id === awayTeamId) home++;
+      continue;
+    }
     if (log.event_type !== "goal" && log.event_type !== "penalty_scored") continue;
     if (log.team_id === homeTeamId) home++;
     else if (log.team_id === awayTeamId) away++;
@@ -148,6 +155,7 @@ function volleyballSetRallyScore(
 }
 
 const CARD_CHIPS: KeeperFoulChip[] = [
+  { id: "foul", label: "Foul", className: "bg-surface text-accent border-rule" },
   { id: "yellow_card", label: "Yellow", className: "bg-yellow-400 text-yellow-950 border-yellow-500" },
   { id: "red_card", label: "Red", className: "bg-red-600 text-white border-red-700" },
   { id: "warning", label: "Warn", className: "bg-amber-200 text-amber-950 border-amber-400" },
@@ -177,10 +185,13 @@ const CONFIG: Record<SportId, KeeperSportConfig> = {
     logSectionLabel: "Match log",
     playerActions: [
       { id: "goal", label: "Goal", icon: <GiSoccerBall className="h-5 w-5" /> },
+      { id: "own_goal", label: "OG", icon: <UserX className="h-5 w-5" /> },
       { id: "penalty_scored", label: "Pen ✓", icon: <CircleDot className="h-5 w-5" /> },
       { id: "penalty_missed", label: "Pen ✗", icon: <XCircle className="h-5 w-5" /> },
+      { id: "shot_on_target", label: "SOT", icon: <Target className="h-5 w-5" /> },
       { id: "offside", label: "Offside", icon: <Flag className="h-5 w-5" /> },
       { id: "save", label: "Save", icon: <Hand className="h-5 w-5" /> },
+      { id: "disallowed_goal", label: "Disallow", icon: <Ban className="h-5 w-5" /> },
       { id: "substitution", label: "Sub", icon: <ArrowLeftRight className="h-5 w-5" /> },
     ],
     foulChips: CARD_CHIPS,
@@ -190,6 +201,13 @@ const CONFIG: Record<SportId, KeeperSportConfig> = {
         label: "Corner",
         icon: <CornerDownRight className="h-3.5 w-3.5" />,
         eventType: "corner",
+        teamOnly: true,
+      },
+      {
+        id: "foul_team",
+        label: "Foul",
+        icon: <Plus className="h-3.5 w-3.5" />,
+        eventType: "foul",
         teamOnly: true,
       },
     ],

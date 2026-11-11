@@ -6,6 +6,7 @@ import {
   CalendarDays,
   Handshake,
   LayoutGrid,
+  MessageSquare,
   Trophy,
   Users,
   UsersRound,
@@ -18,6 +19,7 @@ export const ADMIN_NAV = [
   { href: "/admin/players", label: "Players", icon: Users },
   { href: "/admin/competitions", label: "Competitions", icon: Trophy },
   { href: "/admin/matches", label: "Matches", icon: Handshake },
+  { href: "/admin/feedback", label: "Feedback", icon: MessageSquare },
 ] as const;
 
 export function AdminSubNav() {
@@ -79,6 +81,13 @@ export function AdminHubCards() {
       title: "Matches",
       body: "Friendlies, manual results, venues, and match edits.",
       cta: "Open matches",
+    },
+    {
+      href: "/admin/feedback",
+      icon: MessageSquare,
+      title: "Feedback",
+      body: "Read bug reports and ideas submitted from the public app.",
+      cta: "Open feedback",
     },
   ] as const;
 

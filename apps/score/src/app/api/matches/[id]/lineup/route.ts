@@ -26,6 +26,7 @@ export async function POST(request: Request, ctx: Ctx) {
   const body = (await request.json()) as {
     team_id?: string;
     players?: Array<{ player_id: string; is_starting: boolean; role?: string | null }>;
+    status?: "predicted" | "confirmed";
   };
 
   if (!body.team_id || !Array.isArray(body.players)) {
@@ -59,9 +60,10 @@ export async function POST(request: Request, ctx: Ctx) {
     match_id: id,
     team_id: body.team_id,
     players: body.players,
+    status: body.status,
   });
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, status: result.status });
 }

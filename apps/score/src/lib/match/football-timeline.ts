@@ -32,7 +32,31 @@ function parseMinute(matchTime: string): number {
 }
 
 function isGoalType(type: string): boolean {
-  return type === "goal" || type === "penalty_scored";
+  return type === "goal" || type === "penalty_scored" || type === "own_goal";
+}
+
+/** Largest announced stoppage (+N) from match times or an explicit board event. */
+export function resolveBoardedStoppageMinutes(
+  events: DemoMatchEvent[],
+  period?: string,
+  fallbackMinutes?: number | null
+): number | null {
+  let max = 0;
+  for (const e of events) {
+    if (period && e.period !== period) continue;
+    if (e.event_type === "stoppage_boarded" || e.event_type === "added_time") {
+      const fromDetails = Number(e.details?.minutes ?? e.details?.boarded_minutes);
+      if (Number.isFinite(fromDetails) && fromDetails > max) max = fromDetails;
+    }
+    const m = e.match_time.match(/\+(\d+)/);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (n > max) max = n;
+    }
+  }
+  if (max > 0) return max;
+  if (fallbackMinutes != null && fallbackMinutes > 0) return fallbackMinutes;
+  return null;
 }
 
 export function buildFootballTimeline(
@@ -41,20 +65,31 @@ export function buildFootballTimeline(
   periodScores: PeriodScore[],
   finalHome: number,
   finalAway: number,
-  isCompleted: boolean
+  isCompleted: boolean,
+  opts?: { boardedStoppageMinutes?: number | null }
 ): TimelineItem[] {
-  const playable = events.filter((e) => e.period !== "penalty_shootout");
+  const playable = events.filter(
+    (e) =>
+      e.period !== "penalty_shootout" &&
+      e.event_type !== "stoppage_boarded" &&
+      e.event_type !== "added_time"
+  );
   const chronological = [...playable].sort((a, b) => parseMinute(a.match_time) - parseMinute(b.match_time));
 
   const scoreAtEvent = new Map<string, string>();
   let homeScore = 0;
   let awayScore = 0;
   for (const event of chronological) {
-    if (isGoalType(event.event_type)) {
-      if (event.team_id === homeTeamId) homeScore += 1;
-      else awayScore += 1;
-      scoreAtEvent.set(event.id, `${homeScore} - ${awayScore}`);
+    if (!isGoalType(event.event_type)) continue;
+    if (event.event_type === "own_goal") {
+      if (event.team_id === homeTeamId) awayScore += 1;
+      else homeScore += 1;
+    } else if (event.team_id === homeTeamId) {
+      homeScore += 1;
+    } else {
+      awayScore += 1;
     }
+    scoreAtEvent.set(event.id, `${homeScore} - ${awayScore}`);
   }
 
   const descending = [...chronological].sort((a, b) => parseMinute(b.match_time) - parseMinute(a.match_time));
@@ -63,7 +98,8 @@ export function buildFootballTimeline(
   const h2Score = periodScores.find((p) => p.period === "half_2");
   let insertedHt = false;
   let insertedFt90 = false;
-  let insertedAddedTime = false;
+  let insertedAddedTimeH1 = false;
+  let insertedAddedTimeH2 = false;
 
   if (isCompleted) {
     items.push({
@@ -96,9 +132,25 @@ export function buildFootballTimeline(
       insertedFt90 = true;
     }
 
-    if (event.match_time.includes("+") && event.period === "half_2" && !insertedAddedTime) {
-      items.push({ kind: "added_time", id: "at-1", minutes: 7 });
-      insertedAddedTime = true;
+    if (event.match_time.includes("+") && event.period === "half_2" && !insertedAddedTimeH2) {
+      const minutes =
+        resolveBoardedStoppageMinutes(events, "half_2", opts?.boardedStoppageMinutes) ??
+        (() => {
+          const m = event.match_time.match(/\+(\d+)/);
+          return m ? parseInt(m[1], 10) : null;
+        })();
+      if (minutes != null && minutes > 0) {
+        items.push({ kind: "added_time", id: "at-h2", minutes });
+      }
+      insertedAddedTimeH2 = true;
+    }
+
+    if (event.match_time.includes("+") && event.period === "half_1" && !insertedAddedTimeH1) {
+      const minutes = resolveBoardedStoppageMinutes(events, "half_1");
+      if (minutes != null && minutes > 0) {
+        items.push({ kind: "added_time", id: "at-h1", minutes });
+      }
+      insertedAddedTimeH1 = true;
     }
 
     items.push({

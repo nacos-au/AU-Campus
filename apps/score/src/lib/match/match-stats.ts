@@ -31,21 +31,46 @@ export const DEMO_MATCH_STATS: Record<string, MatchStatRow[]> = {
   ],
 };
 
+function countGoals(list: DemoMatchEvent[]): number {
+  let n = 0;
+  for (const e of list) {
+    if (e.period === "penalty_shootout") continue;
+    if (e.event_type === "goal" || e.event_type === "penalty_scored") n += 1;
+    // Own goals are credited to the opposing side in score — skip here per team filter.
+  }
+  return n;
+}
+
 export function getMatchStats(matchId: string, events: DemoMatchEvent[], homeTeamId: string): MatchStatRow[] {
   if (DEMO_MATCH_STATS[matchId]) return DEMO_MATCH_STATS[matchId];
 
-  const home = events.filter((e) => e.team_id === homeTeamId);
-  const away = events.filter((e) => e.team_id !== homeTeamId);
+  const live = events.filter(
+    (e) =>
+      e.event_type !== "stoppage_boarded" &&
+      e.event_type !== "added_time" &&
+      e.event_type !== "disallowed_goal" &&
+      e.event_type !== "disallowed"
+  );
+  const home = live.filter((e) => e.team_id === homeTeamId);
+  const away = live.filter((e) => e.team_id !== homeTeamId);
 
   const count = (list: DemoMatchEvent[], types: string[]) =>
     list.filter((e) => types.includes(e.event_type)).length;
 
+  const homeGoals = countGoals(home) + away.filter((e) => e.event_type === "own_goal" && e.period !== "penalty_shootout").length;
+  const awayGoals = countGoals(away) + home.filter((e) => e.event_type === "own_goal" && e.period !== "penalty_shootout").length;
+
+  const homeSot = count(home, ["shot_on_target", "goal", "penalty_scored"]);
+  const awaySot = count(away, ["shot_on_target", "goal", "penalty_scored"]);
+
   return [
-    { label: "Goals", home: count(home, ["goal", "penalty_scored"]), away: count(away, ["goal", "penalty_scored"]), keeperTracked: true },
-    { label: "Yellow cards", home: count(home, ["yellow_card", "warning"]), away: count(away, ["yellow_card", "warning"]), keeperTracked: true },
-    { label: "Red cards", home: count(home, ["red_card"]), away: count(away, ["red_card"]), keeperTracked: true },
-    { label: "Offsides", home: count(home, ["offside"]), away: count(away, ["offside"]), keeperTracked: true },
+    { label: "Goals", home: homeGoals, away: awayGoals, keeperTracked: true },
+    { label: "Shots on target", home: homeSot, away: awaySot, keeperTracked: true },
+    { label: "Saves", home: count(home, ["save"]), away: count(away, ["save"]), keeperTracked: true },
     { label: "Corners", home: count(home, ["corner"]), away: count(away, ["corner"]), keeperTracked: true },
     { label: "Fouls", home: count(home, ["foul"]), away: count(away, ["foul"]), keeperTracked: true },
+    { label: "Offsides", home: count(home, ["offside"]), away: count(away, ["offside"]), keeperTracked: true },
+    { label: "Yellow cards", home: count(home, ["yellow_card", "warning"]), away: count(away, ["yellow_card", "warning"]), keeperTracked: true },
+    { label: "Red cards", home: count(home, ["red_card"]), away: count(away, ["red_card"]), keeperTracked: true },
   ];
 }

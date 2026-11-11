@@ -122,7 +122,23 @@ export function postDemoMatch(input: PostDemoMatchInput): Match {
 
 export function updateDemoMatch(
   id: string,
-  patch: Partial<Pick<Match, "home_score" | "away_score" | "status" | "scheduled_at" | "venue_id" | "scope" | "deleted_at">>
+  patch: Partial<
+    Pick<
+      Match,
+      | "home_score"
+      | "away_score"
+      | "status"
+      | "scheduled_at"
+      | "venue_id"
+      | "scope"
+      | "deleted_at"
+      | "referee_name"
+      | "assistant_referee_1"
+      | "assistant_referee_2"
+      | "postpone_reason"
+      | "lineup_image_url"
+    >
+  >
 ): Match | null {
   const existing = getDemoMatchById(id);
   if (!existing) return null;

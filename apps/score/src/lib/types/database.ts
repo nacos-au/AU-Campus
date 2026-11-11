@@ -129,7 +129,12 @@ export type MatchStatus =
   | "live"
   | "paused"
   | "completed"
-  | "cancelled";
+  | "cancelled"
+  | "postponed";
+
+export type LineupSheetStatus = "predicted" | "confirmed";
+
+export type ScoreFeedbackCategory = "bug" | "idea" | "other";
 
 export type SportType = "team" | "individual";
 export type ScoreType = "points" | "sets" | "time";
@@ -241,11 +246,22 @@ export interface Match {
   allows_penalty_shootout?: boolean;
   /** Simple pre-match lineup sheet / graphic URL. */
   lineup_image_url?: string | null;
+  /** Match officials (optional, editable). */
+  referee_name?: string | null;
+  assistant_referee_1?: string | null;
+  assistant_referee_2?: string | null;
+  /** Shown publicly when status is postponed. */
+  postpone_reason?: string | null;
   /** Published keeper clock for public spectators. */
   clock_elapsed_seconds?: number | null;
   clock_is_running?: boolean | null;
   clock_is_time_lost?: boolean | null;
   clock_running_started_at?: string | null;
+  /** Accumulated Time lost seconds for the current period. */
+  clock_stoppage_seconds?: number | null;
+  /** Announced additional minutes (+N) for the current period. */
+  clock_boarded_stoppage_minutes?: number | null;
+  clock_time_lost_started_at?: string | null;
   deleted_at?: string | null;
   home_team?: Team;
   away_team?: Team;

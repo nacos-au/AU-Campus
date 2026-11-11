@@ -2,6 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { CompetitionRosterPlayer } from "@/lib/data/competition-rosters";
+import {
+  defaultLineupStatusForKickoff,
+  isPredictedLineupWindow,
+  lineupStatusLabel,
+} from "@/lib/match/lineup-window";
+import type { LineupSheetStatus } from "@/lib/types/database";
 
 /**
  * Quick XI picker from a competition squad for a match side.
@@ -11,32 +17,54 @@ export function AdminMatchLineupPanel({
   tournamentId,
   teamId,
   teamName,
+  scheduledAt,
   maxStarters = 11,
 }: {
   matchId: string;
   tournamentId: string;
   teamId: string;
   teamName: string;
+  scheduledAt?: string | null;
   maxStarters?: number;
 }) {
   const [pool, setPool] = useState<CompetitionRosterPlayer[]>([]);
   const [starters, setStarters] = useState<Set<string>>(new Set());
   const [bench, setBench] = useState<Set<string>>(new Set());
+  const [status, setStatus] = useState<LineupSheetStatus>(
+    defaultLineupStatusForKickoff(scheduledAt)
+  );
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const predictedWindow = isPredictedLineupWindow(scheduledAt);
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(
-        `/api/competitions/${tournamentId}/roster?teamId=${encodeURIComponent(teamId)}`
-      );
-      const json = (await res.json()) as { nominated?: CompetitionRosterPlayer[] };
-      setPool(json.nominated ?? []);
+      const [rosterRes, lineupRes] = await Promise.all([
+        fetch(`/api/competitions/${tournamentId}/roster?teamId=${encodeURIComponent(teamId)}`),
+        fetch(`/api/matches/${matchId}/lineup?teamId=${encodeURIComponent(teamId)}`),
+      ]);
+      const rosterJson = (await rosterRes.json()) as { nominated?: CompetitionRosterPlayer[] };
+      setPool(rosterJson.nominated ?? []);
+
+      const lineupJson = (await lineupRes.json()) as {
+        lineup?: {
+          players?: Array<{ player_id: string; is_starting: boolean }>;
+          status?: LineupSheetStatus;
+        } | null;
+      };
+      const players = lineupJson.lineup?.players ?? [];
+      setStarters(new Set(players.filter((p) => p.is_starting).map((p) => p.player_id)));
+      setBench(new Set(players.filter((p) => !p.is_starting).map((p) => p.player_id)));
+      if (lineupJson.lineup?.status) {
+        setStatus(lineupJson.lineup.status);
+      } else {
+        setStatus(defaultLineupStatusForKickoff(scheduledAt));
+      }
     } catch {
       setPool([]);
     }
-  }, [tournamentId, teamId]);
+  }, [tournamentId, teamId, matchId, scheduledAt]);
 
   useEffect(() => {
     void load();
@@ -73,14 +101,15 @@ export function AdminMatchLineupPanel({
       const res = await fetch(`/api/matches/${matchId}/lineup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ team_id: teamId, players }),
+        body: JSON.stringify({ team_id: teamId, players, status }),
       });
-      const json = (await res.json()) as { error?: string };
+      const json = (await res.json()) as { error?: string; status?: LineupSheetStatus };
       if (!res.ok) {
         setError(json.error ?? "Could not save lineup");
         return;
       }
-      setMessage(`Lineup saved for ${teamName}.`);
+      if (json.status) setStatus(json.status);
+      setMessage(`${lineupStatusLabel(json.status ?? status)} saved for ${teamName}.`);
     } catch {
       setError("Network error");
     } finally {
@@ -101,6 +130,19 @@ export function AdminMatchLineupPanel({
       <h3 className="font-display text-sm font-extrabold">
         {teamName} XI · {starters.size}/{maxStarters} starters
       </h3>
+      <label className="block text-xs">
+        <span className="font-semibold text-accent/70">Sheet status</span>
+        <select
+          className="mt-1 w-full rounded-lg border border-rule px-2 py-1.5 text-sm"
+          value={status}
+          onChange={(e) => setStatus(e.target.value as LineupSheetStatus)}
+        >
+          <option value="predicted" disabled={!predictedWindow}>
+            Predicted{!predictedWindow ? " (locked after T−60)" : ""}
+          </option>
+          <option value="confirmed">Confirmed</option>
+        </select>
+      </label>
       <ul className="max-h-56 space-y-1 overflow-y-auto text-sm">
         {pool.map((p) => {
           const isStart = starters.has(p.player_id);
@@ -138,7 +180,7 @@ export function AdminMatchLineupPanel({
         onClick={() => void submit()}
         className="btn-filled rounded-full px-4 py-2 text-xs font-bold disabled:opacity-40"
       >
-        {busy ? "Saving…" : "Submit lineup"}
+        {busy ? "Saving…" : `Submit ${lineupStatusLabel(status)}`}
       </button>
       {error && <p className="text-sm text-red-600">{error}</p>}
       {message && <p className="text-sm text-emerald-700">{message}</p>}

@@ -45,6 +45,21 @@ function mapApiEvent(row: ApiEvent): KeeperLogEntry {
   });
 }
 
+function detailsPayload(entry: KeeperLogEntry): Record<string, unknown> {
+  return {
+    ...(entry.details ?? {}),
+    player_name: entry.player_name,
+    team_name: entry.team_name,
+    team_code: entry.team_code,
+    assist_player_id: entry.assist_player_id,
+    assist_player_name: entry.assist_player_name,
+    player_out_id: entry.details?.player_out_id,
+    player_out_name: entry.details?.player_out_name,
+    player_in_id: entry.details?.player_in_id,
+    player_in_name: entry.details?.player_in_name,
+  };
+}
+
 async function postEvent(matchId: string, entry: KeeperLogEntry): Promise<string | null> {
   try {
     const res = await fetch(`/api/matches/${matchId}/events`, {
@@ -56,18 +71,7 @@ async function postEvent(matchId: string, entry: KeeperLogEntry): Promise<string
         event_type: entry.event_type,
         period: entry.period,
         match_time: entry.match_time,
-        details: {
-          ...(entry.details ?? {}),
-          player_name: entry.player_name,
-          team_name: entry.team_name,
-          team_code: entry.team_code,
-          assist_player_id: entry.assist_player_id,
-          assist_player_name: entry.assist_player_name,
-          player_out_id: entry.details?.player_out_id,
-          player_out_name: entry.details?.player_out_name,
-          player_in_id: entry.details?.player_in_id,
-          player_in_name: entry.details?.player_in_name,
-        },
+        details: detailsPayload(entry),
       }),
     });
     if (!res.ok) return null;
@@ -75,6 +79,23 @@ async function postEvent(matchId: string, entry: KeeperLogEntry): Promise<string
     return json.id ?? null;
   } catch {
     return null;
+  }
+}
+
+async function patchEvent(
+  matchId: string,
+  eventId: string,
+  body: Record<string, unknown>
+): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/matches/${matchId}/events`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_id: eventId, ...body }),
+    });
+    return res.ok;
+  } catch {
+    return false;
   }
 }
 
@@ -176,14 +197,24 @@ export function useKeeperLogs(matchId: string) {
         }
         return next;
       });
+      void patchEvent(matchId, id, { void: true });
     },
     [matchId]
   );
 
   const updateLog = useCallback(
     (id: string, patch: Partial<KeeperLogEntry>) => {
+      let synced: KeeperLogEntry | null = null;
       setLogs((prev) => {
-        const next = prev.map((l) => (l.id === id ? { ...l, ...patch } : l));
+        const next = prev.map((l) => {
+          if (l.id !== id) return l;
+          const merged = { ...l, ...patch };
+          if (patch.details) {
+            merged.details = { ...(l.details ?? {}), ...patch.details };
+          }
+          synced = merged;
+          return merged;
+        });
         try {
           localStorage.setItem(keeperLogsStorageKey(matchId), JSON.stringify(next));
         } catch {
@@ -191,6 +222,31 @@ export function useKeeperLogs(matchId: string) {
         }
         return next;
       });
+      // Mirror assist / detail edits to the server so the public page sees them.
+      void (async () => {
+        // Allow state merge to settle if id was just swapped from a POST.
+        await Promise.resolve();
+        const entry =
+          synced ??
+          (() => {
+            try {
+              const raw = localStorage.getItem(keeperLogsStorageKey(matchId));
+              if (!raw) return null;
+              return (JSON.parse(raw) as KeeperLogEntry[]).find((l) => l.id === id) ?? null;
+            } catch {
+              return null;
+            }
+          })();
+        if (!entry) return;
+        await patchEvent(matchId, entry.id, {
+          match_time: entry.match_time,
+          period: entry.period,
+          team_id: entry.team_id || null,
+          player_id: entry.player_id,
+          event_type: entry.event_type,
+          details: detailsPayload(entry),
+        });
+      })();
     },
     [matchId]
   );

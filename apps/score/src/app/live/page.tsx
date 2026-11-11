@@ -4,6 +4,7 @@ import { BrandedSection } from "@/components/layout/branded-section";
 import { PageContent } from "@/components/layout/page-content";
 import { LiveBadge } from "@/components/layout/section-title";
 import { TeamCrest } from "@/components/ui/team-crest";
+import { FeedbackLauncher } from "@/components/feedback/feedback-launcher";
 import { fetchPublicMatches } from "@/lib/data/repository";
 import { parseSportParam, sportToDbId, dbIdToSport } from "@/lib/utils/sport";
 import { getSportConfig } from "@/lib/utils/sport-config";
@@ -127,6 +128,7 @@ export default async function LiveEventsPage({
           </section>
         </div>
       </PageContent>
+      <FeedbackLauncher />
     </>
   );
 }

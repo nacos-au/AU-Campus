@@ -52,6 +52,11 @@ export function KeeperEventTimeline({
 function EventBadge({ type }: { type: string }) {
   const styles: Record<string, string> = {
     goal: "bg-[#004e28]/10 text-[#004e28]",
+    own_goal: "bg-amber-100 text-amber-900",
+    disallowed_goal: "bg-red-50 text-red-700",
+    disallowed: "bg-red-50 text-red-700",
+    shot_on_target: "bg-blue-50 text-blue-800",
+    foul: "bg-surface text-accent",
     penalty_scored: "bg-[#004e28]/10 text-[#004e28]",
     penalty_missed: "bg-red-100 text-red-700",
     yellow_card: "bg-yellow-100 text-yellow-800",
@@ -60,6 +65,7 @@ function EventBadge({ type }: { type: string }) {
     offside: "bg-surface text-accent",
     corner: "bg-surface text-accent",
     save: "bg-blue-50 text-blue-800",
+    stoppage_boarded: "bg-accent/10 text-accent",
     substitution: "bg-surface text-accent",
     two_pointer: "bg-[#004e28]/10 text-[#004e28]",
     field_goal: "bg-[#004e28]/10 text-[#004e28]",

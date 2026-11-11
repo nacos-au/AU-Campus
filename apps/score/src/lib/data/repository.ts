@@ -501,6 +501,13 @@ export interface CreateMatchEventInput {
   details?: Record<string, unknown>;
 }
 
+const FOOTBALL_SCORE_EVENTS = new Set(["goal", "penalty_scored", "own_goal"]);
+const BASKETBALL_SCORE_EVENTS = new Set(["two_pointer", "field_goal", "free_throw"]);
+
+function eventAffectsScore(eventType: string): boolean {
+  return FOOTBALL_SCORE_EVENTS.has(eventType) || BASKETBALL_SCORE_EVENTS.has(eventType);
+}
+
 export async function createMatchEvent(input: CreateMatchEventInput): Promise<{ id: string } | { error: string }> {
   if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
     // Demo: events stay in the keeper localStorage; return a stable client-ish id.
@@ -522,42 +529,126 @@ export async function createMatchEvent(input: CreateMatchEventInput): Promise<{ 
   if (!data) return { error: "No event created" };
 
   // Keep the match scoreboard in sync so the public page shows live goals.
-  if (
-    input.event_type === "goal" ||
-    input.event_type === "penalty_scored" ||
-    input.event_type === "own_goal"
-  ) {
+  if (eventAffectsScore(input.event_type) || input.event_type === "disallowed_goal" || input.event_type === "disallowed") {
     await recomputeMatchScoreFromEvents(input.match_id);
   }
 
   return { id: data.id };
 }
 
+export interface UpdateMatchEventInput {
+  match_id: string;
+  event_id: string;
+  /** Soft-delete / VAR cancel — excluded from score + public feed. */
+  is_void?: boolean;
+  match_time?: string;
+  period?: string;
+  team_id?: string | null;
+  player_id?: string | null;
+  event_type?: string;
+  details?: Record<string, unknown>;
+}
+
+export async function updateMatchEvent(
+  input: UpdateMatchEventInput
+): Promise<{ ok: true } | { error: string }> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    return { ok: true };
+  }
+
+  const supabase = await createClient();
+  const patch: Record<string, unknown> = {};
+  if (input.is_void != null) patch.is_void = input.is_void;
+  if (input.match_time != null) patch.match_time = input.match_time;
+  if (input.period != null) patch.period = input.period;
+  if (input.team_id !== undefined) patch.team_id = input.team_id;
+  if (input.player_id !== undefined) patch.player_id = input.player_id;
+  if (input.event_type != null) patch.event_type = input.event_type;
+  if (input.details != null) patch.details = input.details;
+
+  if (Object.keys(patch).length === 0) return { error: "No fields to update" };
+
+  const { data, error } = (await (supabase.from("match_events") as ReturnType<typeof supabase.from>)
+    .update(patch)
+    .eq("id", input.event_id)
+    .eq("match_id", input.match_id)
+    .select("id, event_type")
+    .maybeSingle()) as {
+    data: { id: string; event_type: string } | null;
+    error: { message: string } | null;
+  };
+
+  if (error) return { error: error.message };
+  if (!data) return { error: "Event not found" };
+
+  if (eventAffectsScore(data.event_type) || input.is_void != null || input.details != null) {
+    await recomputeMatchScoreFromEvents(input.match_id);
+  }
+
+  return { ok: true };
+}
+
+export async function voidMatchEvent(
+  matchId: string,
+  eventId: string
+): Promise<{ ok: true } | { error: string }> {
+  return updateMatchEvent({ match_id: matchId, event_id: eventId, is_void: true });
+}
+
 async function recomputeMatchScoreFromEvents(matchId: string): Promise<void> {
   const supabase = await createClient();
   const { data: match } = (await supabase
     .from("matches")
-    .select("id, home_team_id, away_team_id")
+    .select("id, home_team_id, away_team_id, sport:sports(name)")
     .eq("id", matchId)
     .maybeSingle()) as {
-    data: { id: string; home_team_id: string | null; away_team_id: string | null } | null;
+    data: {
+      id: string;
+      home_team_id: string | null;
+      away_team_id: string | null;
+      sport?: { name?: string } | { name?: string }[] | null;
+    } | null;
   };
   if (!match) return;
 
+  const sportJoin = match.sport;
+  const sportName = (Array.isArray(sportJoin) ? sportJoin[0]?.name : sportJoin?.name)?.toLowerCase();
+
   const { data: events } = (await supabase
     .from("match_events")
-    .select("event_type, team_id, is_void")
+    .select("event_type, team_id, period, is_void")
     .eq("match_id", matchId)
     .eq("is_void", false)) as {
-    data: Array<{ event_type: string; team_id: string | null; is_void: boolean }> | null;
+    data: Array<{
+      event_type: string;
+      team_id: string | null;
+      period: string | null;
+      is_void: boolean;
+    }> | null;
   };
 
   let home = 0;
   let away = 0;
+
   for (const e of events ?? []) {
-    if (e.event_type !== "goal" && e.event_type !== "penalty_scored" && e.event_type !== "own_goal") {
-      continue;
+    // Shootout pens are tracked on home_penalties / away_penalties — never inflate FT.
+    if (e.period === "penalty_shootout") continue;
+
+    if (sportName === "basketball" || BASKETBALL_SCORE_EVENTS.has(e.event_type)) {
+      let pts = 0;
+      if (e.event_type === "two_pointer") pts = 2;
+      else if (e.event_type === "field_goal") pts = 3;
+      else if (e.event_type === "free_throw") pts = 1;
+      else if (!FOOTBALL_SCORE_EVENTS.has(e.event_type)) continue;
+      if (pts > 0) {
+        if (e.team_id === match.home_team_id) home += pts;
+        else if (e.team_id === match.away_team_id) away += pts;
+        continue;
+      }
     }
+
+    if (!FOOTBALL_SCORE_EVENTS.has(e.event_type)) continue;
+
     if (e.event_type === "own_goal") {
       // Credit the opposing side.
       if (e.team_id === match.home_team_id) away += 1;
@@ -864,17 +955,24 @@ export interface UpdateMatchInput {
   away_penalties?: number | null;
   current_period?: string;
   went_to_extra_time?: boolean;
-  status?: "scheduled" | "live" | "completed";
+  status?: "scheduled" | "live" | "completed" | "postponed";
   scheduled_at?: string;
   venue_id?: string | null;
   scope?: MatchScope;
   allows_extra_time?: boolean;
   allows_penalty_shootout?: boolean;
   lineup_image_url?: string | null;
+  referee_name?: string | null;
+  assistant_referee_1?: string | null;
+  assistant_referee_2?: string | null;
+  postpone_reason?: string | null;
   clock_elapsed_seconds?: number;
   clock_is_running?: boolean;
   clock_is_time_lost?: boolean;
   clock_running_started_at?: string | null;
+  clock_stoppage_seconds?: number;
+  clock_boarded_stoppage_minutes?: number;
+  clock_time_lost_started_at?: string | null;
 }
 
 export async function updateMatch(
@@ -888,8 +986,18 @@ export async function updateMatch(
 
   const supabase = await createClient();
   const body: Record<string, unknown> = { ...patch };
-  if (patch.status === "live") body.started_at = new Date().toISOString();
+  if (patch.status === "live") {
+    body.started_at = new Date().toISOString();
+    body.postpone_reason = null;
+  }
   if (patch.status === "completed") body.ended_at = new Date().toISOString();
+  if (patch.status === "postponed") {
+    body.clock_is_running = false;
+    body.clock_running_started_at = null;
+  }
+  if (patch.status === "scheduled" && patch.postpone_reason === undefined) {
+    body.postpone_reason = null;
+  }
 
   const { error } = await (supabase.from("matches") as ReturnType<typeof supabase.from>)
     .update(body)
@@ -922,9 +1030,15 @@ export async function softDeleteMatch(matchId: string): Promise<{ ok: true } | {
 
 export async function updateMatchStatus(
   matchId: string,
-  status: "scheduled" | "live" | "completed"
+  status: "scheduled" | "live" | "completed" | "postponed",
+  opts?: { postpone_reason?: string | null }
 ): Promise<{ ok: true } | { error: string }> {
-  return updateMatch(matchId, { status });
+  return updateMatch(matchId, {
+    status,
+    ...(status === "postponed"
+      ? { postpone_reason: opts?.postpone_reason?.trim() || "Match postponed" }
+      : { postpone_reason: null }),
+  });
 }
 
 // ─── Venues ─────────────────────────────────────────────────────────────────

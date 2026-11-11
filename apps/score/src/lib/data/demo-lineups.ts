@@ -1,6 +1,6 @@
 import { DEMO_PLAYERS } from "@/lib/data/demo";
 import { parseFormation } from "@/lib/match/formation-layout";
-import type { Player } from "@/lib/types/database";
+import type { LineupSheetStatus, Player } from "@/lib/types/database";
 
 export interface PitchLineupSlot {
   player_id: string;
@@ -27,6 +27,8 @@ export interface SubmittedLineup {
   team_id: string;
   players: SubmittedLineupEntry[];
   submitted_at: string;
+  status?: LineupSheetStatus;
+  published_at?: string | null;
 }
 
 /** 4-3-3: GK, back four (LB–RB), midfield three, front three (LW–ST–RW). */

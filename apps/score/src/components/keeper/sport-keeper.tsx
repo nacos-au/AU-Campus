@@ -7,6 +7,7 @@ import { AdminMatchLineupPanel } from "@/components/admin/admin-match-lineup-pan
 import { FootballPeriodControls } from "@/components/keeper/football-period-controls";
 import { KeeperActionBar } from "@/components/keeper/keeper-action-bar";
 import { KeeperEventTimeline } from "@/components/keeper/keeper-event-timeline";
+import { KeeperMatchSettings } from "@/components/keeper/keeper-match-settings";
 import { KeeperRosterColumn } from "@/components/keeper/keeper-roster-column";
 import { MatchClockControls } from "@/components/match/match-clock-controls";
 import { MatchLifecycleControls } from "@/components/match/match-lifecycle-controls";
@@ -45,26 +46,44 @@ function uniquePlayers<T extends { id: string }>(players: T[]): T[] {
 
 export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) {
   const config = getKeeperSportConfig(sport);
+  const [liveMatch, setLiveMatch] = useState(match);
   const lifecycle = useMatchLifecycle(match.id, {
-    status: match.status as "scheduled" | "live" | "completed",
-    scheduledAt: match.scheduled_at,
+    status: (liveMatch.status === "postponed" ? "scheduled" : liveMatch.status) as
+      | "scheduled"
+      | "live"
+      | "completed",
+    scheduledAt: liveMatch.scheduled_at,
   });
-  const { clock, setTimeLost, setRunning, startRunning, stopClock, setPeriod, formatTime } =
-    useMatchClock(
-      match.id,
-      {
-        period: match.current_period === "not_started" ? "half_1" : match.current_period,
-      },
-      { syncToServer: true }
-    );
+  const {
+    clock,
+    setTimeLost,
+    setRunning,
+    startRunning,
+    stopClock,
+    setPeriod,
+    formatTime,
+    formatMatchMinute,
+    boardStoppage,
+    setElapsed,
+  } = useMatchClock(
+    match.id,
+    {
+      period: match.current_period === "not_started" ? "half_1" : match.current_period,
+      stoppageSeconds: match.clock_stoppage_seconds ?? 0,
+      boardedStoppageMinutes: match.clock_boarded_stoppage_minutes ?? 0,
+    },
+    { syncToServer: true }
+  );
   const { logs, addLog, removeLog, updateLog } = useKeeperLogs(match.id);
 
   const [selected, setSelected] = useState<{ side: Side; playerId: string } | null>(null);
   const [pendingFoul, setPendingFoul] = useState<string | null>(null);
-  const [subPrompt, setSubPrompt] = useState<{
+  /** Multi-sub batch: each pair is one out→in logged as its own event. */
+  const [subBatch, setSubBatch] = useState<{
     side: Side;
-    playerOutId: string;
-    playerOutName: string;
+    pairs: { outId: string; outName: string; inId: string | null; inName: string | null }[];
+    /** Which slot is waiting for a tap — out (new pair) or in (complete active). */
+    phase: "pick_in" | "pick_out";
   } | null>(null);
   const [assistPrompt, setAssistPrompt] = useState<{
     logId: string;
@@ -127,8 +146,15 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
         )
       : null;
 
-  const matchTimeLabel =
-    sport === "football" ? `${Math.floor(clock.elapsedSeconds / 60)}'` : formatTime();
+  const matchTimeLabel = sport === "football" ? formatMatchMinute() : formatTime();
+
+  const tournamentConfig =
+    match.tournament &&
+    typeof (match.tournament as { config?: Record<string, unknown> }).config === "object"
+      ? ((match.tournament as { config?: Record<string, unknown> }).config ?? {})
+      : {};
+  const maxSubsRaw = Number(tournamentConfig.max_subs);
+  const maxSubs = Number.isFinite(maxSubsRaw) && maxSubsRaw > 0 ? maxSubsRaw : 5;
 
   const periodLabel = livePeriodLabel(sport, logPeriod);
   const clockVariant = sport === "basketball" ? "basketball" : "football";
@@ -141,9 +167,28 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
   }
 
   async function syncPeriod(period: string) {
-    setPeriod(period, {
-      resetElapsed: period === "half_2" || period.startsWith("extra_time"),
-    });
+    const resetElapsed = period === "half_2" || period.startsWith("extra_time");
+    if (resetElapsed && sport === "football") {
+      const boarded = boardStoppage();
+      if (boarded > 0) {
+        // Persist announced +N so the public timeline can show additional time.
+        addLog(
+          createKeeperLog({
+            match_time: formatMatchMinute(),
+            period: clock.period,
+            team_id: "",
+            team_name: "",
+            team_code: "",
+            team_logo_url: null,
+            player_id: null,
+            player_name: `+${boarded}`,
+            event_type: "stoppage_boarded",
+            details: { minutes: boarded, boarded_minutes: boarded },
+          })
+        );
+      }
+    }
+    setPeriod(period, { resetElapsed });
     try {
       await fetch(`/api/matches/${match.id}`, {
         method: "PATCH",
@@ -236,6 +281,11 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
   function selectPlayer(side: Side, playerId: string) {
     const effectiveSide = config.layout === "single" ? "home" : side;
 
+    if (subBatch && subBatch.side === effectiveSide) {
+      handleSubBatchPick(playerId);
+      return;
+    }
+
     if (pendingFoul) {
       const { player_name } = playerMeta(effectiveSide, playerId);
       pushLog(effectiveSide, pendingFoul, playerId, player_name);
@@ -272,12 +322,38 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
     if (!selected) return;
     const { player_name, player_id } = playerMeta(selected.side, selected.playerId);
 
-    if (eventType === "substitution" && sport === "football") {
-      setSubPrompt({
+    if (
+      eventType === "substitution" &&
+      (sport === "football" || sport === "basketball" || sport === "volleyball")
+    ) {
+      setSubBatch({
         side: selected.side,
-        playerOutId: player_id,
-        playerOutName: player_name,
+        pairs: [{ outId: player_id, outName: player_name, inId: null, inName: null }],
+        phase: "pick_in",
       });
+      setSelected(null);
+      setPendingFoul(null);
+      return;
+    }
+
+    if (eventType === "disallowed_goal") {
+      const original = logs.find(
+        (l) =>
+          l.player_id === player_id &&
+          (l.event_type === "goal" ||
+            l.event_type === "penalty_scored" ||
+            l.event_type === "own_goal")
+      );
+      pushLog(selected.side, "disallowed_goal", player_id, player_name, {
+        details: original
+          ? {
+              original_event_id: original.id,
+              original_event_type: original.event_type,
+              original_match_time: original.match_time,
+            }
+          : { note: "no_matching_goal" },
+      });
+      if (original) removeLog(original.id);
       setSelected(null);
       setPendingFoul(null);
       return;
@@ -303,18 +379,51 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
     setPendingFoul(null);
   }
 
-  function completeSub(playerInId: string) {
-    if (!subPrompt) return;
-    const incoming = playerMeta(subPrompt.side, playerInId);
-    pushLog(subPrompt.side, "substitution", subPrompt.playerOutId, subPrompt.playerOutName, {
-      details: {
-        player_out_id: subPrompt.playerOutId,
-        player_out_name: subPrompt.playerOutName,
-        player_in_id: playerInId,
-        player_in_name: incoming.player_name,
-      },
+  function handleSubBatchPick(playerId: string) {
+    if (!subBatch) return;
+    const { player_name } = playerMeta(subBatch.side, playerId);
+    const usedIds = new Set(
+      subBatch.pairs.flatMap((p) => [p.outId, p.inId].filter(Boolean) as string[])
+    );
+
+    if (subBatch.phase === "pick_in") {
+      const incomplete = subBatch.pairs.findIndex((p) => !p.inId);
+      if (incomplete < 0) return;
+      if (playerId === subBatch.pairs[incomplete].outId) return;
+      if (usedIds.has(playerId)) return;
+      const pairs = subBatch.pairs.map((p, i) =>
+        i === incomplete ? { ...p, inId: playerId, inName: player_name } : p
+      );
+      setSubBatch({ ...subBatch, pairs, phase: "pick_out" });
+      return;
+    }
+
+    if (subBatch.pairs.length >= maxSubs) return;
+    if (usedIds.has(playerId)) return;
+    setSubBatch({
+      ...subBatch,
+      pairs: [
+        ...subBatch.pairs,
+        { outId: playerId, outName: player_name, inId: null, inName: null },
+      ],
+      phase: "pick_in",
     });
-    setSubPrompt(null);
+  }
+
+  function confirmSubBatch() {
+    if (!subBatch) return;
+    const complete = subBatch.pairs.filter((p) => p.inId && p.inName);
+    for (const pair of complete) {
+      pushLog(subBatch.side, "substitution", pair.outId, pair.outName, {
+        details: {
+          player_out_id: pair.outId,
+          player_out_name: pair.outName,
+          player_in_id: pair.inId,
+          player_in_name: pair.inName,
+        },
+      });
+    }
+    setSubBatch(null);
   }
 
   function handleFoulChip(cardType: string) {
@@ -396,6 +505,14 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
 
   return (
     <div className="mx-auto max-w-4xl">
+      {liveMatch.status === "postponed" && (
+        <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <p className="font-display font-bold">Postponed</p>
+          <p className="mt-0.5">
+            {liveMatch.postpone_reason?.trim() || "This fixture has been postponed."}
+          </p>
+        </div>
+      )}
       {showLineupSetup && tournamentId && homeTeamId && awayTeamId && (
         <div className="mb-4 grid gap-4 sm:grid-cols-2">
           <AdminMatchLineupPanel
@@ -403,27 +520,46 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
             tournamentId={tournamentId}
             teamId={homeTeamId}
             teamName={match.home_team?.name ?? "Team A"}
+            scheduledAt={liveMatch.scheduled_at}
           />
           <AdminMatchLineupPanel
             matchId={match.id}
             tournamentId={tournamentId}
             teamId={awayTeamId}
             teamName={match.away_team?.name ?? "Team B"}
+            scheduledAt={liveMatch.scheduled_at}
           />
         </div>
       )}
       <div className="sticky top-0 z-20 -mx-4 mb-4 border-b border-rule bg-white/95 px-4 py-3 backdrop-blur sm:-mx-0 sm:rounded-xl sm:border sm:px-4">
-        <MatchLifecycleControls
-          status={lifecycle.status}
-          scheduledAt={match.scheduled_at}
-          onStart={handleStartMatch}
-          onEnd={handleEndMatch}
-          className="mb-3"
-        />
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <MatchLifecycleControls
+            status={lifecycle.status}
+            scheduledAt={match.scheduled_at}
+            onStart={handleStartMatch}
+            onEnd={handleEndMatch}
+            className="min-w-0 flex-1"
+          />
+          <KeeperMatchSettings
+            match={liveMatch}
+            onMatchPatched={(patch) => setLiveMatch((prev) => ({ ...prev, ...patch }))}
+            clockElapsedSeconds={clock.elapsedSeconds}
+            onJumpClock={setElapsed}
+          />
+        </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 flex-col gap-1">
             {config.showRunningClock ? (
-              <span className="font-mono text-3xl font-bold tabular-nums sm:text-4xl">{formatTime()}</span>
+              <div className="flex flex-wrap items-baseline gap-2">
+                <span className="font-mono text-3xl font-bold tabular-nums sm:text-4xl">
+                  {formatTime()}
+                </span>
+                {sport === "football" && clock.boardedStoppageMinutes > 0 && (
+                  <span className="rounded-full bg-accent px-2.5 py-0.5 font-display text-sm font-extrabold text-white">
+                    +{clock.boardedStoppageMinutes}
+                  </span>
+                )}
+              </div>
             ) : (
               <span className="font-display text-lg font-extrabold">{match.home_team?.name}</span>
             )}
@@ -436,6 +572,11 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
               <div className="flex flex-wrap gap-1.5 text-[10px] font-bold uppercase tracking-wide text-accent/55">
                 {allowsEt && <span className="rounded-full border border-rule px-2 py-0.5">ET on</span>}
                 {allowsPens && <span className="rounded-full border border-rule px-2 py-0.5">Pens on</span>}
+                {clock.isTimeLost && (
+                  <span className="rounded-full border border-amber-400 bg-amber-50 px-2 py-0.5 text-amber-900">
+                    Accumulating stoppage
+                  </span>
+                )}
               </div>
             )}
             {config.showPrimaryScore && (
@@ -526,28 +667,45 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
         </section>
       )}
 
-      {loggingEnabled && subPrompt && (
+      {loggingEnabled && subBatch && (
         <div className="mb-4 rounded-xl border border-accent/30 bg-accent/5 p-4">
-          <p className="mb-3 text-center font-display text-sm font-bold">
-            {subPrompt.playerOutName} off — tap player coming on
+          <p className="mb-1 text-center font-display text-sm font-bold">
+            {subBatch.phase === "pick_in"
+              ? "Tap player coming on"
+              : subBatch.pairs.length >= maxSubs
+                ? `Max ${maxSubs} subs — confirm batch`
+                : "Confirm, or tap another player going off"}
           </p>
-          <div className="flex flex-wrap justify-center gap-2">
-            {uniquePlayers(
-              squadFor(subPrompt.side).filter((p) => p.id !== subPrompt.playerOutId)
-            ).map((p) => (
-              <button
-                key={`sub-in-${p.id}`}
-                type="button"
-                onClick={() => completeSub(p.id)}
-                className="interactive-btn rounded-lg border border-rule bg-white px-3 py-2 font-display text-xs font-bold"
+          <p className="mb-3 text-center text-xs opacity-60">
+            Up to {maxSubs} changes · one timeline event per pair
+          </p>
+          <ul className="mb-3 space-y-1.5">
+            {subBatch.pairs.map((pair, i) => (
+              <li
+                key={`sub-pair-${pair.outId}-${i}`}
+                className="rounded-lg border border-rule bg-white px-3 py-2 text-center font-display text-xs font-bold"
               >
-                {p.jersey_number != null && <span className="mr-1 opacity-50">#{p.jersey_number}</span>}
-                {p.first_name} {p.last_name}
-              </button>
+                {pair.outName}
+                <span className="mx-1.5 opacity-40">→</span>
+                {pair.inName ?? (
+                  <span className="font-semibold text-accent/50">select on</span>
+                )}
+              </li>
             ))}
+          </ul>
+          <div className="flex flex-wrap justify-center gap-2">
             <button
               type="button"
-              onClick={() => setSubPrompt(null)}
+              onClick={confirmSubBatch}
+              disabled={!subBatch.pairs.some((p) => p.inId)}
+              className="btn-primary rounded-lg px-4 py-2 font-display text-sm font-bold disabled:opacity-40"
+            >
+              Confirm {subBatch.pairs.filter((p) => p.inId).length || ""} sub
+              {subBatch.pairs.filter((p) => p.inId).length === 1 ? "" : "s"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSubBatch(null)}
               className="interactive-btn rounded-lg border border-dashed border-rule px-3 py-2 text-xs font-semibold opacity-60"
             >
               Cancel

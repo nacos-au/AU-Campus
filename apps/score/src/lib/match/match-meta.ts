@@ -7,16 +7,24 @@ const FALLBACK_VENUES = ["Joked Field", "Main Field"] as const;
 export interface MatchMeta {
   venue: string;
   location: string;
-  referee: string;
+  referee: string | null;
+  assistantReferee1: string | null;
+  assistantReferee2: string | null;
 }
 
 export function getMatchMeta(match: Match): MatchMeta {
   const joined = match.venue ?? (match.venue_id ? getDemoVenueById(match.venue_id) : null);
+  const officials = {
+    referee: match.referee_name?.trim() || null,
+    assistantReferee1: match.assistant_referee_1?.trim() || null,
+    assistantReferee2: match.assistant_referee_2?.trim() || null,
+  };
+
   if (joined) {
     return {
       venue: joined.name,
       location: joined.location,
-      referee: "Emmanuel Adebayo",
+      ...officials,
     };
   }
 
@@ -24,7 +32,7 @@ export function getMatchMeta(match: Match): MatchMeta {
   return {
     venue: FALLBACK_VENUES[idx % FALLBACK_VENUES.length],
     location: "Achievers University, Owo",
-    referee: "Emmanuel Adebayo",
+    ...officials,
   };
 }
 

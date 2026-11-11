@@ -9,6 +9,12 @@ export interface MatchClockState {
   period: string;
   /** Wall-clock start of the current run (survives tab sleep / screen-off). */
   runningStartedAt: number | null;
+  /** Accumulated injury / time-wasting seconds for the current period. */
+  stoppageSeconds: number;
+  /** Announced +N minutes for the current period (boarded stoppage). */
+  boardedStoppageMinutes: number;
+  /** Wall-clock start of the current Time lost stretch. */
+  timeLostStartedAt: number | null;
 }
 
 const DEFAULT: MatchClockState = {
@@ -17,6 +23,9 @@ const DEFAULT: MatchClockState = {
   isTimeLost: false,
   period: "half_1",
   runningStartedAt: null,
+  stoppageSeconds: 0,
+  boardedStoppageMinutes: 0,
+  timeLostStartedAt: null,
 };
 
 function storageKey(matchId: string) {
@@ -32,6 +41,20 @@ export function liveElapsedSeconds(state: MatchClockState): number {
   return state.elapsedSeconds + extra;
 }
 
+/** Live stoppage seconds including an open Time lost stretch. */
+export function liveStoppageSeconds(state: MatchClockState): number {
+  if (!state.isTimeLost || state.timeLostStartedAt == null) {
+    return state.stoppageSeconds;
+  }
+  const extra = Math.max(0, Math.floor((Date.now() - state.timeLostStartedAt) / 1000));
+  return state.stoppageSeconds + extra;
+}
+
+export function boardStoppageMinutesFromSeconds(seconds: number): number {
+  if (seconds <= 0) return 0;
+  return Math.max(1, Math.ceil(seconds / 60));
+}
+
 export function normalizeStored(raw: unknown): MatchClockState {
   const s = raw as Partial<MatchClockState>;
   return {
@@ -43,6 +66,15 @@ export function normalizeStored(raw: unknown): MatchClockState {
       typeof s.runningStartedAt === "number"
         ? s.runningStartedAt
         : s.isRunning && !s.isTimeLost
+          ? Date.now()
+          : null,
+    stoppageSeconds: typeof s.stoppageSeconds === "number" ? s.stoppageSeconds : 0,
+    boardedStoppageMinutes:
+      typeof s.boardedStoppageMinutes === "number" ? s.boardedStoppageMinutes : 0,
+    timeLostStartedAt:
+      typeof s.timeLostStartedAt === "number"
+        ? s.timeLostStartedAt
+        : s.isTimeLost
           ? Date.now()
           : null,
   };
@@ -60,23 +92,51 @@ function freezeRunning(state: MatchClockState): MatchClockState {
   };
 }
 
+function freezeTimeLost(state: MatchClockState): MatchClockState {
+  if (!state.isTimeLost || state.timeLostStartedAt == null) {
+    return { ...state, isTimeLost: false, timeLostStartedAt: null };
+  }
+  const stoppageSeconds = liveStoppageSeconds(state);
+  const boarded = Math.max(
+    state.boardedStoppageMinutes,
+    boardStoppageMinutesFromSeconds(stoppageSeconds)
+  );
+  return {
+    ...state,
+    stoppageSeconds,
+    boardedStoppageMinutes: boarded,
+    isTimeLost: false,
+    timeLostStartedAt: null,
+  };
+}
+
 export function clockFromServer(row: {
   clock_elapsed_seconds?: number | null;
   clock_is_running?: boolean | null;
   clock_is_time_lost?: boolean | null;
   clock_running_started_at?: string | null;
+  clock_stoppage_seconds?: number | null;
+  clock_boarded_stoppage_minutes?: number | null;
+  clock_time_lost_started_at?: string | null;
   current_period?: string | null;
 }): MatchClockState {
   const running = Boolean(row.clock_is_running);
+  const timeLost = Boolean(row.clock_is_time_lost);
   const startedAt = row.clock_running_started_at
     ? new Date(row.clock_running_started_at).getTime()
+    : null;
+  const lostStartedAt = row.clock_time_lost_started_at
+    ? new Date(row.clock_time_lost_started_at).getTime()
     : null;
   return {
     elapsedSeconds: row.clock_elapsed_seconds ?? 0,
     isRunning: running,
-    isTimeLost: Boolean(row.clock_is_time_lost),
+    isTimeLost: timeLost,
     period: row.current_period && row.current_period !== "not_started" ? row.current_period : "half_1",
-    runningStartedAt: running && !row.clock_is_time_lost ? startedAt : null,
+    runningStartedAt: running && !timeLost ? startedAt : null,
+    stoppageSeconds: row.clock_stoppage_seconds ?? 0,
+    boardedStoppageMinutes: row.clock_boarded_stoppage_minutes ?? 0,
+    timeLostStartedAt: timeLost ? lostStartedAt : null,
   };
 }
 
@@ -92,7 +152,41 @@ export function clockToServerPayload(state: MatchClockState) {
       running && state.runningStartedAt != null
         ? new Date(state.runningStartedAt).toISOString()
         : null,
+    clock_stoppage_seconds: state.stoppageSeconds,
+    clock_boarded_stoppage_minutes: state.boardedStoppageMinutes,
+    clock_time_lost_started_at:
+      state.isTimeLost && state.timeLostStartedAt != null
+        ? new Date(state.timeLostStartedAt).toISOString()
+        : null,
   };
+}
+
+/** Regulation minutes for football period display (kickoff of stoppage clock). */
+export function regulationMinutesForPeriod(period: string): number {
+  if (period === "half_1") return 45;
+  if (period === "half_2") return 45;
+  if (period.startsWith("extra_time")) return 15;
+  return 45;
+}
+
+/**
+ * Football event / board clock label.
+ * Before regulation end: `12'`. In stoppage: `45+2'`.
+ */
+export function formatFootballMatchTime(
+  elapsedSeconds: number,
+  period: string,
+  boardedStoppageMinutes: number,
+  liveStoppageSecs = 0
+): string {
+  const regulation = regulationMinutesForPeriod(period);
+  const elapsedMin = Math.floor(elapsedSeconds / 60);
+  if (elapsedMin < regulation) return `${elapsedMin}'`;
+
+  const pastReg = Math.floor((elapsedSeconds - regulation * 60) / 60);
+  const fromLost = boardStoppageMinutesFromSeconds(liveStoppageSecs);
+  const plus = Math.max(pastReg, boardedStoppageMinutes, fromLost, 1);
+  return `${regulation}+${plus}'`;
 }
 
 /**
@@ -175,12 +269,26 @@ export function useMatchClock(
 
   const flushWallClock = useCallback(() => {
     setClock((prev) => {
-      if (!prev.isRunning || prev.isTimeLost || prev.runningStartedAt == null) return prev;
-      const next: MatchClockState = {
-        ...prev,
-        elapsedSeconds: liveElapsedSeconds(prev),
-        runningStartedAt: Date.now(),
-      };
+      let next = prev;
+      if (prev.isRunning && !prev.isTimeLost && prev.runningStartedAt != null) {
+        next = {
+          ...next,
+          elapsedSeconds: liveElapsedSeconds(prev),
+          runningStartedAt: Date.now(),
+        };
+      }
+      if (prev.isTimeLost && prev.timeLostStartedAt != null) {
+        next = {
+          ...next,
+          stoppageSeconds: liveStoppageSeconds(prev),
+          timeLostStartedAt: Date.now(),
+          boardedStoppageMinutes: Math.max(
+            prev.boardedStoppageMinutes,
+            boardStoppageMinutesFromSeconds(liveStoppageSeconds(prev))
+          ),
+        };
+      }
+      if (next === prev) return prev;
       writeLocal(next);
       pushServer(next);
       return next;
@@ -200,7 +308,7 @@ export function useMatchClock(
 
   // Align UI refresh to real seconds (avoids slow/fast interval drift).
   useEffect(() => {
-    if (!clock.isRunning || clock.isTimeLost) return;
+    if ((!clock.isRunning || clock.isTimeLost) && !clock.isTimeLost) return;
     let timeoutId: ReturnType<typeof setTimeout>;
     let cancelled = false;
     const schedule = () => {
@@ -218,9 +326,10 @@ export function useMatchClock(
     };
   }, [clock.isRunning, clock.isTimeLost]);
 
-  // Heartbeat while running so spectators stay within ~5s.
+  // Heartbeat while running or accumulating stoppage so spectators stay within ~5s.
   useEffect(() => {
-    if (!syncToServer || !clock.isRunning || clock.isTimeLost) return;
+    if (!syncToServer) return;
+    if ((!clock.isRunning || clock.isTimeLost) && !clock.isTimeLost) return;
     const id = setInterval(() => {
       pushServer(clockRef.current);
     }, 5000);
@@ -241,13 +350,22 @@ export function useMatchClock(
     };
   }, [flushWallClock]);
 
-  const display = { ...clock, elapsedSeconds: liveElapsedSeconds(clock) };
+  const display = {
+    ...clock,
+    elapsedSeconds: liveElapsedSeconds(clock),
+    stoppageSeconds: liveStoppageSeconds(clock),
+    boardedStoppageMinutes: Math.max(
+      clock.boardedStoppageMinutes,
+      boardStoppageMinutesFromSeconds(liveStoppageSeconds(clock))
+    ),
+  };
 
   const setRunning = (isRunning: boolean) => {
     if (isRunning) {
+      const cleared = freezeTimeLost(clock);
       persist({
-        ...clock,
-        elapsedSeconds: liveElapsedSeconds(clock),
+        ...cleared,
+        elapsedSeconds: liveElapsedSeconds(cleared),
         isRunning: true,
         isTimeLost: false,
         runningStartedAt: Date.now(),
@@ -263,15 +381,25 @@ export function useMatchClock(
         ...freezeRunning(clock),
         isTimeLost: true,
         isRunning: false,
+        timeLostStartedAt: Date.now(),
       });
       return;
     }
+    // Resume play — board accumulated stoppage as +N.
+    const frozen = freezeTimeLost(clock);
     persist({
-      ...clock,
+      ...frozen,
       isTimeLost: false,
       isRunning: true,
       runningStartedAt: Date.now(),
     });
+  };
+
+  /** Freeze any open time-lost stretch and return boarded +N (for logging). */
+  const boardStoppage = (): number => {
+    const frozen = freezeTimeLost(freezeRunning(clock));
+    persist(frozen);
+    return frozen.boardedStoppageMinutes;
   };
 
   const resetClock = (period?: string) =>
@@ -281,22 +409,33 @@ export function useMatchClock(
       isTimeLost: false,
       period: period ?? clock.period,
       runningStartedAt: null,
+      stoppageSeconds: 0,
+      boardedStoppageMinutes: 0,
+      timeLostStartedAt: null,
     });
 
-  const stopClock = () => persist(freezeRunning(clock));
+  const stopClock = () => {
+    const frozen = freezeTimeLost(freezeRunning(clock));
+    persist(frozen);
+  };
 
   const setPeriod = (period: string, opts?: { resetElapsed?: boolean }) => {
+    const frozen = freezeTimeLost(freezeRunning(clock));
     if (opts?.resetElapsed) {
       persist({
+        ...frozen,
         elapsedSeconds: 0,
         isRunning: false,
         isTimeLost: false,
         period,
         runningStartedAt: null,
+        stoppageSeconds: 0,
+        boardedStoppageMinutes: 0,
+        timeLostStartedAt: null,
       });
       return;
     }
-    persist({ ...freezeRunning(clock), period });
+    persist({ ...frozen, period });
   };
 
   /** Start from zero and run immediately (kick-off). */
@@ -307,14 +446,40 @@ export function useMatchClock(
       isTimeLost: false,
       period: period ?? clock.period,
       runningStartedAt: Date.now(),
+      stoppageSeconds: 0,
+      boardedStoppageMinutes: 0,
+      timeLostStartedAt: null,
     });
+
+  /** Jump / set elapsed (late start). Keeps running state. */
+  const setElapsed = (seconds: number) => {
+    const nextSeconds = Math.max(0, Math.floor(seconds));
+    const frozenLost = freezeTimeLost(clock);
+    const running = frozenLost.isRunning || (!frozenLost.isTimeLost && clock.isRunning);
+    persist({
+      ...frozenLost,
+      elapsedSeconds: nextSeconds,
+      isRunning: running,
+      isTimeLost: false,
+      runningStartedAt: running ? Date.now() : null,
+      timeLostStartedAt: null,
+    });
+  };
 
   const formatTime = () => {
     const total = display.elapsedSeconds;
     const m = Math.floor(total / 60);
     const s = total % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
+
+  const formatMatchMinute = () =>
+    formatFootballMatchTime(
+      display.elapsedSeconds,
+      display.period,
+      display.boardedStoppageMinutes,
+      display.isTimeLost ? display.stoppageSeconds : 0
+    );
 
   const elapsedMinutes = Math.floor(display.elapsedSeconds / 60);
 
@@ -322,13 +487,16 @@ export function useMatchClock(
     clock: display,
     setRunning,
     setTimeLost,
+    boardStoppage,
     resetClock,
     startRunning,
+    setElapsed,
     stopClock,
     setPeriod,
     persist,
     applyServerClock,
     formatTime,
+    formatMatchMinute,
     elapsedMinutes,
   };
 }

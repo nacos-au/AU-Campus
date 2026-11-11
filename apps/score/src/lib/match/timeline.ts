@@ -34,6 +34,10 @@ export function eventsToMarkers(events: DemoMatchEvent[], sport: string): Timeli
 export function formatEventLabel(eventType: string): string {
   const labels: Record<string, string> = {
     goal: "Goal",
+    own_goal: "OG",
+    disallowed_goal: "Disallowed",
+    disallowed: "Disallowed",
+    shot_on_target: "SOT",
     penalty_scored: "Pen ✓",
     penalty_missed: "Pen ✗",
     yellow_card: "YC",
@@ -43,6 +47,8 @@ export function formatEventLabel(eventType: string): string {
     offside: "Offside",
     corner: "Corner",
     save: "Save",
+    stoppage_boarded: "Stoppage",
+    added_time: "Added time",
     two_pointer: "2PT",
     field_goal: "3PT",
     free_throw: "FT",
