@@ -1053,9 +1053,6 @@ export async function resetMatchForKickoff(
       status: "live",
       home_score: 0,
       away_score: 0,
-      home_penalties: null,
-      away_penalties: null,
-      current_period: "half_1",
     })
       ? { ok: true }
       : { error: "Match not found" };
