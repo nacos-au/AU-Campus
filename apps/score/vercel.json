@@ -1,6 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "cd ../.. && npm install",
-  "buildCommand": "npm run build",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ../../supabase/score_*.sql ../../supabase/AU_SCORE_FULL_SCHEMA.sql"
+  "buildCommand": "npm run build"
 }
