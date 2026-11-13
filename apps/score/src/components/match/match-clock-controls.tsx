@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils/cn";
 export type ClockControlVariant = "football" | "basketball";
 
 /**
- * Football: Playing + Waste (parallel — waste never pauses match clock).
+ * Football: Playing is sticky (resume only — never toggles off here).
+ * Waste toggles stoppage in parallel without pausing match elapsed.
  * Basketball: Clock on/off plus separate Stop/Resume for quarter breaks.
  */
 export function MatchClockControls({
@@ -21,7 +22,6 @@ export function MatchClockControls({
   clockOffLabel = "Waste",
   size = "md",
   disabled,
-  layout = "inline",
 }: {
   variant: ClockControlVariant;
   isRunning: boolean;
@@ -34,12 +34,10 @@ export function MatchClockControls({
   clockOffLabel?: string;
   size?: "sm" | "md" | "lg";
   disabled?: boolean;
-  /** `stack` = icon above label (keeper sketch). */
-  layout?: "inline" | "stack";
 }) {
   const btn =
     size === "lg"
-      ? "px-4 py-3 text-sm"
+      ? "min-h-12 px-4 py-2.5 text-sm"
       : size === "sm"
         ? "px-2.5 py-1 text-xs"
         : "px-3 py-1.5 text-xs sm:text-sm";
@@ -48,31 +46,26 @@ export function MatchClockControls({
   const paused = !isRunning;
 
   if (variant === "football") {
-    const stack = layout === "stack";
     return (
-      <div className={cn("flex gap-2", stack ? "w-full" : "flex-wrap")}>
+      <div className="flex w-full gap-2">
         <button
           type="button"
-          disabled={disabled}
+          disabled={disabled || playing}
           onClick={onPlaying}
           className={cn(
             playing
-              ? "btn-filled rounded-lg border font-display font-bold"
+              ? "btn-filled cursor-default rounded-lg border font-display font-bold"
               : "interactive-btn rounded-lg border border-rule font-display font-bold",
             btn,
-            stack && "flex-1",
+            "flex-1",
             disabled && "pointer-events-none opacity-40"
           )}
           aria-pressed={playing}
+          title={playing ? "Match clock is running" : "Resume match clock"}
         >
-          <span
-            className={cn(
-              "inline-flex items-center gap-1.5",
-              stack && "w-full flex-col justify-center gap-1"
-            )}
-          >
-            <Play className={cn(stack ? "h-5 w-5" : "h-3.5 w-3.5")} />
-            {playing ? "Playing" : clockOnLabel}
+          <span className="inline-flex items-center justify-center gap-2">
+            <Play className="h-4 w-4 shrink-0" />
+            <span>{playing ? "Playing" : clockOnLabel}</span>
           </span>
         </button>
         <button
@@ -84,19 +77,15 @@ export function MatchClockControls({
               ? "btn-filled rounded-lg border font-display font-bold"
               : "interactive-btn rounded-lg border border-rule font-display font-bold",
             btn,
-            stack && "flex-1",
+            "flex-1",
             disabled && "pointer-events-none opacity-40"
           )}
           aria-pressed={wasting}
+          title={wasting ? "Stop accumulating waste / board +N" : "Start waste / stoppage"}
         >
-          <span
-            className={cn(
-              "inline-flex items-center gap-1.5",
-              stack && "w-full flex-col justify-center gap-1"
-            )}
-          >
-            <Hourglass className={cn(stack ? "h-5 w-5" : "h-3.5 w-3.5")} />
-            {wasting ? "Wasting" : clockOffLabel}
+          <span className="inline-flex items-center justify-center gap-2">
+            <Hourglass className="h-4 w-4 shrink-0" />
+            <span>{wasting ? "Wasting" : clockOffLabel}</span>
           </span>
         </button>
       </div>

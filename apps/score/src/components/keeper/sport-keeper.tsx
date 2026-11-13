@@ -573,45 +573,19 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
               showEnd={false}
               className="shrink-0"
             />
-            <div className="flex items-center gap-2">
-              {sport === "football" &&
-                (clock.boardedStoppageMinutes > 0 || clock.isTimeLost) && (
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setStoppageExactOpen((o) => !o)}
-                      className="rounded-full bg-accent px-2.5 py-0.5 font-display text-sm font-extrabold text-white"
-                      aria-label="Show exact stoppage time"
-                    >
-                      +{clock.boardedStoppageMinutes || 1}
-                    </button>
-                    {stoppageExactOpen && (
-                      <div className="absolute right-0 top-full z-30 mt-1 whitespace-nowrap rounded-lg border border-rule bg-white px-3 py-2 shadow-lg">
-                        <p className="text-[10px] font-bold uppercase tracking-wide text-accent/50">
-                          Waste clock
-                        </p>
-                        <p className="font-mono text-lg font-bold tabular-nums">
-                          {String(Math.floor(clock.stoppageSeconds / 60)).padStart(2, "0")}:
-                          {String(clock.stoppageSeconds % 60).padStart(2, "0")}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              <KeeperMatchSettings
-                match={liveMatch}
-                onMatchPatched={(patch) => setLiveMatch((prev) => ({ ...prev, ...patch }))}
-                clockElapsedSeconds={clock.elapsedSeconds}
-                onJumpClock={setElapsed}
-                sport={sport}
-                period={clock.period}
-                allowsExtraTime={allowsEt}
-                allowsPenaltyShootout={allowsPens}
-                onSelectPeriod={(p) => void syncPeriod(p)}
-                onEndMatch={() => void handleEndMatch()}
-                showEndMatch={lifecycle.isLive}
-              />
-            </div>
+            <KeeperMatchSettings
+              match={liveMatch}
+              onMatchPatched={(patch) => setLiveMatch((prev) => ({ ...prev, ...patch }))}
+              clockElapsedSeconds={clock.elapsedSeconds}
+              onJumpClock={setElapsed}
+              sport={sport}
+              period={clock.period}
+              allowsExtraTime={allowsEt}
+              allowsPenaltyShootout={allowsPens}
+              onSelectPeriod={(p) => void syncPeriod(p)}
+              onEndMatch={() => void handleEndMatch()}
+              showEndMatch={lifecycle.isLive}
+            />
           </div>
         )}
 
@@ -636,12 +610,39 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
 
         {config.showRunningClock ? (
           <div className="mb-3 text-center">
-            <span className="font-mono text-3xl font-bold tabular-nums sm:text-4xl">
-              {formatTime()}
-            </span>
+            <div className="inline-flex items-baseline justify-center gap-2">
+              <span className="font-mono text-3xl font-bold tabular-nums sm:text-4xl">
+                {formatTime()}
+              </span>
+              {sport === "football" &&
+                (clock.isTimeLost || clock.boardedStoppageMinutes > 0) && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setStoppageExactOpen((o) => !o)}
+                      className="rounded-full bg-accent px-2.5 py-0.5 font-display text-sm font-extrabold text-white"
+                      aria-label="Show exact stoppage time"
+                    >
+                      +{Math.max(clock.boardedStoppageMinutes, clock.isTimeLost ? 1 : 0)}
+                    </button>
+                    {stoppageExactOpen && (
+                      <div className="absolute left-1/2 top-full z-30 mt-1 -translate-x-1/2 whitespace-nowrap rounded-lg border border-rule bg-white px-3 py-2 shadow-lg">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-accent/50">
+                          Waste / ET
+                        </p>
+                        <p className="font-mono text-lg font-bold tabular-nums">
+                          {String(Math.floor(clock.stoppageSeconds / 60)).padStart(2, "0")}:
+                          {String(clock.stoppageSeconds % 60).padStart(2, "0")}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
+            </div>
             {config.showPeriodBadge && (
               <p className="mt-1 font-display text-xs font-bold uppercase tracking-wide text-accent/55">
                 {periodLabel}
+                {clock.isTimeLost ? " · wasting" : ""}
               </p>
             )}
           </div>
@@ -657,17 +658,18 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
         )}
 
         {config.showClockToggles && (
-          <div className="mx-auto max-w-sm">
+          <div className="mx-auto max-w-md">
             <MatchClockControls
               variant={clockVariant}
-              layout={sport === "football" ? "stack" : "inline"}
               size={sport === "football" ? "lg" : "md"}
               isRunning={clock.isRunning}
               isTimeLost={clock.isTimeLost}
               disabled={!loggingEnabled}
               onStop={() => setRunning(false)}
               onResume={() => setRunning(true)}
-              onPlaying={() => setRunning(!clock.isRunning)}
+              onPlaying={() => {
+                if (!clock.isRunning) setRunning(true);
+              }}
               onTimeLost={() => setTimeLost(!clock.isTimeLost)}
               clockOnLabel={config.clockOnLabel}
               clockOffLabel={config.clockOffLabel}

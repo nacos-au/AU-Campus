@@ -28,24 +28,31 @@ export function KeeperRosterColumn({
   const code = team?.department?.short_code ?? "AU";
   const displayName = title ?? team?.name ?? "Squad";
 
+  const institution = team?.institution ?? null;
+
   return (
     <div className="flex min-w-0 flex-col rounded-xl border border-rule bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule px-3 py-2.5">
-        <div className="flex min-w-0 items-center gap-2">
-          {team && <TeamCrest code={code} logoUrl={team.logo_url} alt={displayName} size="sm" />}
-          <p className="truncate font-display text-xs font-extrabold sm:text-sm">{displayName}</p>
+      <div className="space-y-2 border-b border-rule px-3 py-2.5">
+        <div className="flex min-w-0 items-start gap-2.5">
+          {team && <TeamCrest code={code} logoUrl={team.logo_url} alt={displayName} size="md" />}
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-display text-sm font-extrabold leading-tight">{displayName}</p>
+            <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-accent/50">
+              {institution?.trim() || code}
+            </p>
+          </div>
         </div>
         {teamQuickActions && teamQuickActions.length > 0 && onTeamQuickAction && (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1.5">
             {teamQuickActions.map((action) => (
               <button
                 key={action.id}
                 type="button"
                 onClick={() => onTeamQuickAction(action)}
-                className="interactive-btn flex shrink-0 items-center gap-1 rounded-md border border-rule px-2 py-1 text-[10px] font-bold uppercase"
+                className="interactive-btn inline-flex min-h-8 items-center gap-1.5 rounded-md border border-rule bg-white px-2.5 py-1.5 text-[11px] font-bold uppercase"
               >
                 {action.icon}
-                <span className="hidden sm:inline">{action.label}</span>
+                <span>{action.label}</span>
               </button>
             ))}
           </div>

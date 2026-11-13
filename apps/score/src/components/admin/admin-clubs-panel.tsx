@@ -146,6 +146,35 @@ export function AdminClubsPanel() {
     }
   }
 
+  async function handleSeedTestFootballTeams() {
+    setError("");
+    setMessage("");
+    setBusy(true);
+    try {
+      const res = await fetch("/api/admin/seed-test-football-teams", { method: "POST" });
+      const json = (await res.json()) as {
+        error?: string;
+        teams?: Array<{ name: string; players?: number }>;
+      };
+      if (!res.ok) {
+        setError(json.error ?? "Could not seed test teams");
+        return;
+      }
+      const summary = (json.teams ?? [])
+        .map((t) => `${t.name}${t.players != null ? ` (${t.players} players)` : ""}`)
+        .join(" · ");
+      setMessage(summary ? `Ready: ${summary}` : "Test football sides seeded.");
+      setTab("guest");
+      setSport("football");
+      window.dispatchEvent(new Event(ROSTER_UPDATED_EVENT));
+      await load("football");
+    } catch {
+      setError("Could not seed test teams");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleRemoveGuest(id: string, label: string) {
     const ok = await confirm({
       eyebrow: "Guest teams",
@@ -177,7 +206,7 @@ export function AdminClubsPanel() {
         onChange={(id) => setSport(id as SportId)}
       />
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {(
           [
             { id: "au" as const, label: `AU clubs (${auTeams.length})` },
@@ -197,6 +226,15 @@ export function AdminClubsPanel() {
             {t.label}
           </button>
         ))}
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void handleSeedTestFootballTeams()}
+          className="rounded-full border border-rule bg-white px-4 py-2 font-display text-sm font-bold text-accent/80 disabled:opacity-40"
+          title="Creates Test United + Test Athletic with crests and 14-player pools"
+        >
+          Seed football test sides
+        </button>
       </div>
 
       {tab === "import" ? (
