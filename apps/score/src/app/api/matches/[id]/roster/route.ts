@@ -34,8 +34,14 @@ async function sideRoster(
   if (tournamentId) {
     const roster = await listCompetitionRoster(tournamentId, teamId);
     if (!("error" in roster) && roster.nominated.length > 0) {
-      return roster.nominated.map(
-        (p) =>
+      const sorted = [...roster.nominated].sort((a, b) => {
+        const ja = a.jersey_number ?? 999;
+        const jb = b.jersey_number ?? 999;
+        if (ja !== jb) return ja - jb;
+        return a.last_name.localeCompare(b.last_name);
+      });
+      return sorted.map(
+        (p, i) =>
           ({
             id: p.player_id,
             department_id: "",
@@ -45,13 +51,28 @@ async function sideRoster(
             avatar_url: p.avatar_url,
             position: p.position,
             jersey_number: p.jersey_number ?? undefined,
-            squad_role: p.position ?? "Squad",
+            squad_role: i < 11 ? "Starting XI" : "Bench",
           }) satisfies SquadPlayer
       );
     }
   }
 
-  return fetchSquadForTeam(teamId, sportId);
+  const squad = await fetchSquadForTeam(teamId, sportId);
+  const sorted = [...squad].sort((a, b) => {
+    const ja = a.jersey_number ?? 999;
+    const jb = b.jersey_number ?? 999;
+    if (ja !== jb) return ja - jb;
+    return a.last_name.localeCompare(b.last_name);
+  });
+  return sorted.map((p, i) => ({
+    ...p,
+    squad_role:
+      p.squad_role && /start|bench|sub|xi/i.test(p.squad_role)
+        ? p.squad_role
+        : i < 11
+          ? "Starting XI"
+          : "Bench",
+  }));
 }
 
 /** Keeper match-day squad: lineup → competition roster → club pool. */

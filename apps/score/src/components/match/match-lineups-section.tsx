@@ -4,6 +4,7 @@ import { PlayerAvatar, TeamCrest } from "@/components/ui/team-crest";
 import { getPitchLineup } from "@/lib/data/demo-lineups";
 import type { DemoMatchEvent } from "@/lib/data/demo-match-details";
 import {
+  defaultLineupFromPool,
   fetchMatchLineupsBothSides,
   type PublicMatchLineup,
 } from "@/lib/data/match-lineups";
@@ -101,6 +102,51 @@ export async function MatchLineupsSection({
         </section>
       );
     }
+  }
+
+  // Default predicted XI from squad / competition pool (covers mock & guest sides).
+  const starterCount = sport === "basketball" ? 5 : sport === "volleyball" ? 6 : 11;
+  const [homeDefault, awayDefault] = await Promise.all([
+    match.home_team_id
+      ? defaultLineupFromPool(
+          match.id,
+          match.home_team_id,
+          match.tournament_id,
+          match.sport_id,
+          starterCount
+        )
+      : Promise.resolve(null),
+    match.away_team_id
+      ? defaultLineupFromPool(
+          match.id,
+          match.away_team_id,
+          match.tournament_id,
+          match.sport_id,
+          starterCount
+        )
+      : Promise.resolve(null),
+  ]);
+
+  if (homeDefault || awayDefault) {
+    return (
+      <section>
+        <LineupsHeader matchId={match.id} subtitle="Predicted XI · from squad pool" />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TeamLineupCard
+            teamName={match.home_team?.name ?? "Home"}
+            code={match.home_team?.department?.short_code ?? "H"}
+            logoUrl={match.home_team?.logo_url}
+            lineup={homeDefault}
+          />
+          <TeamLineupCard
+            teamName={match.away_team?.name ?? "Away"}
+            code={match.away_team?.department?.short_code ?? "A"}
+            logoUrl={match.away_team?.logo_url}
+            lineup={awayDefault}
+          />
+        </div>
+      </section>
+    );
   }
 
   return (

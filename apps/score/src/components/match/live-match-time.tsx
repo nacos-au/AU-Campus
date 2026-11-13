@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import { MatchTimeBar } from "@/components/match/match-time-bar";
 import type { DemoMatchEvent } from "@/lib/data/demo-match-details";
-import { useMatchClock } from "@/lib/keeper/use-match-clock";
+import type { Match } from "@/lib/types/database";
+import { clockFromServer, useMatchClock } from "@/lib/keeper/use-match-clock";
 import type { SportId } from "@/lib/utils/sport";
 
 export function LiveMatchTimeSection({
@@ -12,6 +14,7 @@ export function LiveMatchTimeSection({
   isLive,
   period,
   totalMinutes = 90,
+  match,
 }: {
   matchId: string;
   sport: SportId;
@@ -19,8 +22,27 @@ export function LiveMatchTimeSection({
   isLive: boolean;
   period: string;
   totalMinutes?: number;
+  /** When provided, drives the bar from published server clock. */
+  match?: Match;
 }) {
-  const { elapsedMinutes, formatTime, clock } = useMatchClock(matchId, { period });
+  const initial = match ? clockFromServer(match) : { period };
+  const { elapsedMinutes, formatTime, clock, applyServerClock } = useMatchClock(
+    matchId,
+    initial,
+    { spectator: Boolean(match) }
+  );
+
+  useEffect(() => {
+    if (!match) return;
+    applyServerClock(clockFromServer(match));
+  }, [
+    applyServerClock,
+    match,
+    match?.clock_elapsed_seconds,
+    match?.clock_is_running,
+    match?.clock_running_started_at,
+    match?.current_period,
+  ]);
 
   if (!isLive && sport !== "football") return null;
 

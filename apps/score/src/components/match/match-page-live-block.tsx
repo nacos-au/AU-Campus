@@ -34,7 +34,7 @@ export function MatchPageLiveBlock({
   const { reconcileFromServer } = lifecycle;
 
   const serverClock = clockFromServer(match);
-  const { formatTime, applyServerClock, clock } = useMatchClock(match.id, serverClock, {
+  const { formatTime, applyServerClock } = useMatchClock(match.id, serverClock, {
     spectator: true,
   });
 
@@ -91,8 +91,6 @@ export function MatchPageLiveBlock({
       status={status}
       sport={sport}
       liveTime={status === "live" ? formatTime() : undefined}
-      clockRunning={clock.isRunning}
-      clockTimeLost={clock.isTimeLost}
     />
   );
 }

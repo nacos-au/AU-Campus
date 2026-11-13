@@ -849,6 +849,7 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
           onSelectPlayer={(id) => selectPlayer("home", id)}
           title={singleLabel}
           laneHeader
+          subMode={subBatch?.side === "home" ? subBatch.phase : null}
         />
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:gap-4">
@@ -859,6 +860,7 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
             onSelectPlayer={(id) => selectPlayer("home", id)}
             teamQuickActions={config.teamQuickActions}
             onTeamQuickAction={(action) => logTeamQuickAction("home", action)}
+            subMode={subBatch?.side === "home" ? subBatch.phase : null}
           />
           <KeeperRosterColumn
             team={match.away_team}
@@ -867,6 +869,7 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
             onSelectPlayer={(id) => selectPlayer("away", id)}
             teamQuickActions={config.teamQuickActions}
             onTeamQuickAction={(action) => logTeamQuickAction("away", action)}
+            subMode={subBatch?.side === "away" ? subBatch.phase : null}
           />
         </div>
       ))}

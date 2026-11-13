@@ -124,6 +124,99 @@ export async function fetchMatchLineupsBothSides(
   return { home, away };
 }
 
+const DEFAULT_STARTERS = 11;
+
+/**
+ * Predicted default XI from club/competition pool when no sheet was submitted.
+ * First N by jersey (then name) are starters; the rest are bench.
+ */
+export async function defaultLineupFromPool(
+  matchId: string,
+  teamId: string,
+  tournamentId: string | null | undefined,
+  sportId: string,
+  starters = DEFAULT_STARTERS
+): Promise<PublicMatchLineup | null> {
+  const { listCompetitionRoster } = await import("@/lib/data/competition-rosters");
+  const { fetchSquadForTeam } = await import("@/lib/data/repository");
+
+  let pool: Array<{
+    id: string;
+    first_name: string;
+    last_name: string;
+    matric_number: string | null;
+    avatar_url: string | null;
+    position: string | null;
+    jersey_number: number | null;
+  }> = [];
+
+  if (tournamentId) {
+    const roster = await listCompetitionRoster(tournamentId, teamId);
+    if (!("error" in roster) && roster.nominated.length > 0) {
+      pool = roster.nominated.map((p) => ({
+        id: p.player_id,
+        first_name: p.first_name,
+        last_name: p.last_name,
+        matric_number: p.matric_number,
+        avatar_url: p.avatar_url,
+        position: p.position,
+        jersey_number: p.jersey_number,
+      }));
+    }
+  }
+
+  if (!pool.length) {
+    const squad = await fetchSquadForTeam(teamId, sportId);
+    pool = squad.map((p) => ({
+      id: p.id,
+      first_name: p.first_name,
+      last_name: p.last_name,
+      matric_number: p.matric_number,
+      avatar_url: p.avatar_url,
+      position: p.position,
+      jersey_number: p.jersey_number ?? null,
+    }));
+  }
+
+  if (!pool.length) return null;
+
+  pool.sort((a, b) => {
+    const ja = a.jersey_number ?? 999;
+    const jb = b.jersey_number ?? 999;
+    if (ja !== jb) return ja - jb;
+    return a.last_name.localeCompare(b.last_name);
+  });
+
+  const now = new Date().toISOString();
+  const players: SubmittedLineupEntry[] = pool.map((p, i) => ({
+    player_id: p.id,
+    is_starting: i < starters,
+    role: p.position,
+  }));
+
+  const resolved: ResolvedLineupPlayer[] = pool.map((p, i) => ({
+    id: p.id,
+    department_id: "",
+    first_name: p.first_name,
+    last_name: p.last_name,
+    matric_number: p.matric_number,
+    avatar_url: p.avatar_url,
+    position: p.position,
+    is_starting: i < starters,
+    lineup_role: p.position,
+  }));
+
+  return {
+    match_id: matchId,
+    team_id: teamId,
+    players,
+    submitted_at: now,
+    status: "predicted",
+    published_at: now,
+    resolved,
+  };
+}
+
 async function readMatchKickoff(matchId: string): Promise<string | null> {
   if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
     return null;

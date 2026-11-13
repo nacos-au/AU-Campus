@@ -1,12 +1,16 @@
 "use client";
 
+import { useEffect } from "react";
 import { Circle, Flag, Target } from "lucide-react";
 import type { Match } from "@/lib/types/database";
 import type { DemoMatchEvent } from "@/lib/data/demo-match-details";
 import { TeamCrest } from "@/components/ui/team-crest";
-import { MatchClockStatusBadge } from "@/components/match/match-clock-status-badge";
 import { MatchStatusPill } from "@/components/match/match-status-pill";
-import { useMatchClock } from "@/lib/keeper/use-match-clock";
+import {
+  clockFromServer,
+  regulationMinutesForPeriod,
+  useMatchClock,
+} from "@/lib/keeper/use-match-clock";
 import type { LifecycleStatus } from "@/lib/match/use-match-lifecycle";
 import { eventsToMarkers } from "@/lib/match/timeline";
 import { getMatchStats } from "@/lib/match/match-stats";
@@ -16,13 +20,25 @@ import { cn } from "@/lib/utils/cn";
 
 const TICKS = [0, 15, 30, 45, 60, 75, 90];
 
+/** Public stoppage badge only after regulation for that half (45' / 90' / ET). */
+function showPublicAddedTime(
+  elapsedSeconds: number,
+  period: string,
+  boardedMinutes: number
+): boolean {
+  if (boardedMinutes <= 0) return false;
+  const regulation = regulationMinutesForPeriod(period);
+  // half_2 regulation is 45 of the second half → wall clock ~90'
+  const thresholdMin =
+    period === "half_2" ? 90 : period.startsWith("extra_time") ? 90 + regulation : regulation;
+  return Math.floor(elapsedSeconds / 60) >= thresholdMin;
+}
+
 export function MatchLivePanel({
   match,
   events,
   status,
   liveTime,
-  clockRunning,
-  clockTimeLost,
 }: {
   match: Match;
   events: DemoMatchEvent[];
@@ -34,17 +50,39 @@ export function MatchLivePanel({
 }) {
   const isLive = status === "live";
   const totalMinutes = match.went_to_extra_time ? 120 : 90;
-  const { elapsedMinutes, formatTime, clock } = useMatchClock(match.id, {
-    period: match.current_period,
-  }, { spectator: liveTime != null });
+  const serverClock = clockFromServer(match);
+  const { elapsedMinutes, formatTime, clock, applyServerClock } = useMatchClock(
+    match.id,
+    serverClock,
+    { spectator: true }
+  );
+
+  useEffect(() => {
+    applyServerClock(clockFromServer(match));
+  }, [
+    applyServerClock,
+    match.clock_elapsed_seconds,
+    match.clock_is_running,
+    match.clock_is_time_lost,
+    match.clock_running_started_at,
+    match.clock_stoppage_seconds,
+    match.clock_boarded_stoppage_minutes,
+    match.clock_time_lost_started_at,
+    match.current_period,
+  ]);
+
   const displayTime = liveTime ?? formatTime();
-  const running = clockRunning ?? clock.isRunning;
-  const timeLost = clockTimeLost ?? clock.isTimeLost;
   const progress = Math.min(100, (elapsedMinutes / totalMinutes) * 100);
   const markers = eventsToMarkers(events, "football");
   const homeCode = match.home_team?.department?.short_code ?? "H";
   const awayCode = match.away_team?.department?.short_code ?? "A";
   const stats = getMatchStats(match.id, events, match.home_team_id ?? "");
+  const boarded = match.clock_boarded_stoppage_minutes ?? clock.boardedStoppageMinutes ?? 0;
+  const showAdded = showPublicAddedTime(
+    clock.elapsedSeconds,
+    clock.period || match.current_period || "half_1",
+    boarded
+  );
 
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -65,17 +103,27 @@ export function MatchLivePanel({
               liveTime={isLive ? displayTime : undefined}
             />
             <div className="mt-2 flex items-center justify-center gap-3 sm:gap-4">
-              <span className={cn("text-4xl sm:text-5xl", scoreClass(match.home_score, match.away_score, "home", "lg", "dark"))}>
+              <span
+                className={cn(
+                  "text-4xl sm:text-5xl",
+                  scoreClass(match.home_score, match.away_score, "home", "lg", "dark")
+                )}
+              >
                 {match.home_score}
               </span>
               <span className="text-2xl opacity-40">:</span>
-              <span className={cn("text-4xl sm:text-5xl", scoreClass(match.home_score, match.away_score, "away", "lg", "dark"))}>
+              <span
+                className={cn(
+                  "text-4xl sm:text-5xl",
+                  scoreClass(match.home_score, match.away_score, "away", "lg", "dark")
+                )}
+              >
                 {match.away_score}
               </span>
             </div>
-            {isLive && (match.clock_boarded_stoppage_minutes ?? 0) > 0 && (
+            {isLive && showAdded && (
               <p className="mt-2 font-display text-sm font-extrabold tracking-wide text-white/80">
-                +{match.clock_boarded_stoppage_minutes} added
+                +{boarded} added
               </p>
             )}
           </div>
@@ -86,16 +134,6 @@ export function MatchLivePanel({
             align="right"
           />
         </div>
-        {isLive && (
-          <div className="mt-4 flex justify-center">
-            <MatchClockStatusBadge
-              isRunning={running}
-              isTimeLost={timeLost}
-              clockOnLabel="Playing"
-              clockOffLabel="Waste"
-            />
-          </div>
-        )}
       </div>
 
       <div className="mt-4 rounded-xl border border-rule bg-[#1a1a1a] px-3 py-4 text-white sm:px-5 sm:py-5">
@@ -163,7 +201,12 @@ function TeamBlock({
   align: "left" | "right";
 }) {
   return (
-    <div className={cn("flex min-w-0 flex-1 items-center gap-2 sm:gap-3", align === "right" && "flex-row-reverse text-right")}>
+    <div
+      className={cn(
+        "flex min-w-0 flex-1 items-center gap-2 sm:gap-3",
+        align === "right" && "flex-row-reverse text-right"
+      )}
+    >
       <TeamCrest code={code} logoUrl={logo} alt={name} size="md" />
       <p className="hidden truncate font-display text-sm font-bold sm:block">{name}</p>
       <p className="truncate font-display text-xs font-bold sm:hidden">{code}</p>
@@ -185,13 +228,14 @@ function TimelineRow({
     <div className={cn("relative h-6", row === "bottom" && "mt-1")}>
       {markers.map((m) => {
         const left = `${Math.min(98, Math.max(2, (m.minute / totalMinutes) * 100))}%`;
-        const Icon = m.type.includes("goal") || m.type.includes("penalty_scored")
-          ? null
-          : m.type.includes("card") || m.type.includes("yellow") || m.type.includes("red")
-            ? Flag
-            : m.type.includes("offside")
-              ? Circle
-              : Target;
+        const Icon =
+          m.type.includes("goal") || m.type.includes("penalty_scored")
+            ? null
+            : m.type.includes("card") || m.type.includes("yellow") || m.type.includes("red")
+              ? Flag
+              : m.type.includes("offside")
+                ? Circle
+                : Target;
         const color = m.type.includes("yellow")
           ? "text-yellow-400"
           : m.type.includes("red")
