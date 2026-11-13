@@ -13,7 +13,7 @@ export interface MatchClockState {
   stoppageSeconds: number;
   /** Announced +N minutes for the current period (boarded stoppage). */
   boardedStoppageMinutes: number;
-  /** Wall-clock start of the current Time lost stretch. */
+  /** Wall-clock start of the current Waste stretch. */
   timeLostStartedAt: number | null;
 }
 
@@ -32,16 +32,16 @@ function storageKey(matchId: string) {
   return `au-score-clock-${matchId}`;
 }
 
-/** Elapsed seconds including wall time while the clock has been running. */
+/** Elapsed seconds including wall time while the match clock is running (waste does not pause). */
 export function liveElapsedSeconds(state: MatchClockState): number {
-  if (!state.isRunning || state.isTimeLost || state.runningStartedAt == null) {
+  if (!state.isRunning || state.runningStartedAt == null) {
     return state.elapsedSeconds;
   }
   const extra = Math.max(0, Math.floor((Date.now() - state.runningStartedAt) / 1000));
   return state.elapsedSeconds + extra;
 }
 
-/** Live stoppage seconds including an open Time lost stretch. */
+/** Live stoppage seconds including an open Waste stretch. */
 export function liveStoppageSeconds(state: MatchClockState): number {
   if (!state.isTimeLost || state.timeLostStartedAt == null) {
     return state.stoppageSeconds;
@@ -65,7 +65,7 @@ export function normalizeStored(raw: unknown): MatchClockState {
     runningStartedAt:
       typeof s.runningStartedAt === "number"
         ? s.runningStartedAt
-        : s.isRunning && !s.isTimeLost
+        : s.isRunning
           ? Date.now()
           : null,
     stoppageSeconds: typeof s.stoppageSeconds === "number" ? s.stoppageSeconds : 0,
@@ -133,7 +133,7 @@ export function clockFromServer(row: {
     isRunning: running,
     isTimeLost: timeLost,
     period: row.current_period && row.current_period !== "not_started" ? row.current_period : "half_1",
-    runningStartedAt: running && !timeLost ? startedAt : null,
+    runningStartedAt: running ? startedAt : null,
     stoppageSeconds: row.clock_stoppage_seconds ?? 0,
     boardedStoppageMinutes: row.clock_boarded_stoppage_minutes ?? 0,
     timeLostStartedAt: timeLost ? lostStartedAt : null,
@@ -143,13 +143,13 @@ export function clockFromServer(row: {
 export function clockToServerPayload(state: MatchClockState) {
   // Publish base elapsed + run start so spectators add wall time themselves
   // (do NOT publish already-composited live seconds or they double-count).
-  const running = state.isRunning && !state.isTimeLost;
+  // Match clock runs independently of waste — publish isRunning as-is.
   return {
     clock_elapsed_seconds: state.elapsedSeconds,
-    clock_is_running: running,
+    clock_is_running: state.isRunning,
     clock_is_time_lost: state.isTimeLost,
     clock_running_started_at:
-      running && state.runningStartedAt != null
+      state.isRunning && state.runningStartedAt != null
         ? new Date(state.runningStartedAt).toISOString()
         : null,
     clock_stoppage_seconds: state.stoppageSeconds,
@@ -192,6 +192,7 @@ export function formatFootballMatchTime(
 /**
  * Match clock. Uses wall-clock math so elapsed advances 1s/s even if the
  * interval drifts. Optionally pushes to the server for public spectators.
+ * Playing and Waste run in parallel — waste never pauses match elapsed.
  */
 export function useMatchClock(
   matchId: string,
@@ -270,7 +271,7 @@ export function useMatchClock(
   const flushWallClock = useCallback(() => {
     setClock((prev) => {
       let next = prev;
-      if (prev.isRunning && !prev.isTimeLost && prev.runningStartedAt != null) {
+      if (prev.isRunning && prev.runningStartedAt != null) {
         next = {
           ...next,
           elapsedSeconds: liveElapsedSeconds(prev),
@@ -278,13 +279,14 @@ export function useMatchClock(
         };
       }
       if (prev.isTimeLost && prev.timeLostStartedAt != null) {
+        const stoppage = liveStoppageSeconds(prev);
         next = {
           ...next,
-          stoppageSeconds: liveStoppageSeconds(prev),
+          stoppageSeconds: stoppage,
           timeLostStartedAt: Date.now(),
           boardedStoppageMinutes: Math.max(
             prev.boardedStoppageMinutes,
-            boardStoppageMinutesFromSeconds(liveStoppageSeconds(prev))
+            boardStoppageMinutesFromSeconds(stoppage)
           ),
         };
       }
@@ -308,7 +310,7 @@ export function useMatchClock(
 
   // Align UI refresh to real seconds (avoids slow/fast interval drift).
   useEffect(() => {
-    if ((!clock.isRunning || clock.isTimeLost) && !clock.isTimeLost) return;
+    if (!clock.isRunning && !clock.isTimeLost) return;
     let timeoutId: ReturnType<typeof setTimeout>;
     let cancelled = false;
     const schedule = () => {
@@ -329,7 +331,7 @@ export function useMatchClock(
   // Heartbeat while running or accumulating stoppage so spectators stay within ~5s.
   useEffect(() => {
     if (!syncToServer) return;
-    if ((!clock.isRunning || clock.isTimeLost) && !clock.isTimeLost) return;
+    if (!clock.isRunning && !clock.isTimeLost) return;
     const id = setInterval(() => {
       pushServer(clockRef.current);
     }, 5000);
@@ -362,12 +364,10 @@ export function useMatchClock(
 
   const setRunning = (isRunning: boolean) => {
     if (isRunning) {
-      const cleared = freezeTimeLost(clock);
       persist({
-        ...cleared,
-        elapsedSeconds: liveElapsedSeconds(cleared),
+        ...clock,
+        elapsedSeconds: liveElapsedSeconds(clock),
         isRunning: true,
-        isTimeLost: false,
         runningStartedAt: Date.now(),
       });
       return;
@@ -375,29 +375,34 @@ export function useMatchClock(
     persist(freezeRunning(clock));
   };
 
+  /** Toggle waste/stoppage accumulator — does not pause match elapsed. */
   const setTimeLost = (isTimeLost: boolean) => {
     if (isTimeLost) {
+      if (clock.isTimeLost) return;
       persist({
-        ...freezeRunning(clock),
+        ...clock,
+        elapsedSeconds: liveElapsedSeconds(clock),
+        runningStartedAt: clock.isRunning ? Date.now() : clock.runningStartedAt,
         isTimeLost: true,
-        isRunning: false,
         timeLostStartedAt: Date.now(),
       });
       return;
     }
-    // Resume play — board accumulated stoppage as +N.
-    const frozen = freezeTimeLost(clock);
-    persist({
-      ...frozen,
-      isTimeLost: false,
-      isRunning: true,
-      runningStartedAt: Date.now(),
+    // Board accumulated stoppage as +N; leave Playing state alone.
+    const frozen = freezeTimeLost({
+      ...clock,
+      elapsedSeconds: liveElapsedSeconds(clock),
+      runningStartedAt: clock.isRunning ? Date.now() : null,
     });
+    persist(frozen);
   };
 
-  /** Freeze any open time-lost stretch and return boarded +N (for logging). */
+  /** Freeze any open waste stretch and return boarded +N (for logging). */
   const boardStoppage = (): number => {
-    const frozen = freezeTimeLost(freezeRunning(clock));
+    const frozen = freezeTimeLost({
+      ...freezeRunning(clock),
+      // boardStoppage used at half-end — stop playing too
+    });
     persist(frozen);
     return frozen.boardedStoppageMinutes;
   };
@@ -451,18 +456,19 @@ export function useMatchClock(
       timeLostStartedAt: null,
     });
 
-  /** Jump / set elapsed (late start). Keeps running state. */
+  /** Jump / set elapsed (time hopper / late start). Keeps running + waste state. */
   const setElapsed = (seconds: number) => {
     const nextSeconds = Math.max(0, Math.floor(seconds));
-    const frozenLost = freezeTimeLost(clock);
-    const running = frozenLost.isRunning || (!frozenLost.isTimeLost && clock.isRunning);
+    const running = clock.isRunning;
+    const wasting = clock.isTimeLost;
     persist({
-      ...frozenLost,
+      ...clock,
       elapsedSeconds: nextSeconds,
       isRunning: running,
-      isTimeLost: false,
+      isTimeLost: wasting,
       runningStartedAt: running ? Date.now() : null,
-      timeLostStartedAt: null,
+      timeLostStartedAt: wasting ? Date.now() : null,
+      stoppageSeconds: wasting ? liveStoppageSeconds(clock) : clock.stoppageSeconds,
     });
   };
 

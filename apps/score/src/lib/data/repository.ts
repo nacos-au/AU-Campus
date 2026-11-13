@@ -1036,6 +1036,10 @@ export async function updateMatchStatus(
   if (status === "live" && opts?.freshKickoff) {
     return resetMatchForKickoff(matchId);
   }
+  if (status === "live") {
+    const gate = await assertKickoffSquad(matchId);
+    if ("error" in gate) return gate;
+  }
   return updateMatch(matchId, {
     status,
     ...(status === "postponed"
@@ -1044,10 +1048,57 @@ export async function updateMatchStatus(
   });
 }
 
+async function assertKickoffSquad(matchId: string): Promise<{ ok: true } | { error: string }> {
+  const { assertSidesHaveMinStarters } = await import("@/lib/data/lineup-gate");
+
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    const demo = getDemoMatchById(matchId);
+    if (!demo) return { error: "Match not found" };
+    if (!demo.home_team_id || !demo.away_team_id) return { ok: true };
+    return assertSidesHaveMinStarters({
+      tournamentId: demo.tournament_id,
+      homeTeamId: demo.home_team_id,
+      awayTeamId: demo.away_team_id,
+      homeTeamName: demo.home_team?.name,
+      awayTeamName: demo.away_team?.name,
+      matchId,
+    });
+  }
+
+  const supabase = await createClient();
+  const { data } = (await supabase
+    .from("matches")
+    .select("id, tournament_id, home_team_id, away_team_id")
+    .eq("id", matchId)
+    .is("deleted_at", null)
+    .maybeSingle()) as {
+    data: {
+      id: string;
+      tournament_id: string | null;
+      home_team_id: string | null;
+      away_team_id: string | null;
+    } | null;
+  };
+
+  if (!data?.home_team_id || !data.away_team_id) {
+    return { ok: true };
+  }
+
+  return assertSidesHaveMinStarters({
+    tournamentId: data.tournament_id,
+    homeTeamId: data.home_team_id,
+    awayTeamId: data.away_team_id,
+    matchId,
+  });
+}
+
 /** Wipe prior theatre and open the clock at 00:00 for a clean kick-off. */
 export async function resetMatchForKickoff(
   matchId: string
 ): Promise<{ ok: true } | { error: string }> {
+  const gate = await assertKickoffSquad(matchId);
+  if ("error" in gate) return gate;
+
   if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
     return updateDemoMatch(matchId, {
       status: "live",

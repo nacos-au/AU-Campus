@@ -4,6 +4,7 @@ import {
   getCompetitionDetail,
   listCompetitionFixtures,
 } from "@/lib/data/competition-rosters";
+import { assertSidesHaveMinStarters } from "@/lib/data/lineup-gate";
 import { createMatch } from "@/lib/data/repository";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -74,6 +75,15 @@ export async function POST(request: Request, ctx: Ctx) {
       { error: "Both sides must be registered in this competition" },
       { status: 400 }
     );
+  }
+
+  const squadGate = await assertSidesHaveMinStarters({
+    tournamentId: id,
+    homeTeamId: body.home_team_id,
+    awayTeamId: body.away_team_id,
+  });
+  if ("error" in squadGate) {
+    return NextResponse.json({ error: squadGate.error }, { status: 400 });
   }
 
   const result = await createMatch({

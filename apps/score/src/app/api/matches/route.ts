@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin, requireMatchStaff } from "@/lib/auth/roles";
+import { assertSidesHaveMinStarters } from "@/lib/data/lineup-gate";
 import { createMatch, listMatchesForAdmin } from "@/lib/data/repository";
 import type { MatchScope } from "@/lib/types/database";
 
@@ -42,6 +43,20 @@ export async function POST(request: Request) {
   }
   if (body.status !== "scheduled" && body.status !== "completed") {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  }
+
+  if (body.status === "scheduled" && body.tournament_id) {
+    const squadGate = await assertSidesHaveMinStarters({
+      tournamentId: body.tournament_id,
+      homeTeamId: body.home_team_id,
+      awayTeamId: body.away_team_id,
+      sportSlug: body.sport_id?.startsWith("sport-")
+        ? body.sport_id.replace(/^sport-/, "")
+        : null,
+    });
+    if ("error" in squadGate) {
+      return NextResponse.json({ error: squadGate.error }, { status: 400 });
+    }
   }
 
   const result = await createMatch({

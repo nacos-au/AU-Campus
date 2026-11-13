@@ -66,23 +66,27 @@ export function useMatchLifecycle(
     return () => window.removeEventListener("storage", onStorage);
   }, [matchId]);
 
-  const startMatch = useCallback(async () => {
-    const next: MatchLifecycleState = {
-      status: "live",
-      startedAt: new Date().toISOString(),
-      endedAt: null,
-    };
-    persist(next);
-
+  const startMatch = useCallback(async (): Promise<{ ok: true } | { error: string }> => {
     try {
-      await fetch(`/api/matches/${matchId}/status`, {
+      const res = await fetch(`/api/matches/${matchId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "live", fresh_kickoff: true }),
       });
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        return { error: json.error ?? "Could not start match" };
+      }
     } catch {
-      /* demo/local still works */
+      /* demo/local still works without API */
     }
+
+    persist({
+      status: "live",
+      startedAt: new Date().toISOString(),
+      endedAt: null,
+    });
+    return { ok: true };
   }, [matchId, persist]);
 
   const endMatch = useCallback(async () => {

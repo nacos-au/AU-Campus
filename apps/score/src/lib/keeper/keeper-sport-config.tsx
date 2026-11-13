@@ -177,7 +177,7 @@ const CONFIG: Record<SportId, KeeperSportConfig> = {
     showRunningClock: true,
     showClockToggles: true,
     clockOnLabel: "Playing",
-    clockOffLabel: "Time lost",
+    clockOffLabel: "Waste",
     showPeriodBadge: false,
     assistAfter: ["goal"],
     assistPromptLabel: "Add assist?",

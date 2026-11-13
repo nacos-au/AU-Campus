@@ -74,7 +74,7 @@ export function MatchLiveEventsPoller({
 
   // Local 1s refresh for published running clock between polls.
   useEffect(() => {
-    if (!match.clock_is_running || match.clock_is_time_lost) return;
+    if (!match.clock_is_running && !match.clock_is_time_lost) return;
     let timeoutId: ReturnType<typeof setTimeout>;
     let cancelled = false;
     const schedule = () => {

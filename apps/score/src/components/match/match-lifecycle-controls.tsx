@@ -11,12 +11,15 @@ export function MatchLifecycleControls({
   onStart,
   onEnd,
   className,
+  /** When false, hide the live End match button (moved into settings). */
+  showEnd = true,
 }: {
   status: LifecycleStatus;
   scheduledAt: string | null | undefined;
   onStart: () => void;
   onEnd: () => void;
   className?: string;
+  showEnd?: boolean;
 }) {
   if (status === "completed") {
     return (
@@ -42,6 +45,19 @@ export function MatchLifecycleControls({
           Starts the clock at 0:00 and marks the fixture live for all viewers.
         </p>
       </div>
+    );
+  }
+
+  if (!showEnd) {
+    return (
+      <p
+        className={cn(
+          "inline-flex items-center rounded-full bg-red-50 px-2.5 py-0.5 font-display text-[11px] font-extrabold uppercase tracking-wide text-red-700",
+          className
+        )}
+      >
+        Live
+      </p>
     );
   }
 

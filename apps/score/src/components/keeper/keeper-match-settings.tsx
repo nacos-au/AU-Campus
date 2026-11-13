@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Settings, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { Flag, Settings, X } from "lucide-react";
+import { FootballPeriodControls } from "@/components/keeper/football-period-controls";
 import type { Match } from "@/lib/types/database";
 
 export function KeeperMatchSettings({
@@ -9,15 +11,30 @@ export function KeeperMatchSettings({
   onMatchPatched,
   clockElapsedSeconds = 0,
   onJumpClock,
+  sport,
+  period,
+  allowsExtraTime,
+  allowsPenaltyShootout,
+  onSelectPeriod,
+  onEndMatch,
+  showEndMatch,
 }: {
   match: Match;
   onMatchPatched?: (patch: Partial<Match>) => void;
-  /** Current elapsed seconds for the jump-clock control. */
+  /** Current elapsed seconds for the time hopper. */
   clockElapsedSeconds?: number;
-  /** Late-start / manual jump — sets absolute elapsed seconds. */
+  /** Late-start / catch-up — sets absolute elapsed seconds. */
   onJumpClock?: (elapsedSeconds: number) => void;
+  sport?: string;
+  period?: string;
+  allowsExtraTime?: boolean;
+  allowsPenaltyShootout?: boolean;
+  onSelectPeriod?: (period: string) => void;
+  onEndMatch?: () => void;
+  showEndMatch?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [referee, setReferee] = useState(match.referee_name ?? "");
   const [ar1, setAr1] = useState(match.assistant_referee_1 ?? "");
   const [ar2, setAr2] = useState(match.assistant_referee_2 ?? "");
@@ -27,6 +44,14 @@ export function KeeperMatchSettings({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    if (!open) return;
+    setJumpMinutes(Math.floor(clockElapsedSeconds / 60));
+    setJumpSeconds(clockElapsedSeconds % 60);
+  }, [open, clockElapsedSeconds]);
 
   function applyJump() {
     if (!onJumpClock) return;
@@ -123,6 +148,192 @@ export function KeeperMatchSettings({
     }
   }
 
+  function confirmEndMatch() {
+    if (!onEndMatch) return;
+    if (!confirm("End this match? Scores and the public page will show full time.")) return;
+    onEndMatch();
+    setOpen(false);
+  }
+
+  const modal =
+    open && mounted
+      ? createPortal(
+          <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 p-4 sm:items-center">
+            <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h3 className="font-display text-lg font-extrabold">Match settings</h3>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg p-1.5 text-accent/60 hover:bg-surface"
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {onJumpClock && (
+                <div className="mb-6 space-y-3 border-b border-rule pb-5">
+                  <p className="text-xs font-bold uppercase tracking-wide text-accent/50">
+                    Time hopper
+                  </p>
+                  <p className="text-xs text-accent/60">
+                    For late platform kick-offs: set the match clock to absolute MM:SS so highlights
+                    stamp to real match time.
+                  </p>
+                  <div className="flex items-end gap-2">
+                    <label className="block flex-1 text-sm">
+                      <span className="font-semibold">Minutes</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={150}
+                        className="mt-1 w-full rounded-lg border border-rule px-3 py-2 font-mono"
+                        value={jumpMinutes}
+                        onChange={(e) => setJumpMinutes(Number(e.target.value))}
+                      />
+                    </label>
+                    <span className="pb-2 font-display text-xl font-bold">:</span>
+                    <label className="block flex-1 text-sm">
+                      <span className="font-semibold">Seconds</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={59}
+                        className="mt-1 w-full rounded-lg border border-rule px-3 py-2 font-mono"
+                        value={jumpSeconds}
+                        onChange={(e) => setJumpSeconds(Number(e.target.value))}
+                      />
+                    </label>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={applyJump}
+                    className="w-full rounded-lg border border-rule px-4 py-2 text-sm font-bold disabled:opacity-40"
+                  >
+                    Set clock
+                  </button>
+                </div>
+              )}
+
+              {sport === "football" && onSelectPeriod && period && (
+                <div className="mb-6 space-y-3 border-b border-rule pb-5">
+                  <p className="text-xs font-bold uppercase tracking-wide text-accent/50">
+                    Half / period
+                  </p>
+                  <p className="text-xs text-accent/60">
+                    Intentional period changes only — boards stoppage when moving to 2nd or ET.
+                  </p>
+                  <FootballPeriodControls
+                    period={period}
+                    allowsExtraTime={allowsExtraTime}
+                    allowsPenaltyShootout={allowsPenaltyShootout}
+                    onSelect={(p) => {
+                      onSelectPeriod(p);
+                      setMessage(`Period set to ${p.replace(/_/g, " ")}.`);
+                    }}
+                  />
+                </div>
+              )}
+
+              {showEndMatch && onEndMatch && (
+                <div className="mb-6 space-y-3 border-b border-rule pb-5">
+                  <p className="text-xs font-bold uppercase tracking-wide text-accent/50">
+                    End match
+                  </p>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={confirmEndMatch}
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 font-display text-sm font-bold text-red-800 disabled:opacity-40"
+                  >
+                    <Flag className="h-4 w-4" />
+                    End match
+                  </button>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <p className="text-xs font-bold uppercase tracking-wide text-accent/50">Officials</p>
+                <label className="block text-sm">
+                  <span className="font-semibold">Referee</span>
+                  <input
+                    className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
+                    value={referee}
+                    onChange={(e) => setReferee(e.target.value)}
+                    placeholder="Optional"
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="font-semibold">Assistant referee 1</span>
+                  <input
+                    className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
+                    value={ar1}
+                    onChange={(e) => setAr1(e.target.value)}
+                    placeholder="Optional"
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="font-semibold">Assistant referee 2</span>
+                  <input
+                    className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
+                    value={ar2}
+                    onChange={(e) => setAr2(e.target.value)}
+                    placeholder="Optional"
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void saveOfficials()}
+                  className="btn-filled w-full rounded-lg px-4 py-2 text-sm font-bold disabled:opacity-40"
+                >
+                  Save officials
+                </button>
+              </div>
+
+              <div className="mt-6 space-y-3 border-t border-rule pt-5">
+                <p className="text-xs font-bold uppercase tracking-wide text-accent/50">Postpone</p>
+                <label className="block text-sm">
+                  <span className="font-semibold">Reason</span>
+                  <textarea
+                    className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
+                    rows={3}
+                    value={postponeReason}
+                    onChange={(e) => setPostponeReason(e.target.value)}
+                    placeholder="Weather, pitch conditions, …"
+                  />
+                </label>
+                {match.status === "postponed" ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void restoreScheduled()}
+                    className="w-full rounded-lg border border-rule px-4 py-2 text-sm font-bold disabled:opacity-40"
+                  >
+                    Restore to scheduled
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={busy || match.status === "live" || match.status === "completed"}
+                    onClick={() => void postponeMatch()}
+                    className="w-full rounded-lg border border-amber-300 px-4 py-2 text-sm font-bold text-amber-800 disabled:opacity-40"
+                  >
+                    Postpone match
+                  </button>
+                )}
+              </div>
+
+              {message && <p className="mt-3 text-sm font-semibold text-emerald-700">{message}</p>}
+              {error && <p className="mt-3 text-sm font-semibold text-red-600">{error}</p>}
+            </div>
+          </div>,
+          document.body
+        )
+      : null;
+
   return (
     <>
       <button
@@ -133,144 +344,7 @@ export function KeeperMatchSettings({
       >
         <Settings className="h-4 w-4" />
       </button>
-
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h3 className="font-display text-lg font-extrabold">Match settings</h3>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="rounded-lg p-1.5 text-accent/60 hover:bg-surface"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {onJumpClock && (
-              <div className="mb-6 space-y-3 border-b border-rule pb-5">
-                <p className="text-xs font-bold uppercase tracking-wide text-accent/50">
-                  Jump clock (late start)
-                </p>
-                <p className="text-xs text-accent/60">
-                  Last-resort: set the match clock to an absolute MM:SS so keepers can catch up after
-                  a delayed kick-off.
-                </p>
-                <div className="flex items-end gap-2">
-                  <label className="block flex-1 text-sm">
-                    <span className="font-semibold">Minutes</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={150}
-                      className="mt-1 w-full rounded-lg border border-rule px-3 py-2 font-mono"
-                      value={jumpMinutes}
-                      onChange={(e) => setJumpMinutes(Number(e.target.value))}
-                    />
-                  </label>
-                  <span className="pb-2 font-display text-xl font-bold">:</span>
-                  <label className="block flex-1 text-sm">
-                    <span className="font-semibold">Seconds</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={59}
-                      className="mt-1 w-full rounded-lg border border-rule px-3 py-2 font-mono"
-                      value={jumpSeconds}
-                      onChange={(e) => setJumpSeconds(Number(e.target.value))}
-                    />
-                  </label>
-                </div>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={applyJump}
-                  className="w-full rounded-lg border border-rule px-4 py-2 text-sm font-bold disabled:opacity-40"
-                >
-                  Set clock
-                </button>
-              </div>
-            )}
-
-            <div className="space-y-3">
-              <p className="text-xs font-bold uppercase tracking-wide text-accent/50">Officials</p>
-              <label className="block text-sm">
-                <span className="font-semibold">Referee</span>
-                <input
-                  className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
-                  value={referee}
-                  onChange={(e) => setReferee(e.target.value)}
-                  placeholder="Optional"
-                />
-              </label>
-              <label className="block text-sm">
-                <span className="font-semibold">Assistant referee 1</span>
-                <input
-                  className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
-                  value={ar1}
-                  onChange={(e) => setAr1(e.target.value)}
-                  placeholder="Optional"
-                />
-              </label>
-              <label className="block text-sm">
-                <span className="font-semibold">Assistant referee 2</span>
-                <input
-                  className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
-                  value={ar2}
-                  onChange={(e) => setAr2(e.target.value)}
-                  placeholder="Optional"
-                />
-              </label>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void saveOfficials()}
-                className="btn-filled w-full rounded-lg px-4 py-2 text-sm font-bold disabled:opacity-40"
-              >
-                Save officials
-              </button>
-            </div>
-
-            <div className="mt-6 space-y-3 border-t border-rule pt-5">
-              <p className="text-xs font-bold uppercase tracking-wide text-accent/50">Postpone</p>
-              <label className="block text-sm">
-                <span className="font-semibold">Reason</span>
-                <textarea
-                  className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
-                  rows={3}
-                  value={postponeReason}
-                  onChange={(e) => setPostponeReason(e.target.value)}
-                  placeholder="Weather, pitch conditions, …"
-                />
-              </label>
-              {match.status === "postponed" ? (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void restoreScheduled()}
-                  className="w-full rounded-lg border border-rule px-4 py-2 text-sm font-bold disabled:opacity-40"
-                >
-                  Restore to scheduled
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled={busy || match.status === "live" || match.status === "completed"}
-                  onClick={() => void postponeMatch()}
-                  className="w-full rounded-lg border border-amber-300 px-4 py-2 text-sm font-bold text-amber-800 disabled:opacity-40"
-                >
-                  Postpone match
-                </button>
-              )}
-            </div>
-
-            {message && <p className="mt-3 text-sm font-semibold text-emerald-700">{message}</p>}
-            {error && <p className="mt-3 text-sm font-semibold text-red-600">{error}</p>}
-          </div>
-        </div>
-      )}
+      {modal}
     </>
   );
 }

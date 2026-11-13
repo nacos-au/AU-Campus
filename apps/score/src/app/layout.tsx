@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
+import { NavigationProgress } from "@/components/layout/navigation-progress";
 import { ConfirmProvider } from "@/components/ui/confirm-dialog";
 import { QueryProvider } from "@/providers/query-provider";
 import "./globals.css";
@@ -47,6 +49,9 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col bg-white font-sans text-ink">
         <QueryProvider>
           <ConfirmProvider>
+            <Suspense fallback={null}>
+              <NavigationProgress />
+            </Suspense>
             <SiteHeader />
             <main className="flex-1 bg-white">{children}</main>
             <SiteFooter />

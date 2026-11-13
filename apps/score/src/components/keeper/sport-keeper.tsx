@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Match } from "@/lib/types/database";
 import { AdminMatchLineupPanel } from "@/components/admin/admin-match-lineup-panel";
-import { FootballPeriodControls } from "@/components/keeper/football-period-controls";
 import { KeeperActionBar } from "@/components/keeper/keeper-action-bar";
 import { KeeperEventTimeline } from "@/components/keeper/keeper-event-timeline";
 import { KeeperMatchSettings } from "@/components/keeper/keeper-match-settings";
@@ -92,6 +91,8 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
   } | null>(null);
   const [finishPrompt, setFinishPrompt] = useState<{ logId: string; athleteName: string } | null>(null);
   const [finishTimeInput, setFinishTimeInput] = useState("");
+  const [stoppageExactOpen, setStoppageExactOpen] = useState(false);
+  const [startError, setStartError] = useState("");
 
   const allowsEt = Boolean(match.allows_extra_time ?? match.tournament?.rules?.extra_time);
   const allowsPens = Boolean(
@@ -161,10 +162,15 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
   const loggingEnabled = lifecycle.isLive;
 
   async function handleStartMatch() {
+    setStartError("");
+    const result = await lifecycle.startMatch();
+    if ("error" in result) {
+      setStartError(result.error);
+      return;
+    }
     // Every kick-off starts from scratch: empty log, 00:00, zero score (server wipe).
     clearLogs();
     startRunning(sport === "football" ? "half_1" : match.current_period);
-    await lifecycle.startMatch();
   }
 
   async function syncPeriod(period: string) {
@@ -533,106 +539,142 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
         </div>
       )}
       <div className="sticky top-0 z-20 -mx-4 mb-4 border-b border-rule bg-white/95 px-4 py-3 backdrop-blur sm:-mx-0 sm:rounded-xl sm:border sm:px-4">
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <MatchLifecycleControls
-            status={lifecycle.status}
-            scheduledAt={match.scheduled_at}
-            onStart={handleStartMatch}
-            onEnd={handleEndMatch}
-            className="min-w-0 flex-1"
-          />
-          <KeeperMatchSettings
-            match={liveMatch}
-            onMatchPatched={(patch) => setLiveMatch((prev) => ({ ...prev, ...patch }))}
-            clockElapsedSeconds={clock.elapsedSeconds}
-            onJumpClock={setElapsed}
-          />
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex min-w-0 flex-col gap-1">
-            {config.showRunningClock ? (
-              <div className="flex flex-wrap items-baseline gap-2">
-                <span className="font-mono text-3xl font-bold tabular-nums sm:text-4xl">
-                  {formatTime()}
-                </span>
-                {sport === "football" && clock.boardedStoppageMinutes > 0 && (
-                  <span className="rounded-full bg-accent px-2.5 py-0.5 font-display text-sm font-extrabold text-white">
-                    +{clock.boardedStoppageMinutes}
-                  </span>
+        {lifecycle.isScheduled ? (
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <MatchLifecycleControls
+              status={lifecycle.status}
+              scheduledAt={match.scheduled_at}
+              onStart={() => void handleStartMatch()}
+              onEnd={handleEndMatch}
+              showEnd={false}
+              className="min-w-0 flex-1"
+            />
+            <KeeperMatchSettings
+              match={liveMatch}
+              onMatchPatched={(patch) => setLiveMatch((prev) => ({ ...prev, ...patch }))}
+              clockElapsedSeconds={clock.elapsedSeconds}
+              onJumpClock={setElapsed}
+              sport={sport}
+              period={clock.period}
+              allowsExtraTime={allowsEt}
+              allowsPenaltyShootout={allowsPens}
+              onSelectPeriod={(p) => void syncPeriod(p)}
+              onEndMatch={() => void handleEndMatch()}
+              showEndMatch={false}
+            />
+          </div>
+        ) : (
+          <div className="relative mb-2 flex items-center justify-between gap-2">
+            <MatchLifecycleControls
+              status={lifecycle.status}
+              scheduledAt={match.scheduled_at}
+              onStart={() => void handleStartMatch()}
+              onEnd={handleEndMatch}
+              showEnd={false}
+              className="shrink-0"
+            />
+            <div className="flex items-center gap-2">
+              {sport === "football" &&
+                (clock.boardedStoppageMinutes > 0 || clock.isTimeLost) && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setStoppageExactOpen((o) => !o)}
+                      className="rounded-full bg-accent px-2.5 py-0.5 font-display text-sm font-extrabold text-white"
+                      aria-label="Show exact stoppage time"
+                    >
+                      +{clock.boardedStoppageMinutes || 1}
+                    </button>
+                    {stoppageExactOpen && (
+                      <div className="absolute right-0 top-full z-30 mt-1 whitespace-nowrap rounded-lg border border-rule bg-white px-3 py-2 shadow-lg">
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-accent/50">
+                          Waste clock
+                        </p>
+                        <p className="font-mono text-lg font-bold tabular-nums">
+                          {String(Math.floor(clock.stoppageSeconds / 60)).padStart(2, "0")}:
+                          {String(clock.stoppageSeconds % 60).padStart(2, "0")}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 )}
-              </div>
-            ) : (
-              <span className="font-display text-lg font-extrabold">{match.home_team?.name}</span>
-            )}
-            {config.showPeriodBadge && (
-              <span className="inline-flex w-fit rounded-full bg-surface px-2.5 py-0.5 font-display text-xs font-bold">
-                {periodLabel}
+              <KeeperMatchSettings
+                match={liveMatch}
+                onMatchPatched={(patch) => setLiveMatch((prev) => ({ ...prev, ...patch }))}
+                clockElapsedSeconds={clock.elapsedSeconds}
+                onJumpClock={setElapsed}
+                sport={sport}
+                period={clock.period}
+                allowsExtraTime={allowsEt}
+                allowsPenaltyShootout={allowsPens}
+                onSelectPeriod={(p) => void syncPeriod(p)}
+                onEndMatch={() => void handleEndMatch()}
+                showEndMatch={lifecycle.isLive}
+              />
+            </div>
+          </div>
+        )}
+
+        {config.showPrimaryScore && (
+          <div className="mb-1 text-center">
+            <span className="font-display text-4xl font-extrabold tabular-nums sm:text-5xl">
+              <span className={scoreClass(primaryScore.home, primaryScore.away, "home", "sm")}>
+                {primaryScore.home}
               </span>
-            )}
-            {sport === "football" && (
-              <div className="flex flex-wrap gap-1.5 text-[10px] font-bold uppercase tracking-wide text-accent/55">
-                {allowsEt && <span className="rounded-full border border-rule px-2 py-0.5">ET on</span>}
-                {allowsPens && <span className="rounded-full border border-rule px-2 py-0.5">Pens on</span>}
-                {clock.isTimeLost && (
-                  <span className="rounded-full border border-amber-400 bg-amber-50 px-2 py-0.5 text-amber-900">
-                    Accumulating stoppage
-                  </span>
-                )}
-              </div>
-            )}
-            {config.showPrimaryScore && (
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span className="font-display text-lg font-extrabold tabular-nums">
-                  <span className={scoreClass(primaryScore.home, primaryScore.away, "home", "sm")}>
-                    {primaryScore.home}
-                  </span>
-                  <span className="mx-1 opacity-30">–</span>
-                  <span className={scoreClass(primaryScore.home, primaryScore.away, "away", "sm")}>
-                    {primaryScore.away}
-                  </span>
-                  <span className="ml-1.5 text-xs font-semibold uppercase opacity-40">
-                    {config.primaryScoreLabel}
-                  </span>
-                </span>
-                {setScore && (
-                  <span className="font-display text-sm font-bold tabular-nums opacity-70">
-                    {config.setScoreLabel}: {setScore.home}–{setScore.away}
-                  </span>
-                )}
-              </div>
+              <span className="mx-2 opacity-30">–</span>
+              <span className={scoreClass(primaryScore.home, primaryScore.away, "away", "sm")}>
+                {primaryScore.away}
+              </span>
+            </span>
+            {setScore && (
+              <p className="mt-0.5 font-display text-sm font-bold tabular-nums opacity-70">
+                {config.setScoreLabel}: {setScore.home}–{setScore.away}
+              </p>
             )}
           </div>
-          {config.showClockToggles && (
+        )}
+
+        {config.showRunningClock ? (
+          <div className="mb-3 text-center">
+            <span className="font-mono text-3xl font-bold tabular-nums sm:text-4xl">
+              {formatTime()}
+            </span>
+            {config.showPeriodBadge && (
+              <p className="mt-1 font-display text-xs font-bold uppercase tracking-wide text-accent/55">
+                {periodLabel}
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="mb-3 text-center">
+            <span className="font-display text-lg font-extrabold">{match.home_team?.name}</span>
+            {config.showPeriodBadge && (
+              <p className="mt-1 font-display text-xs font-bold uppercase tracking-wide text-accent/55">
+                {periodLabel}
+              </p>
+            )}
+          </div>
+        )}
+
+        {config.showClockToggles && (
+          <div className="mx-auto max-w-sm">
             <MatchClockControls
               variant={clockVariant}
+              layout={sport === "football" ? "stack" : "inline"}
+              size={sport === "football" ? "lg" : "md"}
               isRunning={clock.isRunning}
               isTimeLost={clock.isTimeLost}
               disabled={!loggingEnabled}
               onStop={() => setRunning(false)}
-              onResume={() => {
-                setTimeLost(false);
-                setRunning(true);
-              }}
-              onPlaying={() => {
-                setTimeLost(false);
-                setRunning(true);
-              }}
-              onTimeLost={() => setTimeLost(true)}
+              onResume={() => setRunning(true)}
+              onPlaying={() => setRunning(!clock.isRunning)}
+              onTimeLost={() => setTimeLost(!clock.isTimeLost)}
               clockOnLabel={config.clockOnLabel}
               clockOffLabel={config.clockOffLabel}
             />
-          )}
-        </div>
-        {sport === "football" && loggingEnabled && (
-          <div className="mt-3 border-t border-rule pt-3">
-            <FootballPeriodControls
-              period={clock.period}
-              allowsExtraTime={allowsEt}
-              allowsPenaltyShootout={allowsPens}
-              onSelect={(p) => void syncPeriod(p)}
-            />
           </div>
         )}
+
         {trackResults.length > 0 && (
           <ol className="mt-3 flex flex-wrap gap-2 border-t border-rule pt-3 text-xs font-bold">
             {trackResults.map((r) => (
@@ -652,6 +694,12 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
           </ol>
         )}
       </div>
+
+      {startError && (
+        <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-center text-sm font-semibold text-red-800">
+          {startError}
+        </p>
+      )}
 
       {!loggingEnabled && lifecycle.isScheduled && (
         <p className="mb-4 rounded-lg bg-surface px-3 py-2 text-center text-sm font-semibold opacity-70">

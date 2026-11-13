@@ -17,7 +17,7 @@ export function MatchClockStatusBadge({
   clockOffLabel?: string;
   className?: string;
 }) {
-  const playing = isRunning && !isTimeLost;
+  const playing = isRunning;
 
   return (
     <span

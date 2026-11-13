@@ -35,7 +35,7 @@ export function LiveMatchTimeSection({
         elapsedMinutes={elapsedMinutes}
         totalMinutes={matchId === "match-15" ? 120 : totalMinutes}
         period={clock.period || period}
-        isLive={isLive && clock.isRunning && !clock.isTimeLost}
+        isLive={isLive && clock.isRunning}
       />
       {isLive && sport === "football" && (
         <p className="mt-2 text-center font-mono text-sm opacity-60">{formatTime()} elapsed</p>

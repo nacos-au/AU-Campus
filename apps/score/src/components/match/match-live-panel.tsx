@@ -92,7 +92,7 @@ export function MatchLivePanel({
               isRunning={running}
               isTimeLost={timeLost}
               clockOnLabel="Playing"
-              clockOffLabel="Time lost"
+              clockOffLabel="Waste"
             />
           </div>
         )}
