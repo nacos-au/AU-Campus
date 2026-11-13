@@ -8,8 +8,9 @@ import { resolveSportUuid } from "@/lib/data/sport-ids";
 import { sportToDbId, type SportId } from "@/lib/utils/sport";
 
 /**
- * Competition fixtures a record keeper can pick up without an admin calendar
- * assignment: official (non-friendly) matches that are scheduled or live.
+ * Open matches a record keeper can pick up without a calendar assignment:
+ * scheduled / live / paused / postponed — competitions and friendlies alike.
+ * Draft competitions stay hidden until published.
  */
 export async function fetchOpenCompetitionFixtures(sport?: SportId): Promise<Match[]> {
   if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
@@ -23,14 +24,27 @@ export async function fetchOpenCompetitionFixtures(sport?: SportId): Promise<Mat
         tournamentsBySport.set(m.sport_id, bySport);
       }
       const name = bySport.get(m.tournament_id);
-      return name ? { id: m.tournament_id, name, sport_id: m.sport_id, category: "league" as const, season: "", rules: {} } : undefined;
+      return name
+        ? {
+            id: m.tournament_id,
+            name,
+            sport_id: m.sport_id,
+            category: "league" as const,
+            season: "",
+            rules: {},
+          }
+        : undefined;
     };
 
     return listAllDemoMatches()
       .filter((m) => !m.deleted_at)
       .filter((m) => !slug || m.sport_id === slug)
-      .filter((m) => m.status === "scheduled" || m.status === "live" || m.status === "paused")
-      .filter((m) => m.scope !== "pickup" && m.tournament?.category !== "friendly")
+      .filter((m) =>
+        m.status === "scheduled" ||
+        m.status === "live" ||
+        m.status === "paused" ||
+        m.status === "postponed"
+      )
       .filter((m) => !m.tournament?.is_draft)
       .map((m) => ({ ...m, tournament: nameFor(m) ?? m.tournament }))
       .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
@@ -42,10 +56,8 @@ export async function fetchOpenCompetitionFixtures(sport?: SportId): Promise<Mat
     .select(
       "*, venue:venues(*), home_team:teams!home_team_id(*), away_team:teams!away_team_id(*), tournament:tournaments!inner(*)"
     )
-    .in("status", ["scheduled", "live", "paused"])
+    .in("status", ["scheduled", "live", "paused", "postponed"])
     .is("deleted_at", null)
-    .neq("scope", "pickup")
-    .neq("tournament.category", "friendly")
     .eq("tournament.is_draft", false)
     .order("scheduled_at", { ascending: true });
 

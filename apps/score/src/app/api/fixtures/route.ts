@@ -3,7 +3,7 @@ import { requireMatchStaff } from "@/lib/auth/roles";
 import { fetchOpenCompetitionFixtures } from "@/lib/data/fixtures";
 import { parseSportParam } from "@/lib/utils/sport";
 
-/** Open competition fixtures (scheduled/live, non-friendly) a keeper can pick up. */
+/** Open matches (competitions + friendlies) a keeper can pick up. */
 export async function GET(request: Request) {
   const gate = await requireMatchStaff();
   if ("error" in gate) {

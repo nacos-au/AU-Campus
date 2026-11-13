@@ -101,8 +101,8 @@ export function AdminPostResultTool() {
           </span>
           <span className="mt-1 block">
             {finished
-              ? "This writes to the live Score record. It will not appear on the keeper fixture list."
-              : "Scheduled only — keepers will not pick this up (competitions only)."}
+              ? "This writes to the live Score record as a completed result."
+              : "Scheduled for keepers — it will appear on the Open matches list."}
           </span>
         </>
       ),

@@ -33,11 +33,11 @@ async function fetchFixtures(
     const res = await fetch(`/api/fixtures?sport=${sport}`);
     const json = (await res.json()) as { fixtures?: Match[]; error?: string };
     if (!res.ok) {
-      return { fixtures: [], error: json.error ?? "Could not load competition fixtures." };
+      return { fixtures: [], error: json.error ?? "Could not load matches." };
     }
     return { fixtures: json.fixtures ?? [], error: "" };
   } catch {
-    return { fixtures: [], error: "Network error loading competition fixtures." };
+    return { fixtures: [], error: "Network error loading matches." };
   }
 }
 
@@ -99,7 +99,7 @@ export function KeeperClient({
     };
   }, [canAccess]);
 
-  // Open competition fixtures (no assignment needed)
+  // Open matches: competitions + friendlies (no assignment needed)
   useEffect(() => {
     if (!canAccess) return;
     let cancelled = false;
@@ -227,12 +227,18 @@ export function KeeperClient({
 
   const openFixture = (m: Match) => {
     const sport = dbIdToSport(m.sport_id);
-    const title = `${m.tournament?.name ?? "Competition"} · ${m.home_team?.name ?? "Home"} vs ${m.away_team?.name ?? "Away"}`;
+    const competitionLabel =
+      m.tournament?.category === "friendly" || m.scope === "pickup"
+        ? m.tournament?.name ?? "Friendly"
+        : m.tournament?.name ?? "Competition";
+    const title = `${competitionLabel} · ${m.home_team?.name ?? "Home"} vs ${m.away_team?.name ?? "Away"}`;
     setSelection({ kind: "fixture", match: m, sport, title });
   };
 
   const renderFixture = (m: Match) => {
     const isLive = m.status === "live" || m.status === "paused";
+    const isPostponed = m.status === "postponed";
+    const isFriendly = m.tournament?.category === "friendly" || m.scope === "pickup";
     const phase = phaseLabel(m.competition_phase);
     return (
       <li key={m.id}>
@@ -247,7 +253,8 @@ export function KeeperClient({
               {m.away_team?.name ?? "TBD"}
             </p>
             <p className="mt-0.5 truncate text-xs opacity-60">
-              {m.tournament?.name ?? "Competition"}
+              {m.tournament?.name ?? (isFriendly ? "Friendly" : "Competition")}
+              {isFriendly ? " · Friendly" : ""}
               {phase ? ` · ${phase}` : ""} · {SPORT_LABELS[dbIdToSport(m.sport_id)]} ·{" "}
               {formatKickoff(m.scheduled_at)}
             </p>
@@ -255,13 +262,19 @@ export function KeeperClient({
           <span
             className={cn(
               "inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide",
-              isLive ? "bg-red-600 text-white" : "btn-filled"
+              isLive
+                ? "bg-red-600 text-white"
+                : isPostponed
+                  ? "border border-amber-300 bg-amber-50 text-amber-900"
+                  : "btn-filled"
             )}
           >
             {isLive ? (
               <>
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" /> Live
               </>
+            ) : isPostponed ? (
+              "Postponed"
             ) : (
               "Keep score"
             )}
@@ -282,17 +295,17 @@ export function KeeperClient({
         onChange={(id) => changeSport(id as SportId | "all")}
       />
 
-      {/* Competition fixtures — the main keeper workflow */}
+      {/* All open matches — competitions + friendlies */}
       <section className="mt-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="flex items-center gap-2 font-display text-lg font-extrabold">
               <Trophy className="h-5 w-5 text-accent" />
-              Competition fixtures
+              Open matches
             </h2>
             <p className="text-sm opacity-70">
-              Open any scheduled league or cup fixture and fill in the details. No calendar
-              assignment needed.
+              Competitions, friendlies, and manual fixtures — open any scheduled or live match
+              and keep score. No calendar assignment needed.
             </p>
           </div>
           <button
@@ -332,7 +345,7 @@ export function KeeperClient({
           )}
           {!fixturesLoading && upcomingFixtures.length === 0 && (
             <li className="px-4 py-8 text-center text-sm opacity-60">
-              No open competition fixtures{sportFilter !== "all" ? ` for ${SPORT_LABELS[sportFilter]}` : ""}.
+              No open matches{sportFilter !== "all" ? ` for ${SPORT_LABELS[sportFilter]}` : ""}.
               {isAdmin ? (
                 <>
                   {" "}
