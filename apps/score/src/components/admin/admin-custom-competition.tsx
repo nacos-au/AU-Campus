@@ -150,7 +150,11 @@ export function AdminCustomCompetition({
     return s;
   }, [slots, idleIds]);
 
-  const auTeams = useMemo(() => teams.filter((t) => !t.is_guest), [teams]);
+  /** AU clubs first, then guests — both sides can pick either (no home-only bias). */
+  const pickableTeams = useMemo(
+    () => [...teams.filter((t) => !t.is_guest), ...teams.filter((t) => t.is_guest)],
+    [teams]
+  );
   const teamName = useCallback(
     (id: string) => teams.find((t) => t.id === id)?.name ?? "—",
     [teams]
@@ -675,7 +679,7 @@ export function AdminCustomCompetition({
                   Clear slot
                 </button>
               </li>
-              {auTeams.map((t) => {
+              {pickableTeams.map((t) => {
                 const taken = usedIds.has(t.id);
                 const current =
                   picker.kind === "fixture"
@@ -696,12 +700,13 @@ export function AdminCustomCompetition({
                       )}
                     >
                       {t.name}
+                      {t.is_guest ? " · guest" : ""}
                       {taken && !isCurrent ? " · already used" : ""}
                     </button>
                   </li>
                 );
               })}
-              {auTeams.length === 0 && (
+              {pickableTeams.length === 0 && (
                 <li className="px-4 py-8 text-center text-sm text-accent/60">
                   No clubs onboarded for {SPORT_LABELS[sport]} yet.
                 </li>

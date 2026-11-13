@@ -591,18 +591,28 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
 
         {config.showPrimaryScore && (
           <div className="mb-1 text-center">
-            <span className="font-display text-4xl font-extrabold tabular-nums sm:text-5xl">
-              <span className={scoreClass(primaryScore.home, primaryScore.away, "home", "sm")}>
+            <div className="inline-flex items-center justify-center gap-2 sm:gap-3">
+              <span
+                className={cn(
+                  "text-4xl sm:text-5xl",
+                  scoreClass(primaryScore.home, primaryScore.away, "home", "lg")
+                )}
+              >
                 {primaryScore.home}
               </span>
-              <span className="mx-2 opacity-30">–</span>
-              <span className={scoreClass(primaryScore.home, primaryScore.away, "away", "sm")}>
+              <span className="font-display text-2xl font-bold text-accent/35 sm:text-3xl">-</span>
+              <span
+                className={cn(
+                  "text-4xl sm:text-5xl",
+                  scoreClass(primaryScore.home, primaryScore.away, "away", "lg")
+                )}
+              >
                 {primaryScore.away}
               </span>
-            </span>
+            </div>
             {setScore && (
               <p className="mt-0.5 font-display text-sm font-bold tabular-nums opacity-70">
-                {config.setScoreLabel}: {setScore.home}–{setScore.away}
+                {config.setScoreLabel}: {setScore.home}-{setScore.away}
               </p>
             )}
           </div>
@@ -610,7 +620,7 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
 
         {config.showRunningClock ? (
           <div className="mb-3 text-center">
-            <div className="inline-flex items-baseline justify-center gap-2">
+            <div className="inline-flex items-center justify-center gap-2">
               <span className="font-mono text-3xl font-bold tabular-nums sm:text-4xl">
                 {formatTime()}
               </span>
@@ -620,17 +630,17 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
                     <button
                       type="button"
                       onClick={() => setStoppageExactOpen((o) => !o)}
-                      className="rounded-full bg-accent px-2.5 py-0.5 font-display text-sm font-extrabold text-white"
+                      className="btn-filled rounded-full px-2.5 py-0.5 font-display text-sm font-extrabold tabular-nums"
                       aria-label="Show exact stoppage time"
                     >
-                      +{Math.max(clock.boardedStoppageMinutes, clock.isTimeLost ? 1 : 0)}
+                      +{Math.max(1, clock.boardedStoppageMinutes || 0)}
                     </button>
                     {stoppageExactOpen && (
                       <div className="absolute left-1/2 top-full z-30 mt-1 -translate-x-1/2 whitespace-nowrap rounded-lg border border-rule bg-white px-3 py-2 shadow-lg">
                         <p className="text-[10px] font-bold uppercase tracking-wide text-accent/50">
                           Waste / ET
                         </p>
-                        <p className="font-mono text-lg font-bold tabular-nums">
+                        <p className="font-mono text-lg font-bold tabular-nums text-accent">
                           {String(Math.floor(clock.stoppageSeconds / 60)).padStart(2, "0")}:
                           {String(clock.stoppageSeconds % 60).padStart(2, "0")}
                         </p>

@@ -215,7 +215,7 @@ export function AdminPostResultTool() {
         </label>
 
         <label className="block text-sm">
-          <span className="font-semibold">Home team</span>
+          <span className="font-semibold">Team A</span>
           <select
             className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
             value={homeTeamId}
@@ -227,11 +227,22 @@ export function AdminPostResultTool() {
                 {t.name}
               </option>
             ))}
+            {guestTeams.length > 0 && (
+              <optgroup label="Guest teams">
+                {guestTeams
+                  .filter((t) => t.id !== awayTeamId)
+                  .map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.institution ?? "Guest"})
+                    </option>
+                  ))}
+              </optgroup>
+            )}
           </select>
         </label>
 
         <label className="block text-sm">
-          <span className="font-semibold">Away team</span>
+          <span className="font-semibold">Team B</span>
           <select
             className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
             value={awayTeamId}
@@ -247,11 +258,13 @@ export function AdminPostResultTool() {
               ))}
             {guestTeams.length > 0 && (
               <optgroup label="Guest teams">
-                {guestTeams.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name} ({t.institution ?? "Guest"})
-                  </option>
-                ))}
+                {guestTeams
+                  .filter((t) => t.id !== homeTeamId)
+                  .map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name} ({t.institution ?? "Guest"})
+                    </option>
+                  ))}
               </optgroup>
             )}
             <option value={AWAY_NEW_GUEST}>+ Add a new guest team…</option>

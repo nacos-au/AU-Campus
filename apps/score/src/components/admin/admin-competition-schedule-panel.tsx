@@ -196,12 +196,13 @@ export function AdminCompetitionSchedulePanel({
         <>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className="block text-sm">
-              <span className="font-semibold">Team</span>
+              <span className="font-semibold">Team A</span>
               <select
                 className={inputClass}
                 value={homeId}
                 onChange={(e) => setHomeId(e.target.value)}
               >
+                <option value="">Select team…</option>
                 {teams.map((t) => (
                   <option key={t.team_id} value={t.team_id}>
                     {t.team_name}
@@ -211,13 +212,13 @@ export function AdminCompetitionSchedulePanel({
               </select>
             </label>
             <label className="block text-sm">
-              <span className="font-semibold">Team</span>
+              <span className="font-semibold">Team B</span>
               <select
                 className={inputClass}
                 value={awayId}
                 onChange={(e) => setAwayId(e.target.value)}
               >
-                <option value="">Select away…</option>
+                <option value="">Select team…</option>
                 {teams
                   .filter((t) => t.team_id !== homeId)
                   .map((t) => (
