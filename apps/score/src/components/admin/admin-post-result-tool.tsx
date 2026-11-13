@@ -61,18 +61,33 @@ export function AdminPostResultTool() {
     return () => window.removeEventListener(ROSTER_UPDATED_EVENT, onUpdated);
   }, [sport, loadTeams]);
 
-  const homeTeam = auTeams.find((t) => t.id === homeTeamId);
+  const allTeams = useMemo(() => [...auTeams, ...guestTeams], [auTeams, guestTeams]);
+  const homeTeam = allTeams.find((t) => t.id === homeTeamId);
   const isNewGuest = awayTeamId === AWAY_NEW_GUEST;
-  const awayTeam = [...auTeams, ...guestTeams].find((t) => t.id === awayTeamId);
+  const awayTeam = allTeams.find((t) => t.id === awayTeamId);
 
   const canPublish =
     Boolean(homeTeamId) &&
+    Boolean(homeTeam) &&
     Boolean(venueId) &&
     (isNewGuest ? guestName.trim().length > 0 : Boolean(awayTeamId)) &&
     homeTeamId !== awayTeamId;
 
   async function handlePublish() {
-    if (!canPublish || !homeTeam) return;
+    if (!canPublish) {
+      setPublishState("error");
+      setPublishMessage(
+        !venueId
+          ? "Pick a venue first."
+          : !homeTeamId || !homeTeam
+            ? "Pick Team A."
+            : !awayTeamId && !isNewGuest
+              ? "Pick Team B."
+              : "Fill every required field, then try again."
+      );
+      return;
+    }
+    if (!homeTeam) return;
     const awayLabel = isNewGuest ? guestName.trim() : (awayTeam?.name ?? "Away");
     const ok = await confirm({
       eyebrow: scope === "pickup" ? "Friendly" : "Manual match",
@@ -314,12 +329,16 @@ export function AdminPostResultTool() {
 
       <button
         type="button"
-        onClick={handlePublish}
-        disabled={!canPublish || publishState === "saving"}
+        onClick={() => void handlePublish()}
+        disabled={publishState === "saving"}
         className="btn-primary mt-5 w-full rounded-lg px-4 py-2.5 font-display text-sm font-bold disabled:opacity-40 sm:w-auto"
       >
         {publishState === "saving" ? "Saving…" : finished ? "Publish result" : "Schedule match"}
       </button>
+
+      {publishState === "error" && publishMessage && (
+        <p className="mt-3 text-sm font-semibold text-red-600">{publishMessage}</p>
+      )}
 
       {publishState === "done" && (
         <div className="mt-3 space-y-1 text-sm font-semibold text-green-700">
