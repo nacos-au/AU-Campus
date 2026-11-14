@@ -30,7 +30,6 @@ DECLARE
   v_team uuid;
   v_player uuid;
   r record;
-  p record;
 BEGIN
   SELECT id INTO v_sport FROM public.sports WHERE lower(name) IN ('football','soccer') LIMIT 1;
   IF v_sport IS NULL THEN
@@ -183,8 +182,10 @@ BEGIN
 
   -- Clear previous seed rosters for this tournament (seed matric prefix)
   DELETE FROM public.tournament_rosters tr
-  USING public.players p
-  WHERE tr.tournament_id = v_tourn AND tr.player_id = p.id AND p.matric_number LIKE 'seed:ausa:%';
+  WHERE tr.tournament_id = v_tourn
+    AND tr.player_id IN (
+      SELECT pl.id FROM public.players pl WHERE pl.matric_number LIKE 'seed:ausa:%'
+    );
 
 END $$;
 
