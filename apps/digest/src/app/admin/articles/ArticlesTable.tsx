@@ -30,7 +30,7 @@ const STATUS_LABELS: Record<ArticleStatus, string> = {
   awaiting_editor: "With editor",
   awaiting_writer: "Needs changes",
   published: "Live",
-  scheduled: "Embargoed",
+  scheduled: "Held",
   archived: "Archived",
 };
 
@@ -221,7 +221,7 @@ export function ArticlesTable({
     { id: "awaiting_editor", label: "With editor" },
     { id: "awaiting_writer", label: "Needs changes" },
     { id: "published", label: "Live" },
-    { id: "scheduled", label: "Embargoed" },
+    { id: "scheduled", label: "Held" },
     { id: "archived", label: "Archived" },
   ];
 

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireRole, hasRole } from "@/lib/auth";
 import { createAuthClient } from "@/lib/supabase/auth-client";
 import type { Article, ReviewComment, RevisionPayload } from "@/lib/types";
+import { VersionHistory } from "@/app/admin/articles/VersionHistory";
 import { ReviewClient } from "./ReviewClient";
 
 export default async function ReviewPage({
@@ -75,6 +76,19 @@ export default async function ReviewPage({
         userId={profile.id}
         initialComments={(comments ?? []) as unknown as ReviewComment[]}
       />
+
+      <section className="mt-10 border-t border-rule pt-6">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-ink-soft">
+          Version history
+        </h2>
+        <p className="mt-1 max-w-2xl text-sm text-ink-soft">
+          Snapshots of what went live (and what changed). Writers and editors can
+          both see this trail — same idea as a desk CMS at a major paper.
+        </p>
+        <div className="mt-4">
+          <VersionHistory articleId={id} />
+        </div>
+      </section>
     </div>
   );
 }

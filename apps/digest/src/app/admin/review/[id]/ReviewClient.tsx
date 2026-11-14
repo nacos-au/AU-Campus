@@ -137,11 +137,11 @@ export function ReviewClient({
       kind === "approve"
         ? embargoFuture
           ? {
-              title: "Approve with embargo?",
-              body: `The story stays off the public site until ${new Date(
+              title: "Approve and hold for release?",
+              body: `The story stays in the newsroom (off the public site) until ${new Date(
                 embargoIso!
-              ).toLocaleString()}. Editors can still open it in the newsroom.`,
-              confirmLabel: "Set embargo",
+              ).toLocaleString()}. A release job flips it live when that time passes.`,
+              confirmLabel: "Hold for release",
             }
           : isRevision
             ? {
@@ -288,7 +288,7 @@ export function ReviewClient({
           <div className="mt-5 flex flex-col gap-2 border-t border-rule pt-5">
             {!isRevision && (
               <label className="block text-xs font-semibold uppercase tracking-wide text-ink-soft">
-                Embargo (optional)
+                Hold for release (optional)
                 <input
                   type="datetime-local"
                   value={embargoLocal}
@@ -296,7 +296,8 @@ export function ReviewClient({
                   className="mt-1 w-full border border-rule-dark px-3 py-2 text-sm font-normal normal-case tracking-normal text-ink"
                 />
                 <span className="mt-1 block text-[11px] font-normal normal-case tracking-normal text-ink-soft">
-                  Leave empty to publish now. Future time = hold off the public site until then.
+                  Leave empty to release now. A future time holds the story in the
+                  newsroom until then — it is not a public schedule page.
                 </span>
               </label>
             )}
@@ -306,7 +307,7 @@ export function ReviewClient({
               className="bg-green-700 py-3 text-xs font-semibold uppercase tracking-wider text-white hover:bg-green-800 disabled:opacity-50"
             >
               {embargoLocal && !isRevision
-                ? "Approve with embargo"
+                ? "Approve & hold"
                 : "Approve & publish"}
             </button>
             {!isAuthor && (

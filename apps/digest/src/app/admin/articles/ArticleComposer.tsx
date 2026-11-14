@@ -857,7 +857,7 @@ export function ArticleComposer({
             <div className="mt-6 flex flex-col gap-2 sm:flex-row-reverse">
               {soleEditor && !isLive && (
                 <label className="block text-xs font-semibold uppercase tracking-wide text-ink-soft">
-                  Embargo (optional)
+                  Hold for release (optional)
                   <input
                     type="datetime-local"
                     value={embargoLocal}
@@ -865,7 +865,7 @@ export function ArticleComposer({
                     className="mt-1 block w-full border border-rule-dark px-3 py-2 text-sm font-normal normal-case tracking-normal text-ink"
                   />
                   <span className="mt-1 block text-[11px] font-normal normal-case tracking-normal text-ink-soft">
-                    Leave empty to publish now.
+                    Leave empty to release now. Future time = hold in newsroom until then.
                   </span>
                 </label>
               )}
@@ -879,7 +879,7 @@ export function ArticleComposer({
                   {isLive
                     ? "Update live article"
                     : embargoLocal
-                      ? "Publish with embargo"
+                      ? "Approve & hold"
                       : "Publish now"}
                 </button>
               ) : (

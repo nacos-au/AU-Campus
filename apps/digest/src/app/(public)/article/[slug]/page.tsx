@@ -119,6 +119,21 @@ export default async function ArticlePage({
             </span>
           )}
           <span>{published}</span>
+          {article.content_updated_at &&
+            article.published_at &&
+            new Date(article.content_updated_at).getTime() >
+              new Date(article.published_at).getTime() + 60_000 && (
+              <span>
+                Updated{" "}
+                {new Intl.DateTimeFormat(locale, {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                  hour: "numeric",
+                  minute: "2-digit",
+                }).format(new Date(article.content_updated_at))}
+              </span>
+            )}
           <span>{readingMinutes(article.body)} min read</span>
         </div>
 
