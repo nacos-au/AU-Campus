@@ -1,18 +1,29 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getLocale } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { Byline, CompactStory } from "@/components/stories";
+import { WeekPicker } from "@/components/WeekPicker";
 import { excerpt } from "@/lib/articles";
-import { site } from "@/lib/site";
-import type { ArticleWithMeta, Edition, Section } from "@/lib/types";
+import { isPublicSectionSlug } from "@/lib/features";
+import { getSessionProfile, hasRole } from "@/lib/auth";
+import {
+  formatWeekLabel,
+  isLiveIssue,
+  slotsByKind,
+  usedArticleIds,
+  type WeeklyIssueWithSlots,
+} from "@/lib/weekly";
+import type { ArticleWithMeta, Section, WeeklyIssue } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Weekly Issue" };
-export const revalidate = 300;
+export const revalidate = 60;
 
-const SELECT =
-  "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username)";
+const ARTICLE_EMBED =
+  "id, slug, title, dek, body, cover_url, section_id, author_id, status, featured, breaking, published_at, byline, sections(slug, name), profiles!articles_author_id_fkey(display_name, username)";
+
+const ISSUE_SELECT = `*, weekly_issue_slots(id, slot, position, article_id, section_id, articles:article_id(${ARTICLE_EMBED}))`;
 
 function dek(a: ArticleWithMeta, chars = 180) {
   return a.dek || excerpt(a.body, chars);
@@ -27,87 +38,112 @@ function Thumb({ a, className = "" }: { a: ArticleWithMeta; className?: string }
   );
 }
 
-export default async function WeeklyIssuePage() {
-  const [supabase, locale] = await Promise.all([createClient(), getLocale()]);
+export default async function WeeklyIssuePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ week?: string }>;
+}) {
+  const [{ week: weekParam }, supabase, locale, t, { profile }] = await Promise.all([
+    searchParams,
+    createClient(),
+    getLocale(),
+    getTranslations("home"),
+    getSessionProfile(),
+  ]);
+  const isStaff = hasRole(profile, "editor");
 
-  const [{ data: articlesData }, { data: sectionsData }, { data: editionData }] =
-    await Promise.all([
-      supabase
-        .from("articles")
-        .select(SELECT)
-        .eq("status", "published")
-        .order("featured", { ascending: false })
-        .order("published_at", { ascending: false })
-        .limit(40),
-      supabase.from("sections").select("*").order("position"),
-      supabase
-        .from("editions")
-        .select("*")
-        .eq("published", true)
-        .order("issue_date", { ascending: false })
-        .limit(1),
-    ]);
+  const { data: allIssuesData } = await supabase
+    .from("weekly_issues")
+    .select("id, week_start, title, status, scheduled_at, published_at")
+    .neq("status", "archived")
+    .order("week_start", { ascending: false });
 
-  const all = (articlesData ?? []) as unknown as ArticleWithMeta[];
-  const sections = (sectionsData ?? []) as Section[];
-  const edition = ((editionData ?? []) as Edition[])[0] ?? null;
+  const allIssues = (allIssuesData ?? []) as WeeklyIssue[];
+  const liveIssues = allIssues.filter((i) => isLiveIssue(i));
+  const pickerSource = isStaff ? allIssues.filter((i) => i.status !== "archived") : liveIssues;
 
-  // This week's stories; fall back to the latest if the week is quiet.
-  const now = new Date();
-  const weekAgo = now.getTime() - 7 * 24 * 60 * 60 * 1000;
-  const recent = all.filter(
-    (a) => a.published_at && new Date(a.published_at).getTime() >= weekAgo
+  const requested = weekParam?.match(/^\d{4}-\d{2}-\d{2}$/) ? weekParam : null;
+  const defaultWeek = liveIssues[0]?.week_start ?? pickerSource[0]?.week_start ?? null;
+  const activeWeek = requested ?? defaultWeek;
+
+  let issue: WeeklyIssueWithSlots | null = null;
+  if (activeWeek) {
+    const { data } = await supabase
+      .from("weekly_issues")
+      .select(ISSUE_SELECT)
+      .eq("week_start", activeWeek)
+      .maybeSingle();
+    issue = (data as unknown as WeeklyIssueWithSlots) ?? null;
+    if (issue && !isLiveIssue(issue) && !isStaff) {
+      issue = null;
+    }
+  }
+
+  const { data: sectionsData } = await supabase
+    .from("sections")
+    .select("*")
+    .order("position");
+  const sections = ((sectionsData ?? []) as Section[]).filter((s) =>
+    isPublicSectionSlug(s.slug)
   );
-  const pool = recent.length >= 6 ? recent : all;
 
-  const [lead, second, ...rest] = pool;
-  const rail = rest.slice(0, 4);
-  const remaining = rest.slice(4);
+  const { lead, second, rail, inside } = issue
+    ? slotsByKind(issue)
+    : { lead: null, second: null, rail: [], inside: [] };
 
-  const issueDate = new Intl.DateTimeFormat(locale, {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(now);
+  const used = issue ? usedArticleIds(issue) : new Set<string>();
+
+  const { data: highlightData } = await supabase
+    .from("articles")
+    .select(
+      "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username)"
+    )
+    .eq("status", "published")
+    .order("published_at", { ascending: false })
+    .limit(12);
+
+  const highlights = ((highlightData ?? []) as unknown as ArticleWithMeta[])
+    .filter((a) => !used.has(a.id))
+    .slice(0, 6);
 
   const bySection = sections
     .map((s) => ({
       section: s,
-      stories: remaining.filter((a) => a.section_id === s.id).slice(0, 4),
+      stories: inside
+        .filter((x) => x.sectionId === s.id)
+        .map((x) => x.article)
+        .slice(0, 4),
     }))
     .filter((g) => g.stories.length > 0);
 
+  const weekOptions = pickerSource.map((i) => ({
+    weekStart: i.week_start,
+    label: formatWeekLabel(i.week_start, locale),
+  }));
+
   return (
     <div className="py-6 md:py-10">
-      {/* Masthead */}
-      <header className="flex flex-col gap-4 border-b-2 border-ink pb-5 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="font-serif text-4xl font-black tracking-tight md:text-6xl">
-            This Week’s Issue
-          </h1>
-          <p className="mt-2 text-sm text-ink-soft">
-            {site.name} in print for{" "}
-            <span className="font-semibold text-ink">{issueDate}</span>
-          </p>
-        </div>
-        <Link
-          href="/editions"
-          className="inline-flex w-fit items-center gap-2 bg-accent px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-accent-hover"
-        >
-          {edition ? `Buy the print edition` : "Print editions"}
-        </Link>
+      <header className="border-b-2 border-ink pb-5">
+        <h1 className="font-serif text-4xl font-black tracking-tight md:text-6xl">
+          {t("thisWeeksIssue")}
+        </h1>
+        {weekOptions.length > 0 && activeWeek ? (
+          <WeekPicker
+            label={t("theDigestFor")}
+            options={weekOptions}
+            value={activeWeek}
+          />
+        ) : (
+          <p className="mt-3 text-sm text-ink-soft">{t("weeklyEmpty")}</p>
+        )}
       </header>
 
       {!lead ? (
-        <p className="py-20 text-center text-ink-soft">
-          This week’s issue is being put together. Check back soon.
-        </p>
+        <p className="py-20 text-center text-ink-soft">{t("weeklyEmpty")}</p>
       ) : (
         <>
           <h2 className="mt-8 font-serif text-2xl font-bold">The Front Page</h2>
 
-          {/* Front page: lead · second · rail */}
           <div className="mt-4 grid gap-8 border-b border-rule pb-10 lg:grid-cols-[1.6fr_1fr_1fr]">
             <article className="lg:border-r lg:border-rule lg:pr-8">
               <Link href={`/article/${lead.slug}`} className="headline-link group block">
@@ -188,7 +224,6 @@ export default async function WeeklyIssuePage() {
             </div>
           </div>
 
-          {/* Inside pages, by section */}
           {bySection.map(({ section, stories }) => (
             <section key={section.id} className="border-b border-rule py-8">
               <div className="flex items-baseline justify-between">
@@ -229,43 +264,20 @@ export default async function WeeklyIssuePage() {
             </section>
           ))}
 
-          {remaining.length > 0 && bySection.length === 0 && (
-            <section className="py-8">
-              <h2 className="font-serif text-2xl font-bold">Also in this issue</h2>
+          {highlights.length > 0 && (
+            <section className="mt-10 border-t-2 border-ink pt-8">
+              <h2 className="font-serif text-2xl font-bold">{t("highlights")}</h2>
+              <p className="mt-1 text-sm text-ink-soft">
+                More recent stories from the paper — pick any to keep reading.
+              </p>
               <div className="mt-4 divide-y divide-rule">
-                {remaining.map((a) => (
+                {highlights.map((a) => (
                   <div key={a.id} className="py-4">
                     <CompactStory article={a} />
                   </div>
                 ))}
               </div>
             </section>
-          )}
-
-          {/* Print CTA */}
-          {edition && (
-            <aside className="mt-10 flex flex-col gap-5 border border-rule-dark p-6 sm:flex-row sm:items-center">
-              {edition.cover_url && (
-                <div className="relative aspect-[8/11] w-28 shrink-0 overflow-hidden border border-rule-dark bg-rule">
-                  <Image src={edition.cover_url} alt={edition.title} fill sizes="112px" className="object-cover" />
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-accent">
-                  The print edition
-                </p>
-                <h2 className="mt-1 font-serif text-2xl font-bold">{edition.title}</h2>
-                <p className="mt-1 text-sm text-ink-soft">
-                  The full issue as a watermarked PDF, read in your browser.
-                </p>
-              </div>
-              <Link
-                href="/editions"
-                className="shrink-0 bg-accent px-5 py-2.5 text-center text-[11px] font-bold uppercase tracking-wider text-white hover:bg-accent-hover"
-              >
-                Buy this issue
-              </Link>
-            </aside>
           )}
         </>
       )}

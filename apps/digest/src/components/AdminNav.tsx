@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -118,16 +117,13 @@ export function AdminNav({
     <div className="flex min-h-screen">
       {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-rule bg-paper lg:flex">
-        <div className="flex items-center gap-2.5 px-5 pb-4 pt-5">
-          <Image src="/au-logo.webp" alt="" width={28} height={28} className="h-7 w-7 object-contain" />
-          <div className="min-w-0">
-            <Link href="/" className="block truncate font-masthead text-lg font-bold leading-none">
-              {masthead}
-            </Link>
-            <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-accent">
-              Newsroom
-            </p>
-          </div>
+        <div className="px-5 pb-4 pt-5">
+          <Link href="/" className="block truncate font-masthead text-lg font-bold leading-none">
+            {masthead}
+          </Link>
+          <p className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-accent">
+            Newsroom
+          </p>
         </div>
         <nav className="flex-1 overflow-y-auto px-3">{navList}</nav>
         <div className="border-t border-rule px-4 py-4">{userBlock}</div>
@@ -183,10 +179,7 @@ export function AdminNav({
           <button aria-label="Close menu" className="absolute inset-0 bg-ink/30" onClick={() => setOpen(false)} />
           <nav className="absolute inset-y-0 left-0 flex w-[min(100%,18rem)] flex-col bg-paper shadow-xl">
             <div className="flex items-center justify-between px-4 py-3">
-              <div className="flex items-center gap-2">
-                <Image src="/au-logo.webp" alt="" width={24} height={24} className="h-6 w-6 object-contain" />
-                <p className="font-masthead text-lg font-bold">{masthead}</p>
-              </div>
+              <p className="font-masthead text-lg font-bold">{masthead}</p>
               <button onClick={() => setOpen(false)} aria-label="Close" className="text-2xl leading-none">
                 ×
               </button>

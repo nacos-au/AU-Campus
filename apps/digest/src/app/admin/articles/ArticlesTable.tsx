@@ -20,6 +20,7 @@ const STATUS_STYLES: Record<ArticleStatus, string> = {
   awaiting_editor: "bg-amber-100 text-amber-800",
   awaiting_writer: "bg-red-100 text-red-700",
   published: "bg-green-100 text-green-800",
+  archived: "bg-ink/10 text-ink-soft",
 };
 
 const STATUS_LABELS: Record<ArticleStatus, string> = {
@@ -27,6 +28,7 @@ const STATUS_LABELS: Record<ArticleStatus, string> = {
   awaiting_editor: "With editor",
   awaiting_writer: "Needs changes",
   published: "Live",
+  archived: "Archived",
 };
 
 type Filter = "all" | "review" | ArticleStatus;
@@ -93,9 +95,40 @@ export function ArticlesTable({
     onSettled: refresh,
   });
 
-  const remove = useMutation({
+  const toggleBreaking = useMutation({
+    mutationFn: async (vars: { id: string; breaking: boolean }) => {
+      const { error } = await supabase
+        .from("articles")
+        .update({ breaking: vars.breaking })
+        .eq("id", vars.id);
+      if (error) throw error;
+    },
+    onError: (e: Error) => setError(e.message),
+    onSettled: refresh,
+  });
+
+  const archive = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("articles").delete().eq("id", id);
+      const { error } = await supabase
+        .from("articles")
+        .update({
+          status: "archived",
+          featured: false,
+          breaking: false,
+        })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onError: (e: Error) => setError(e.message),
+    onSettled: refresh,
+  });
+
+  const restore = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("articles")
+        .update({ status: "draft" })
+        .eq("id", id);
       if (error) throw error;
     },
     onError: (e: Error) => setError(e.message),
@@ -156,8 +189,8 @@ export function ArticlesTable({
   const reviewCount = articles.filter(awaitingMe).length;
 
   const visible = articles.filter((a) => {
-    if (filter === "all") return true;
-    if (filter === "review") return awaitingMe(a);
+    if (filter === "all") return a.status !== "archived";
+    if (filter === "review") return awaitingMe(a) && a.status !== "archived";
     return effective(a).status === filter || a.status === filter;
   });
 
@@ -170,6 +203,7 @@ export function ArticlesTable({
     { id: "awaiting_editor", label: "With editor" },
     { id: "awaiting_writer", label: "Needs changes" },
     { id: "published", label: "Live" },
+    { id: "archived", label: "Archived" },
   ];
 
   return (
@@ -315,6 +349,17 @@ export function ArticlesTable({
                     <>
                       <button
                         onClick={() =>
+                          toggleBreaking.mutate({
+                            id: a.id,
+                            breaking: !a.breaking,
+                          })
+                        }
+                        className="border border-accent px-2.5 py-1 text-accent hover:bg-accent hover:text-white transition-colors"
+                      >
+                        {a.breaking ? "Unbreak" : "Breaking"}
+                      </button>
+                      <button
+                        onClick={() =>
                           toggleFeatured.mutate({
                             id: a.id,
                             featured: !a.featured,
@@ -322,7 +367,7 @@ export function ArticlesTable({
                         }
                         className="border border-ink px-2.5 py-1 hover:bg-ink hover:text-paper transition-colors"
                       >
-                        {a.featured ? "Unfeature" : "Feature"}
+                        {a.featured ? "Unfeature" : "Top News"}
                       </button>
                       <button
                         onClick={async () => {
@@ -342,24 +387,34 @@ export function ArticlesTable({
                     </>
                   )}
 
-                  {(isStaff || (mine && a.status === "draft")) && (
+                  {a.status === "archived" && (isStaff || mine) && (
                     <button
-                      onClick={async () => {
-                        if (
-                          await confirm({
-                            title: `Delete “${a.title}”?`,
-                            body: "This permanently removes the article and its review thread.",
-                            confirmLabel: "Delete",
-                            danger: true,
-                          })
-                        )
-                          remove.mutate(a.id);
-                      }}
-                      className="text-red-700 underline hover:text-red-900"
+                      onClick={() => restore.mutate(a.id)}
+                      className="border border-ink px-2.5 py-1 hover:bg-ink hover:text-paper transition-colors"
                     >
-                      Delete
+                      Restore to draft
                     </button>
                   )}
+
+                  {a.status !== "archived" &&
+                    (isStaff || (mine && a.status === "draft")) && (
+                      <button
+                        onClick={async () => {
+                          if (
+                            await confirm({
+                              title: `Archive “${a.title}”?`,
+                              body: "It leaves the live site but stays in the newsroom so you can restore it later.",
+                              confirmLabel: "Archive",
+                              danger: true,
+                            })
+                          )
+                            archive.mutate(a.id);
+                        }}
+                        className="text-red-700 underline hover:text-red-900"
+                      >
+                        Archive
+                      </button>
+                    )}
                 </div>
               </div>
             );

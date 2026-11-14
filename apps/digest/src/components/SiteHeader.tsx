@@ -1,9 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { getSessionProfile, hasRole } from "@/lib/auth";
 import { signOut } from "@/app/(auth)/actions";
+import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
 import { site } from "@/lib/site";
 import { exitAdminModeAction, isAdminModeActive } from "@/app/actions/admin-mode";
 import type { Section } from "@/lib/types";
@@ -34,7 +34,9 @@ export async function SiteHeader() {
     .from("sections")
     .select("*")
     .order("position");
-  const sections = (sectionsData ?? []) as Section[];
+  const sections = ((sectionsData ?? []) as Section[]).filter((s) =>
+    isPublicSectionSlug(s.slug)
+  );
 
   const todayLong = new Intl.DateTimeFormat(locale, {
     weekday: "long",
@@ -46,16 +48,22 @@ export async function SiteHeader() {
   const navItems: NavItem[] = [
     { href: "/", label: t("home") },
     ...sections.map((s) => ({ href: `/section/${s.slug}`, label: s.name })),
-    { href: "/talent", label: t("talent") },
-    { href: "/forum", label: t("forum") },
-    { href: "/editions", label: t("editions"), accent: true },
+    ...(digestFeatures.talent
+      ? [{ href: "/talent", label: t("talent") }]
+      : []),
+    ...(digestFeatures.forum ? [{ href: "/forum", label: t("forum") }] : []),
+    ...(digestFeatures.weekly
+      ? [{ href: "/weekly", label: t("weeklyIssue"), accent: true }]
+      : digestFeatures.printEditions
+        ? [{ href: "/editions", label: t("editions"), accent: true }]
+        : []),
   ];
 
   return (
     <header>
       {adminModeOn && <AdminModeBanner />}
 
-      {/* ── Mobile: menu · masthead · account, then date + CTA (no card border) ── */}
+      {/* ── Mobile ── */}
       <div className="sticky top-0 z-40 bg-paper md:hidden">
         <div className="grid grid-cols-[2.5rem_1fr_2.5rem] items-center px-2 pt-2">
           <MobileMenu
@@ -66,15 +74,7 @@ export async function SiteHeader() {
             signOutAction={signOut}
           />
 
-          <Link href="/" className="flex min-w-0 items-center justify-center gap-2">
-            <Image
-              src="/au-logo.webp"
-              alt=""
-              width={26}
-              height={26}
-              className="h-[26px] w-[26px] shrink-0 object-contain"
-              priority
-            />
+          <Link href="/" className="flex min-w-0 items-center justify-center">
             <span className="truncate font-masthead text-[1.55rem] font-bold leading-none tracking-tight">
               {site.masthead}
             </span>
@@ -104,49 +104,42 @@ export async function SiteHeader() {
 
         <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-1">
           <p className="min-w-0 truncate text-xs font-semibold text-ink">{todayLong}</p>
-          <Link
-            href="/editions"
-            className="shrink-0 border border-ink px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-ink"
-          >
-            {t("buySeasonal")}
-          </Link>
-        </div>
-      </div>
-
-      {/* ── Desktop: NYT-style masthead ── */}
-      <div className="hidden md:block">
-        <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-start gap-6 px-4 pb-3 pt-2.5">
-          {/* left: search · date · weekly issue */}
-          <div className="flex flex-col items-start gap-1.5">
-            <NavSearch />
-            <p className="text-[11px] font-semibold text-ink">{todayLong}</p>
+          {digestFeatures.weekly && (
             <Link
               href="/weekly"
-              className="text-[11px] font-bold uppercase tracking-wider text-accent hover:text-accent-hover"
+              className="shrink-0 border border-ink px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-ink"
             >
               {t("weeklyIssue")}
             </Link>
+          )}
+        </div>
+      </div>
+
+      {/* ── Desktop ── */}
+      <div className="hidden md:block">
+        <div className="mx-auto grid max-w-7xl grid-cols-[1fr_auto_1fr] items-start gap-6 px-4 pb-3 pt-2.5">
+          <div className="flex flex-col items-start gap-1.5">
+            <NavSearch />
+            <p className="text-[11px] font-semibold text-ink">{todayLong}</p>
+            {digestFeatures.weekly && (
+              <Link
+                href="/weekly"
+                className="text-[11px] font-bold uppercase tracking-wider text-accent hover:text-accent-hover"
+              >
+                {t("weeklyIssue")}
+              </Link>
+            )}
           </div>
 
-          {/* center: languages over the masthead */}
           <div className="flex flex-col items-center gap-2.5 pt-1">
             <LanguageLinks />
-            <Link href="/" className="flex items-center justify-center gap-3">
-              <Image
-                src="/au-logo.webp"
-                alt={site.university}
-                width={44}
-                height={44}
-                className="h-11 w-11 shrink-0 object-contain"
-                priority
-              />
+            <Link href="/" className="flex items-center justify-center">
               <span className="font-masthead text-5xl font-bold leading-none">
                 {site.masthead}
               </span>
             </Link>
           </div>
 
-          {/* right: CTA · sign in / profile */}
           <div className="flex items-center justify-end gap-2 pt-0.5">
             <AdminModeToggle canUse={canAdminMode} active={adminModeOn} />
             {adminModeOn && (
@@ -157,12 +150,14 @@ export async function SiteHeader() {
                 {t("admin")}
               </Link>
             )}
-            <Link
-              href="/editions"
-              className="bg-accent px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-accent-hover transition-colors"
-            >
-              {t("buySeasonal")}
-            </Link>
+            {digestFeatures.weekly && (
+              <Link
+                href="/weekly"
+                className="bg-accent px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-accent-hover transition-colors"
+              >
+                {t("weeklyIssue")}
+              </Link>
+            )}
             {user ? (
               <ProfileMenu
                 compact

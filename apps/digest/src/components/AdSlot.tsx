@@ -6,6 +6,7 @@ import { pickAd, SLOT_DIMENSIONS } from "@/lib/ads";
 import { DEMO_MODE_COOKIE, isDemoMode } from "@/lib/demo-mode";
 import { isAdminModeActive } from "@/app/actions/admin-mode";
 import type { Ad, AdSlot as Slot } from "@/lib/types";
+import { digestFeatures } from "@/lib/features";
 import { AdBeacon } from "./AdBeacon";
 import { AdSenseUnit } from "./AdSenseUnit";
 
@@ -40,9 +41,10 @@ export async function AdSlot({
   const dim = SLOT_DIMENSIONS[slot];
 
   if (!ad) {
+    if (!digestFeatures.adsenseFallback || demo) return null;
     const client = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
     const unit = process.env[`NEXT_PUBLIC_ADSENSE_SLOT_${slot.toUpperCase()}`];
-    if (!client || !unit || demo) return null;
+    if (!client || !unit) return null;
     return (
       <div className={`text-center ${className}`}>
         <p className="mb-1 text-[10px] uppercase tracking-[0.2em] text-ink-soft">

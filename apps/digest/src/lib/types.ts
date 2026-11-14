@@ -3,8 +3,15 @@ export type ArticleStatus =
   | "draft"
   | "awaiting_editor"
   | "awaiting_writer"
-  | "published";
+  | "published"
+  | "archived";
 export type AdSlot = "leaderboard" | "sidebar" | "infeed";
+export type WeeklyIssueStatus =
+  | "draft"
+  | "scheduled"
+  | "published"
+  | "archived";
+export type WeeklySlotKind = "lead" | "second" | "rail" | "inside";
 
 export interface Profile {
   id: string;
@@ -41,6 +48,7 @@ export interface Article {
   language: string;
   status: ArticleStatus;
   featured: boolean;
+  breaking?: boolean;
   editor_note: string | null;
   assigned_editor_id?: string | null;
   byline?: string | null;
@@ -187,4 +195,24 @@ export interface RevisionPayload {
   sponsored_by?: string | null;
   section_id: number;
   language: string;
+}
+
+export interface WeeklyIssue {
+  id: string;
+  week_start: string;
+  title: string;
+  status: WeeklyIssueStatus;
+  scheduled_at: string | null;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WeeklyIssueSlot {
+  id: string;
+  issue_id: string;
+  slot: WeeklySlotKind;
+  position: number;
+  article_id: string;
+  section_id: number | null;
 }

@@ -9,6 +9,7 @@ import { RichText } from "@/components/RichText";
 import { LikeShare } from "@/components/LikeShare";
 import { CompactStory } from "@/components/stories";
 import { readingMinutes } from "@/lib/articles";
+import { digestFeatures } from "@/lib/features";
 import type { ArticleWithMeta } from "@/lib/types";
 
 export const revalidate = 60;
@@ -145,11 +146,13 @@ export default async function ArticlePage({
           <RichText doc={article.body} />
         </div>
 
-        <LikeShare
-          articleId={article.id}
-          initialLikes={article.like_count ?? 0}
-          title={article.title}
-        />
+        {digestFeatures.publicLikes && (
+          <LikeShare
+            articleId={article.id}
+            initialLikes={article.like_count ?? 0}
+            title={article.title}
+          />
+        )}
       </article>
 
       <div className="mx-auto max-w-3xl">

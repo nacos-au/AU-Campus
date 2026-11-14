@@ -13,6 +13,7 @@ import {
   IconSignOut,
   IconUser,
 } from "./icons";
+import { digestFeatures } from "@/lib/features";
 import { site } from "@/lib/site";
 import type { Section } from "@/lib/types";
 
@@ -123,30 +124,45 @@ export function MobileMenu({
                     </Link>
                   </li>
                 ))}
-                <li>
-                  <Link
-                    href="/talent"
-                    className={`block px-4 py-3.5 font-serif text-lg font-bold ${isActivePath(pathname, "/talent") ? "text-accent" : ""}`}
-                  >
-                    {t("talent")}
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/forum"
-                    className={`block px-4 py-3.5 font-serif text-lg font-bold ${isActivePath(pathname, "/forum") ? "text-accent" : ""}`}
-                  >
-                    {t("forum")}
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/editions"
-                    className="block px-4 py-3.5 font-serif text-lg font-bold text-accent"
-                  >
-                    {t("editions")}
-                  </Link>
-                </li>
+                {digestFeatures.talent && (
+                  <li>
+                    <Link
+                      href="/talent"
+                      className={`block px-4 py-3.5 font-serif text-lg font-bold ${isActivePath(pathname, "/talent") ? "text-accent" : ""}`}
+                    >
+                      {t("talent")}
+                    </Link>
+                  </li>
+                )}
+                {digestFeatures.forum && (
+                  <li>
+                    <Link
+                      href="/forum"
+                      className={`block px-4 py-3.5 font-serif text-lg font-bold ${isActivePath(pathname, "/forum") ? "text-accent" : ""}`}
+                    >
+                      {t("forum")}
+                    </Link>
+                  </li>
+                )}
+                {digestFeatures.weekly ? (
+                  <li>
+                    <Link
+                      href="/weekly"
+                      className="block px-4 py-3.5 font-serif text-lg font-bold text-accent"
+                    >
+                      {t("weeklyIssue")}
+                    </Link>
+                  </li>
+                ) : digestFeatures.printEditions ? (
+                  <li>
+                    <Link
+                      href="/editions"
+                      className="block px-4 py-3.5 font-serif text-lg font-bold text-accent"
+                    >
+                      {t("editions")}
+                    </Link>
+                  </li>
+                ) : null}
               </ul>
 
               <div className="space-y-4 border-t border-rule px-4 py-5">

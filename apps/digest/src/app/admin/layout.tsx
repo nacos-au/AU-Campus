@@ -19,10 +19,8 @@ export default async function AdminLayout({
     ...(staff
       ? ([
           { href: "/admin/sections", label: "Sections", icon: "sections" },
-          { href: "/admin/editions", label: "Editions", icon: "editions" },
+          { href: "/admin/weekly", label: "Weekly", icon: "editions" },
           { href: "/admin/ads", label: "Advertising", icon: "ads" },
-          { href: "/admin/talent", label: "Talent", icon: "talent" },
-          { href: "/admin/forum", label: "Forum", icon: "forum" },
         ] as AdminNavItem[])
       : []),
     ...(isAdmin ? ([{ href: "/admin/team", label: "Team", icon: "team" }] as AdminNavItem[]) : []),

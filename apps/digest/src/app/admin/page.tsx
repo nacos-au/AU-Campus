@@ -222,8 +222,8 @@ export default async function AdminDashboard() {
             {staff && (
               <>
                 <li>
-                  <Link href="/admin/editions" className="block py-1.5 font-semibold hover:text-accent">
-                    Upload this week’s edition
+                  <Link href="/admin/weekly" className="block py-1.5 font-semibold hover:text-accent">
+                    Build this week’s issue
                   </Link>
                 </li>
                 <li>

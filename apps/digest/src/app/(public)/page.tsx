@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
@@ -7,11 +6,10 @@ import {
   CompactStory,
   LeadStory,
   ListStory,
-  OpinionStory,
   StoryCard,
 } from "@/components/stories";
-import { formatNaira } from "@/lib/site";
-import type { ArticleWithMeta, Edition, Section } from "@/lib/types";
+import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
+import type { ArticleWithMeta, Section } from "@/lib/types";
 import { isDemoMode } from "@/lib/demo-mode";
 import { getDemoModeCookie } from "@/app/actions/demo-mode";
 
@@ -24,27 +22,21 @@ export default async function HomePage() {
   const ARTICLE_SELECT =
     "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username)";
 
-  const [{ data: articlesData }, { data: sectionsData }, { data: editionsData }] =
-    await Promise.all([
-      supabase
-        .from("articles")
-        .select(ARTICLE_SELECT)
-        .eq("status", "published")
-        .order("featured", { ascending: false })
-        .order("published_at", { ascending: false })
-        .limit(40),
-      supabase.from("sections").select("*").order("position"),
-      supabase
-        .from("editions")
-        .select("*")
-        .eq("published", true)
-        .order("issue_date", { ascending: false })
-        .limit(3),
-    ]);
+  const [{ data: articlesData }, { data: sectionsData }] = await Promise.all([
+    supabase
+      .from("articles")
+      .select(ARTICLE_SELECT)
+      .eq("status", "published")
+      .order("featured", { ascending: false })
+      .order("published_at", { ascending: false })
+      .limit(40),
+    supabase.from("sections").select("*").order("position"),
+  ]);
 
   const articles = (articlesData ?? []) as unknown as ArticleWithMeta[];
-  const sections = (sectionsData ?? []) as Section[];
-  const editions = (editionsData ?? []) as Edition[];
+  const sections = ((sectionsData ?? []) as Section[]).filter((s) =>
+    isPublicSectionSlug(s.slug)
+  );
 
   if (articles.length === 0) {
     return (
@@ -68,23 +60,39 @@ export default async function HomePage() {
     );
   }
 
-  const [lead, ...rest] = articles;
+  const breaking = digestFeatures.breakingNews
+    ? articles.filter((a) => a.breaking).slice(0, 5)
+    : [];
+  const topNews = articles
+    .filter((a) => a.featured && !breaking.some((b) => b.id === a.id))
+    .slice(0, 5);
+
+  const railIds = new Set([...breaking, ...topNews].map((a) => a.id));
+  const mainPool = articles.filter((a) => !railIds.has(a.id));
+  const [lead, ...rest] = mainPool.length > 0 ? mainPool : articles;
   const secondary = rest.slice(0, 2);
-  const topNews = rest.slice(2, 7);
-  const opinion = articles
-    .filter((a) => a.sections?.slug === "opinion")
-    .slice(0, 3);
   const usedIds = new Set(
-    [lead, ...secondary, ...topNews, ...opinion].map((a) => a.id)
+    [lead, ...secondary, ...breaking, ...topNews].filter(Boolean).map((a) => a.id)
   );
   const remaining = articles.filter((a) => !usedIds.has(a.id));
 
+  // Fallback Top News if nothing featured yet
+  const topNewsDisplay =
+    topNews.length > 0
+      ? topNews
+      : remaining.slice(0, 5).length > 0
+        ? remaining.slice(0, 5)
+        : rest.slice(2, 7);
+
+  const remainingAfterTop = remaining.filter(
+    (a) => !topNewsDisplay.some((t) => t.id === a.id)
+  );
+
   return (
     <div className="py-4 md:py-6">
-      {/* ── Above the fold: lead + secondary | top news rail ── */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:divide-x lg:divide-rule">
         <div className="lg:col-span-2 lg:pr-8">
-          <LeadStory article={lead} />
+          {lead && <LeadStory article={lead} />}
           {secondary.length > 0 && (
             <div className="mt-8 grid grid-cols-1 gap-8 border-t border-rule pt-8 sm:grid-cols-2 sm:gap-6 sm:divide-x sm:divide-rule sm:pt-6">
               {secondary.map((a, i) => (
@@ -97,82 +105,45 @@ export default async function HomePage() {
         </div>
 
         <aside className="border-t border-rule pt-6 lg:border-t-0 lg:pt-0 lg:pl-8">
+          {digestFeatures.breakingNews && breaking.length > 0 && (
+            <div className="mb-8">
+              <h2 className="border-b-2 border-accent pb-2 text-sm font-bold uppercase tracking-wider text-accent">
+                <span className="mr-2 inline-block h-2.5 w-2.5 bg-accent" />
+                {t("breakingNews")}
+              </h2>
+              <div className="divide-y divide-rule">
+                {breaking.map((a) => (
+                  <div key={a.id} className="py-4">
+                    <CompactStory article={a} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <h2 className="border-b-2 border-ink pb-2 text-sm font-bold uppercase tracking-wider">
             <span className="mr-2 inline-block h-2.5 w-2.5 bg-accent" />
             {t("topNews")}
           </h2>
           <div className="divide-y divide-rule">
-            {topNews.map((a) => (
+            {topNewsDisplay.map((a) => (
               <div key={a.id} className="py-4">
                 <CompactStory article={a} />
               </div>
             ))}
           </div>
-          <AdSlot slot="sidebar" className="mt-6" />
+          {digestFeatures.manualAds && (
+            <AdSlot slot="sidebar" className="mt-6" />
+          )}
         </aside>
       </div>
 
-      <AdSlot slot="leaderboard" className="mt-12 border-t border-rule pt-8" />
-
-      {/* ── Opinion ── */}
-      {opinion.length > 0 && (
-        <section className="mt-12 border-t-2 border-ink pt-6">
-          <h2 className="mb-6 font-serif text-2xl font-bold">{t("opinion")}</h2>
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-3 sm:divide-x sm:divide-rule">
-            {opinion.map((a, i) => (
-              <div key={a.id} className={i > 0 ? "sm:pl-8" : ""}>
-                <OpinionStory article={a} />
-              </div>
-            ))}
-          </div>
-        </section>
+      {digestFeatures.manualAds && (
+        <AdSlot slot="leaderboard" className="mt-12 border-t border-rule pt-8" />
       )}
 
-      {/* ── Editions promo ── */}
-      {editions.length > 0 && (
-        <section className="mt-12 bg-accent-soft px-6 py-8 sm:px-10">
-          <div className="grid grid-cols-1 items-center gap-8 sm:grid-cols-3">
-            <div className="sm:col-span-2">
-              <h2 className="font-serif text-2xl font-bold">
-                {t("editionsPromo")}
-              </h2>
-              <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-soft">
-                {t("editionsPromoBody")}
-              </p>
-              <Link
-                href="/editions"
-                className="mt-4 inline-block bg-accent px-4 py-2 text-xs font-semibold uppercase tracking-wider text-white hover:bg-accent-hover transition-colors"
-              >
-                {t("browseEditions")} · {formatNaira(editions[0].price_kobo)}
-              </Link>
-            </div>
-            <div className="flex justify-center gap-4 sm:justify-end">
-              {editions.slice(0, 2).map((e, i) => (
-                <div
-                  key={e.id}
-                  className={`relative aspect-[8/11] w-28 shrink-0 border border-rule-dark bg-paper shadow-md sm:w-32 ${
-                    i === 1 ? "hidden sm:block -rotate-2" : "rotate-1"
-                  }`}
-                >
-                  {e.cover_url && (
-                    <Image
-                      src={e.cover_url}
-                      alt={e.title}
-                      fill
-                      sizes="128px"
-                      className="object-cover"
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── Section blocks ── */}
       {sections.map((section) => {
-        const sectionArticles = remaining
+        const sectionArticles = remainingAfterTop
           .filter((a) => a.sections?.slug === section.slug)
           .slice(0, 4);
         if (sectionArticles.length === 0) return null;
