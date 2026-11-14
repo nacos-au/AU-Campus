@@ -15,6 +15,7 @@ const STATE_LABELS: Record<string, string> = {
   awaiting_editor: "Awaiting editor",
   awaiting_writer: "Awaiting writer",
   published: "Live",
+  scheduled: "Parked",
 };
 
 function applyHighlights(root: HTMLElement, quotes: string[]) {
@@ -48,6 +49,7 @@ export function ReviewClient({
   state,
   isRevision,
   canReview,
+  canMakeLive,
   isAuthor,
   userId,
   initialComments,
@@ -57,6 +59,7 @@ export function ReviewClient({
   state: string;
   isRevision: boolean;
   canReview: boolean;
+  canMakeLive: boolean;
   isAuthor: boolean;
   userId: string;
   initialComments: ReviewComment[];
@@ -69,7 +72,6 @@ export function ReviewClient({
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [embargoLocal, setEmbargoLocal] = useState("");
   const { confirm } = useConfirm();
 
   const { data: comments = [] } = useQuery({
@@ -125,54 +127,55 @@ export function ReviewClient({
     qc.invalidateQueries({ queryKey: ["review-comments", articleId] });
   }
 
-  async function act(kind: "changes" | "approve") {
-    const embargoIso =
-      kind === "approve" && embargoLocal
-        ? new Date(embargoLocal).toISOString()
-        : null;
-    const embargoFuture =
-      embargoIso && new Date(embargoIso).getTime() > Date.now();
-
+  async function act(kind: "changes" | "approve" | "park" | "make_live") {
     const ok = await confirm(
-      kind === "approve"
-        ? embargoFuture
-          ? {
-              title: "Approve and park for later?",
-              body: `The story stays parked in the newsroom (off the public site) until ${new Date(
-                embargoIso!
-              ).toLocaleString()}. After that time it goes live on the next site visit — no separate schedule page.`,
-              confirmLabel: "Park for later",
-            }
-          : isRevision
-            ? {
-                title: "Approve this edit?",
-                body: "The live story updates immediately for readers.",
-                confirmLabel: "Publish edit",
-              }
-            : {
-                title: "Approve and publish?",
-                body: "The story goes live on the site immediately.",
-                confirmLabel: "Publish now",
-              }
-        : {
-            title: "Send back to the writer?",
-            body: "They’ll be notified and can revise using your comments.",
-            confirmLabel: "Request changes",
+      kind === "park"
+        ? {
+            title: "Approve and park?",
+            body: "The story is approved but stays off the public site until an editor clicks Make live.",
+            confirmLabel: "Park",
           }
+        : kind === "make_live"
+          ? {
+              title: "Make this story live?",
+              body: "Readers will see it on the site immediately.",
+              confirmLabel: "Make live",
+            }
+          : kind === "approve"
+            ? isRevision
+              ? {
+                  title: "Approve this edit?",
+                  body: "The live story updates immediately for readers.",
+                  confirmLabel: "Publish edit",
+                }
+              : {
+                  title: "Approve and publish?",
+                  body: "The story goes live on the site immediately.",
+                  confirmLabel: "Publish now",
+                }
+            : {
+                title: "Send back to the writer?",
+                body: "They’ll be notified and can revise using your comments.",
+                confirmLabel: "Request changes",
+              }
     );
     if (!ok) return;
     setBusy(true);
     setError(null);
     const { error } =
-      kind === "approve"
-        ? await supabase.rpc("review_approve", {
+      kind === "make_live"
+        ? await supabase.rpc("publish_parked_article", {
             p_article_id: articleId,
-            ...(embargoFuture ? { p_embargo_at: embargoIso } : {}),
           })
-        : await supabase.rpc("review_request_changes", {
-            p_article_id: articleId,
-            p_note: null,
-          });
+        : kind === "approve" || kind === "park"
+          ? await supabase.rpc("review_approve", {
+              p_article_id: articleId,
+              p_park: kind === "park",
+            })
+          : await supabase.rpc("review_request_changes", {
+              p_article_id: articleId,
+              p_note: null,
+            });
     setBusy(false);
     if (error) return setError(error.message);
     router.push("/admin/articles");
@@ -284,32 +287,40 @@ export function ReviewClient({
           </p>
         )}
 
+        {canMakeLive && (
+          <div className="mt-5 flex flex-col gap-2 border-t border-rule pt-5">
+            <p className="text-[11px] text-ink-soft">
+              Approved copy — not on the public site yet. Only an editor can make
+              it live.
+            </p>
+            <button
+              onClick={() => act("make_live")}
+              disabled={busy}
+              className="bg-green-700 py-3 text-xs font-semibold uppercase tracking-wider text-white hover:bg-green-800 disabled:opacity-50"
+            >
+              Make live
+            </button>
+          </div>
+        )}
+
         {canReview && (
           <div className="mt-5 flex flex-col gap-2 border-t border-rule pt-5">
-            {!isRevision && (
-              <label className="block text-xs font-semibold uppercase tracking-wide text-ink-soft">
-                Park for later (optional)
-                <input
-                  type="datetime-local"
-                  value={embargoLocal}
-                  onChange={(e) => setEmbargoLocal(e.target.value)}
-                  className="mt-1 w-full border border-rule-dark px-3 py-2 text-sm font-normal normal-case tracking-normal text-ink"
-                />
-                <span className="mt-1 block text-[11px] font-normal normal-case tracking-normal text-ink-soft">
-                  Leave empty to publish now. A future time parks the story in the
-                  newsroom until then — readers never see a countdown or schedule.
-                </span>
-              </label>
-            )}
             <button
               onClick={() => act("approve")}
               disabled={busy}
               className="bg-green-700 py-3 text-xs font-semibold uppercase tracking-wider text-white hover:bg-green-800 disabled:opacity-50"
             >
-              {embargoLocal && !isRevision
-                ? "Approve & park"
-                : "Approve & publish"}
+              {isRevision ? "Approve edit" : "Approve & publish"}
             </button>
+            {!isRevision && (
+              <button
+                onClick={() => act("park")}
+                disabled={busy}
+                className="border border-sky-700 py-3 text-xs font-semibold uppercase tracking-wider text-sky-800 hover:bg-sky-700 hover:text-white disabled:opacity-50"
+              >
+                Approve & park
+              </button>
+            )}
             {!isAuthor && (
               <button
                 onClick={() => act("changes")}

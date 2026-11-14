@@ -101,6 +101,17 @@ export function ArticlesTable({
     onSettled: refresh,
   });
 
+  const makeLive = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc("publish_parked_article", {
+        p_article_id: id,
+      });
+      if (error) throw error;
+    },
+    onError: (e: Error) => setError(e.message),
+    onSettled: refresh,
+  });
+
   const toggleFeatured = useMutation({
     mutationFn: async (vars: { id: string; featured: boolean }) => {
       const { error } = await supabase
@@ -305,9 +316,6 @@ export function ArticlesTable({
                   >
                     {eff.revision ? "Edit · " : ""}
                     {STATUS_LABELS[eff.status]}
-                    {a.status === "scheduled" && a.embargo_at
-                      ? ` · ${new Date(a.embargo_at).toLocaleString()}`
-                      : ""}
                   </span>
                 </div>
 
@@ -335,6 +343,23 @@ export function ArticlesTable({
                     >
                       View
                     </Link>
+                  )}
+                  {isStaff && a.status === "scheduled" && (
+                    <button
+                      onClick={async () => {
+                        if (
+                          await confirm({
+                            title: `Make “${a.title}” live?`,
+                            body: "Readers will see this story on the site immediately.",
+                            confirmLabel: "Make live",
+                          })
+                        )
+                          makeLive.mutate(a.id);
+                      }}
+                      className="bg-green-700 px-3 py-1.5 text-white hover:bg-green-800"
+                    >
+                      Make live
+                    </button>
                   )}
                   {canEdit && (
                     <Link

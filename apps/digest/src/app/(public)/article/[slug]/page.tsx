@@ -8,7 +8,7 @@ import { AdSlot } from "@/components/AdSlot";
 import { RichText } from "@/components/RichText";
 import { LikeShare } from "@/components/LikeShare";
 import { CompactStory } from "@/components/stories";
-import { promoteDueEmbargoes, readingMinutes } from "@/lib/articles";
+import { readingMinutes } from "@/lib/articles";
 import { digestFeatures } from "@/lib/features";
 import type { ArticleWithMeta } from "@/lib/types";
 
@@ -19,7 +19,6 @@ const SELECT =
 
 async function getArticle(slug: string) {
   const supabase = await createClient();
-  await promoteDueEmbargoes(supabase);
   const { data } = await supabase
     .from("articles")
     .select(SELECT)

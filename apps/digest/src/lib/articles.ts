@@ -1,18 +1,7 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-
 interface TiptapNode {
   type?: string;
   text?: string;
   content?: TiptapNode[];
-}
-
-/** Lift parked (“post later”) stories whose release time has passed — no cron. */
-export async function promoteDueEmbargoes(supabase: SupabaseClient) {
-  try {
-    await supabase.rpc("promote_due_embargoes");
-  } catch {
-    // Column/RPC may not exist until SQL is applied — public pages still work.
-  }
 }
 
 /** Flatten a Tiptap JSON document to plain text. */

@@ -105,7 +105,6 @@ export function ArticleComposer({
   const [overrideEditorId, setOverrideEditorId] = useState(
     isSuperAdmin ? (article?.assigned_editor_id ?? "") : ""
   );
-  const [embargoLocal, setEmbargoLocal] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [preview, setPreview] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -325,18 +324,13 @@ export function ArticleComposer({
   }, [coverUrl, dek, editor, locked, persist, title]);
 
   const send = useMutation({
-    mutationFn: async (action: "submit" | "publish") => {
+    mutationFn: async (action: "submit" | "publish" | "park") => {
       const id = await persist({ requireHeadline: true });
-      if (action === "publish") {
+      if (action === "publish" || action === "park") {
         if (isLive) return;
-        const embargoIso = embargoLocal
-          ? new Date(embargoLocal).toISOString()
-          : null;
-        const embargoFuture =
-          embargoIso && new Date(embargoIso).getTime() > Date.now();
         const { error } = await supabase.rpc("review_approve", {
           p_article_id: id,
-          ...(embargoFuture ? { p_embargo_at: embargoIso } : {}),
+          p_park: action === "park",
         });
         if (error) throw error;
         return;
@@ -855,33 +849,25 @@ export function ArticleComposer({
             )}
 
             <div className="mt-6 flex flex-col gap-2 sm:flex-row-reverse">
-              {soleEditor && !isLive && (
-                <label className="block text-xs font-semibold uppercase tracking-wide text-ink-soft">
-                  Park for later (optional)
-                  <input
-                    type="datetime-local"
-                    value={embargoLocal}
-                    onChange={(e) => setEmbargoLocal(e.target.value)}
-                    className="mt-1 block w-full border border-rule-dark px-3 py-2 text-sm font-normal normal-case tracking-normal text-ink"
-                  />
-                  <span className="mt-1 block text-[11px] font-normal normal-case tracking-normal text-ink-soft">
-                    Leave empty to publish now. Future time = parked until then, then live on the next site visit.
-                  </span>
-                </label>
-              )}
-
               {soleEditor ? (
-                <button
-                  onClick={() => send.mutate("publish")}
-                  disabled={busy}
-                  className="bg-accent px-5 py-3 text-xs font-semibold uppercase tracking-wider text-white hover:bg-accent-hover disabled:opacity-50"
-                >
-                  {isLive
-                    ? "Update live article"
-                    : embargoLocal
-                      ? "Approve & park"
-                      : "Publish now"}
-                </button>
+                <>
+                  <button
+                    onClick={() => send.mutate("publish")}
+                    disabled={busy}
+                    className="bg-accent px-5 py-3 text-xs font-semibold uppercase tracking-wider text-white hover:bg-accent-hover disabled:opacity-50"
+                  >
+                    {isLive ? "Update live article" : "Publish now"}
+                  </button>
+                  {!isLive && (
+                    <button
+                      onClick={() => send.mutate("park")}
+                      disabled={busy}
+                      className="border border-sky-700 px-5 py-3 text-xs font-semibold uppercase tracking-wider text-sky-800 hover:bg-sky-700 hover:text-white disabled:opacity-50"
+                    >
+                      Park (not live)
+                    </button>
+                  )}
+                </>
               ) : (
                 <button
                   onClick={() => send.mutate("submit")}

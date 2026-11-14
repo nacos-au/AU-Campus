@@ -60,6 +60,10 @@ export default async function ReviewPage({
     hasRole(profile, "editor") &&
     assignee === profile.id &&
     (!isAuthor || soleSelf);
+  const canMakeLive =
+    !isRevision &&
+    article.status === "scheduled" &&
+    hasRole(profile, "editor");
 
   return (
     <div>
@@ -72,6 +76,7 @@ export default async function ReviewPage({
         state={state}
         isRevision={isRevision}
         canReview={canReview}
+        canMakeLive={canMakeLive}
         isAuthor={isAuthor}
         userId={profile.id}
         initialComments={(comments ?? []) as unknown as ReviewComment[]}

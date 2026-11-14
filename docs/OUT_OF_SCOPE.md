@@ -83,22 +83,22 @@ Not in the current Digest demo. Distinct from the existing **Updated** byline ti
 
 ---
 
-## 5. Digest — Dedicated Cron for Parked Posts
+## 5. Digest — Timed Scheduler / Auto-Release Cron
 
-**Not building now.** Parked posts (“post later”) already work without a cron: editors set a release time; status stays `scheduled` until that time; the next public page load calls `promote_due_embargoes` and flips due stories live.
+**Not building.** Parked posts are **manual only**: editor approves & parks (approved, not live); an editor later clicks **Make live**. No release datetime, no page-load auto-promote, no cron.
 
-### What is parked (out of scope)
+### Out of scope
 
-- Vercel Cron / cron-job.org / any always-on scheduler hitting `/api/cron/promote-holds`
-- Guaranteeing release at the exact minute with zero site traffic
+- Embargo / “go live at” datetime on approve
+- Vercel Cron, cron-job.org, or `/api/cron/promote-holds`
+- Auto-flipping parked → live on site traffic
 
-### Why parked
+### In scope (already)
 
-- Free Vercel Hobby cannot run frequent crons; a paid plan or third-party cron is unnecessary for the demo
-- Page-load promote is enough for campus traffic and demos
-- Revisit only if quiet-hour releases must fire with no visitors
+- Status `scheduled` = Parked
+- `publish_parked_article` — editors only
 
-The route and `CRON_SECRET` may remain in the codebase for later; do not wire them for the current phase.
+Revisit timed release only if the newsroom needs exact-minute go-live without a human click.
 
 ---
 
@@ -110,6 +110,6 @@ The route and `CRON_SECRET` may remain in the codebase for later; do not wire th
 | Head-to-Head | Phase 2 | Match history in database |
 | Add Fixtures to Calendar | Phase 2 | Matches in database |
 | Digest correction notes | Later | Digest live + editorial policy |
-| Digest release cron | Later | Need exact-time release with no traffic |
+| Digest timed release / cron | Later | Need exact-time go-live without a click |
 
 These will be built after the core platform (live scoring, standings, profiles, auth) is complete and connected to Supabase.

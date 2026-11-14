@@ -56,7 +56,7 @@ export interface Article {
   byline?: string | null;
   like_count?: number;
   sponsored_by?: string | null;
-  /** When set and status is scheduled, story is parked (post later) until this time. */
+  /** Legacy timed-release field; unused — parked stories use status scheduled only. */
   embargo_at?: string | null;
   /** Set when a post-publish edit is approved — public “Updated” label. */
   content_updated_at?: string | null;

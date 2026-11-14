@@ -8,7 +8,6 @@ import {
   ListStory,
   StoryCard,
 } from "@/components/stories";
-import { promoteDueEmbargoes } from "@/lib/articles";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
 import type { ArticleWithMeta, Section } from "@/lib/types";
 import { isDemoMode } from "@/lib/demo-mode";
@@ -19,7 +18,6 @@ export default async function HomePage() {
   const demoActive = isDemoMode(demoCookie);
   const supabase = await createClient();
   const t = await getTranslations("home");
-  await promoteDueEmbargoes(supabase);
 
   const ARTICLE_SELECT =
     "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username)";
