@@ -1,11 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "cd ../.. && npm install",
-  "buildCommand": "npm run build",
-  "crons": [
-    {
-      "path": "/api/cron/promote-holds",
-      "schedule": "*/5 * * * *"
-    }
-  ]
+  "buildCommand": "npm run build"
 }

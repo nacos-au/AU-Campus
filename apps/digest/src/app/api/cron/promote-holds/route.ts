@@ -2,8 +2,14 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
- * Vercel Cron: lift “held for release” stories whose hold time has passed.
- * Secure with CRON_SECRET (Authorization: Bearer …).
+ * Lift “held for release” stories whose hold time has passed.
+ * Prefer a free external ping (cron-job.org) over Vercel Cron — Hobby only allows
+ * about one run per day; frequent schedules need a paid Vercel plan.
+ *
+ * cron-job.org (free): GET https://<host>/api/cron/promote-holds every 5 min,
+ * header Authorization: Bearer <CRON_SECRET>.
+ *
+ * Without any cron, homepage/section/article loads still promote due holds.
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
