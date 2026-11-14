@@ -97,7 +97,6 @@ export function ArticleComposer({
   const [title, setTitle] = useState(initial?.title ?? "");
   const [dek, setDek] = useState(initial?.dek ?? "");
   const [byline, setByline] = useState(initial?.byline ?? "");
-  const [sponsoredBy, setSponsoredBy] = useState(initial?.sponsored_by ?? "");
   const [sectionId, setSectionId] = useState<number | "">(
     initial?.section_id ?? ""
   );
@@ -196,9 +195,6 @@ export function ArticleComposer({
       body: editor?.getJSON() ?? EMPTY_DOC,
       cover_url: coverUrl || null,
       byline: byline.trim() || null,
-      sponsored_by: isStaff
-        ? sponsoredBy.trim() || null
-        : (article?.sponsored_by ?? null),
       section_id: Number(resolvedSection) || Number(sections[0]?.id) || 0,
       language,
     };
@@ -231,7 +227,7 @@ export function ArticleComposer({
         body: p.body,
         cover_url: p.cover_url,
         byline: p.byline,
-        sponsored_by: p.sponsored_by,
+        sponsored_by: null,
         section_id: p.section_id,
         language: p.language,
       };
@@ -267,7 +263,6 @@ export function ArticleComposer({
       resolvedSection,
       sections,
       soleEditor,
-      sponsoredBy,
       supabase,
       title,
       dek,
@@ -817,21 +812,6 @@ export function ArticleComposer({
                   )}
                 </div>
               </div>
-
-              {isStaff && (
-                <label className="block text-xs font-semibold uppercase tracking-wide text-ink-soft">
-                  Sponsored by (optional)
-                  <input
-                    value={sponsoredBy}
-                    onChange={(e) => {
-                      setSponsoredBy(e.target.value);
-                      markDirty();
-                    }}
-                    placeholder="Campus Bookshop"
-                    className="mt-1 block w-full border border-rule-dark px-3 py-2 text-sm text-ink"
-                  />
-                </label>
-              )}
 
               {!soleEditor && (
                 <p className="border border-rule bg-gray-50 px-3 py-2 text-sm text-ink-soft">

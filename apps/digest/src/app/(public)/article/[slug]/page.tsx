@@ -87,12 +87,6 @@ export default async function ArticlePage({
           </Link>
         )}
 
-        {article.sponsored_by && (
-          <p className="mt-3 inline-block border border-rule-dark px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-ink-soft">
-            Paid post · Presented by {article.sponsored_by}
-          </p>
-        )}
-
         <h1 className="mt-3 font-serif text-3xl font-bold leading-tight sm:text-5xl sm:leading-tight">
           {article.title}
         </h1>

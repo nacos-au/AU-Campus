@@ -1,19 +1,28 @@
 "use client";
 
-import { PageHeader, input } from "@/components/admin/ui";
+import { PageHeader, btn, input } from "@/components/admin/ui";
+import { useConfirm } from "@/components/ConfirmDialog";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { ROLE_LABELS, ROLE_SUMMARIES } from "@/lib/roles";
 import type { Profile, Role } from "@/lib/types";
+import { deleteMemberAction } from "./actions";
 
 const ASSIGNABLE: Role[] = ["reader", "writer", "editor", "admin"];
 
 type TeamRow = Profile & { email?: string | null };
 
-export function TeamManager({ currentUserId }: { currentUserId: string }) {
+export function TeamManager({
+  currentUserId,
+  isSuperAdmin = false,
+}: {
+  currentUserId: string;
+  isSuperAdmin?: boolean;
+}) {
   const supabase = useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
+  const { confirm } = useConfirm();
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
 
@@ -44,15 +53,23 @@ export function TeamManager({ currentUserId }: { currentUserId: string }) {
     onError: (e: Error) => setError(e.message),
   });
 
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await deleteMemberAction(id);
+      if (!res.ok) throw new Error(res.error);
+    },
+    onSuccess: () => {
+      setError(null);
+      queryClient.invalidateQueries({ queryKey: ["admin-team"] });
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+
   const needle = q.trim().toLowerCase();
   const filtered = !needle
     ? people
     : people.filter((p) => {
-        const hay = [
-          p.display_name,
-          p.username,
-          p.email,
-        ]
+        const hay = [p.display_name, p.username, p.email]
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
@@ -63,7 +80,7 @@ export function TeamManager({ currentUserId }: { currentUserId: string }) {
     <div>
       <PageHeader
         title="Team"
-        description="Search by email or username, then promote writers, appoint editors, and reserve admin for people who can change roles. No one can escalate their own access."
+        description="Search by email or username, promote roles, or permanently remove a member. You cannot delete yourself."
       />
 
       <div className="grid gap-3 border border-rule bg-gray-50/60 p-4 text-sm sm:grid-cols-2">
@@ -105,6 +122,8 @@ export function TeamManager({ currentUserId }: { currentUserId: string }) {
         <div className="mt-6 divide-y divide-rule">
           {filtered.map((p) => {
             const isSelf = p.id === currentUserId;
+            const canDelete =
+              !isSelf && (!p.is_super_admin || isSuperAdmin);
             return (
               <div
                 key={p.id}
@@ -132,25 +151,48 @@ export function TeamManager({ currentUserId }: { currentUserId: string }) {
                     Joined {new Date(p.created_at).toLocaleDateString()}
                   </p>
                 </div>
-                <select
-                  value={p.role}
-                  disabled={isSelf || setRole.isPending}
-                  onChange={(e) =>
-                    setRole.mutate({ id: p.id, role: e.target.value as Role })
-                  }
-                  className="border border-rule-dark px-3 py-1.5 text-sm disabled:opacity-50"
-                  title={
-                    isSelf
-                      ? "You cannot change your own role"
-                      : "Change this person's role"
-                  }
-                >
-                  {ASSIGNABLE.map((r) => (
-                    <option key={r} value={r}>
-                      {ROLE_LABELS[r]}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={p.role}
+                    disabled={isSelf || setRole.isPending}
+                    onChange={(e) =>
+                      setRole.mutate({ id: p.id, role: e.target.value as Role })
+                    }
+                    className="border border-rule-dark px-3 py-1.5 text-sm disabled:opacity-50"
+                    title={
+                      isSelf
+                        ? "You cannot change your own role"
+                        : "Change this person's role"
+                    }
+                  >
+                    {ASSIGNABLE.map((r) => (
+                      <option key={r} value={r}>
+                        {ROLE_LABELS[r]}
+                      </option>
+                    ))}
+                  </select>
+                  {canDelete && (
+                    <button
+                      type="button"
+                      disabled={remove.isPending}
+                      className={btn.danger}
+                      onClick={async () => {
+                        if (
+                          !(await confirm({
+                            title: `Delete ${p.display_name || "this member"}?`,
+                            body: "This permanently removes their account and sign-in. Their published bylines may become anonymous. This cannot be undone.",
+                            confirmLabel: "Delete member",
+                            danger: true,
+                          }))
+                        )
+                          return;
+                        remove.mutate(p.id);
+                      }}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}

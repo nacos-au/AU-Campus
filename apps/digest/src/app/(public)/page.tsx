@@ -60,12 +60,17 @@ export default async function HomePage() {
     );
   }
 
+  // Only explicit flags — never invent a rail from leftovers.
   const breaking = digestFeatures.breakingNews
     ? articles.filter((a) => a.breaking).slice(0, 5)
     : [];
   const topNews = articles
     .filter((a) => a.featured && !breaking.some((b) => b.id === a.id))
     .slice(0, 5);
+
+  const showBreaking = breaking.length > 0;
+  const showTopNews = topNews.length > 0;
+  const showRail = showBreaking || showTopNews;
 
   const railIds = new Set([...breaking, ...topNews].map((a) => a.id));
   const mainPool = articles.filter((a) => !railIds.has(a.id));
@@ -76,22 +81,16 @@ export default async function HomePage() {
   );
   const remaining = articles.filter((a) => !usedIds.has(a.id));
 
-  // Fallback Top News if nothing featured yet
-  const topNewsDisplay =
-    topNews.length > 0
-      ? topNews
-      : remaining.slice(0, 5).length > 0
-        ? remaining.slice(0, 5)
-        : rest.slice(2, 7);
-
-  const remainingAfterTop = remaining.filter(
-    (a) => !topNewsDisplay.some((t) => t.id === a.id)
-  );
-
   return (
     <div className="py-4 md:py-6">
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3 lg:divide-x lg:divide-rule">
-        <div className="lg:col-span-2 lg:pr-8">
+      <div
+        className={
+          showRail
+            ? "grid grid-cols-1 gap-8 lg:grid-cols-3 lg:divide-x lg:divide-rule"
+            : "grid grid-cols-1"
+        }
+      >
+        <div className={showRail ? "lg:col-span-2 lg:pr-8" : ""}>
           {lead && <LeadStory article={lead} />}
           {secondary.length > 0 && (
             <div className="mt-8 grid grid-cols-1 gap-8 border-t border-rule pt-8 sm:grid-cols-2 sm:gap-6 sm:divide-x sm:divide-rule sm:pt-6">
@@ -104,38 +103,45 @@ export default async function HomePage() {
           )}
         </div>
 
-        <aside className="border-t border-rule pt-6 lg:border-t-0 lg:pt-0 lg:pl-8">
-          {digestFeatures.breakingNews && breaking.length > 0 && (
-            <div className="mb-8">
-              <h2 className="border-b-2 border-accent pb-2 text-sm font-bold uppercase tracking-wider text-accent">
-                <span className="mr-2 inline-block h-2.5 w-2.5 bg-accent" />
-                {t("breakingNews")}
-              </h2>
-              <div className="divide-y divide-rule">
-                {breaking.map((a) => (
-                  <div key={a.id} className="py-4">
-                    <CompactStory article={a} />
-                  </div>
-                ))}
+        {showRail && (
+          <aside className="border-t border-rule pt-6 lg:border-t-0 lg:pt-0 lg:pl-8">
+            {showBreaking && (
+              <div className={showTopNews ? "mb-8" : ""}>
+                <h2 className="border-b-2 border-accent pb-2 text-sm font-bold uppercase tracking-wider text-accent">
+                  <span className="mr-2 inline-block h-2.5 w-2.5 bg-accent" />
+                  {t("breakingNews")}
+                </h2>
+                <div className="divide-y divide-rule">
+                  {breaking.map((a) => (
+                    <div key={a.id} className="py-4">
+                      <CompactStory article={a} />
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <h2 className="border-b-2 border-ink pb-2 text-sm font-bold uppercase tracking-wider">
-            <span className="mr-2 inline-block h-2.5 w-2.5 bg-accent" />
-            {t("topNews")}
-          </h2>
-          <div className="divide-y divide-rule">
-            {topNewsDisplay.map((a) => (
-              <div key={a.id} className="py-4">
-                <CompactStory article={a} />
-              </div>
-            ))}
-          </div>
-          {digestFeatures.manualAds && (
-            <AdSlot slot="sidebar" className="mt-6" />
-          )}
-        </aside>
+            {showTopNews && (
+              <>
+                <h2 className="border-b-2 border-ink pb-2 text-sm font-bold uppercase tracking-wider">
+                  <span className="mr-2 inline-block h-2.5 w-2.5 bg-accent" />
+                  {t("topNews")}
+                </h2>
+                <div className="divide-y divide-rule">
+                  {topNews.map((a) => (
+                    <div key={a.id} className="py-4">
+                      <CompactStory article={a} />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {digestFeatures.manualAds && (
+              <AdSlot slot="sidebar" className="mt-6" />
+            )}
+          </aside>
+        )}
       </div>
 
       {digestFeatures.manualAds && (
@@ -143,7 +149,7 @@ export default async function HomePage() {
       )}
 
       {sections.map((section) => {
-        const sectionArticles = remainingAfterTop
+        const sectionArticles = remaining
           .filter((a) => a.sections?.slug === section.slug)
           .slice(0, 4);
         if (sectionArticles.length === 0) return null;
