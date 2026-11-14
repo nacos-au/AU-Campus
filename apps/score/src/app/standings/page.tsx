@@ -10,9 +10,12 @@ import {
   getGroupStandingsForTournament,
   getTournamentForSport,
 } from "@/lib/data/demo-competition";
+import { getScoreDemoMode } from "@/lib/data/mode";
+import { fetchGroupStandings, fetchLeagueStandings, fetchTournamentForSport } from "@/lib/data/repository";
 import { parseSportParam, sportToDbId, SPORT_LABELS } from "@/lib/utils/sport";
 
 export const metadata = { title: "Table" };
+export const dynamic = "force-dynamic";
 
 export default async function StandingsPage({
   searchParams,
@@ -22,11 +25,27 @@ export default async function StandingsPage({
   const { sport, competition } = await searchParams;
   const activeSport = parseSportParam(sport);
   const sportDbId = sportToDbId(activeSport);
-  const tournament = getTournamentForSport(sportDbId, competition);
+  const demo = await getScoreDemoMode();
+  const tournament = demo
+    ? getTournamentForSport(sportDbId, competition)
+    : await fetchTournamentForSport(sportDbId, competition);
+
   const isLeague = !tournament || tournament.competition_type !== "cup";
   const showNextMatch = isLeague && sportSupportsNextMatch(activeSport);
-  const leagueRows = getStandingsBySport(activeSport, isLeague ? tournament?.id : undefined);
-  const groupRows = tournament ? getGroupStandingsForTournament(tournament.id) : [];
+
+  const leagueRows = demo
+    ? getStandingsBySport(activeSport, isLeague ? tournament?.id : undefined)
+    : isLeague
+      ? await fetchLeagueStandings(sportDbId, tournament?.id)
+      : [];
+
+  const groupRows = demo
+    ? tournament
+      ? getGroupStandingsForTournament(tournament.id)
+      : []
+    : !isLeague
+      ? await fetchGroupStandings(sportDbId, tournament?.id)
+      : [];
 
   return (
     <>
@@ -37,8 +56,18 @@ export default async function StandingsPage({
       <PageContent>
         <TableFilters sport={activeSport} competitionId={tournament?.id} />
         <div className="mx-auto max-w-[1200px] px-4 py-6 sm:px-6">
-          {isLeague ? (
-            <StandingsTable rows={leagueRows} sport={activeSport} showNextMatch={showNextMatch} />
+          {!demo && !tournament ? (
+            <div className="table-card p-10 text-center text-sm opacity-70">
+              No published competitions for {SPORT_LABELS[activeSport]} yet.
+            </div>
+          ) : isLeague ? (
+            leagueRows.length > 0 ? (
+              <StandingsTable rows={leagueRows} sport={activeSport} showNextMatch={showNextMatch} />
+            ) : (
+              <div className="table-card p-10 text-center text-sm opacity-70">
+                Table appears once clubs are registered for this competition.
+              </div>
+            )
           ) : groupRows.length > 0 ? (
             <GroupTables rows={groupRows} sport={activeSport} />
           ) : (

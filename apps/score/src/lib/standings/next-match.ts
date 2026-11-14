@@ -24,20 +24,25 @@ export function getDefaultLeagueTournamentId(sport: SportId): string | undefined
   }
 }
 
-/** Earliest scheduled league fixture per team, keyed by team id. */
-export function buildNextMatchByTeam(tournamentId: string): Map<string, NextMatchInfo> {
+/** Earliest scheduled fixture per team from a match list. */
+export function buildNextMatchMapFromFixtures(matches: Match[]): Map<string, NextMatchInfo> {
   const map = new Map<string, NextMatchInfo>();
-  const upcoming = DEMO_MATCHES.filter(
-    (m) => m.tournament_id === tournamentId && m.status === "scheduled"
-  ).sort(
-    (a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime()
-  );
+  const upcoming = matches
+    .filter((m) => m.status === "scheduled" && !m.deleted_at)
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
 
   for (const match of upcoming) {
     assignIfMissing(map, match.home_team_id, match, "home");
     assignIfMissing(map, match.away_team_id, match, "away");
   }
   return map;
+}
+
+/** Earliest scheduled league fixture per team, keyed by team id (demo). */
+export function buildNextMatchByTeam(tournamentId: string): Map<string, NextMatchInfo> {
+  return buildNextMatchMapFromFixtures(
+    DEMO_MATCHES.filter((m) => m.tournament_id === tournamentId)
+  );
 }
 
 function assignIfMissing(

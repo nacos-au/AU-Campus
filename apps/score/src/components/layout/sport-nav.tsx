@@ -8,7 +8,15 @@ import { parseSportParam } from "@/lib/utils/sport";
 import { cn } from "@/lib/utils/cn";
 
 /** Routes where sport chips should not appear “active” (standalone surfaces). */
-const STANDALONE_PREFIXES = ["/phantom", "/keeper", "/admin", "/account", "/demo", "/auth"];
+const STANDALONE_PREFIXES = [
+  "/phantom",
+  "/keeper",
+  "/admin",
+  "/account",
+  "/demo",
+  "/auth",
+  "/competitions",
+];
 
 export function SportNav() {
   const pathname = usePathname();
@@ -17,8 +25,9 @@ export function SportNav() {
   const onStandalone = STANDALONE_PREFIXES.some(
     (p) => pathname === p || pathname.startsWith(`${p}/`)
   );
-  /** No sport is “active” on Phantom, Keeper, Admin, etc. */
+  /** No sport is “active” on Phantom, Keeper, Admin, Competitions hub, etc. */
   const activeSport = onStandalone ? null : sportFromQuery;
+  const onCompetitions = pathname === "/competitions" || pathname.startsWith("/competitions/");
 
   return (
     <nav className="branded-sport-nav border-b border-[#003d20]">
@@ -49,6 +58,19 @@ export function SportNav() {
             </Link>
           );
         })}
+
+        <Link
+          href="/competitions"
+          data-active={onCompetitions}
+          className={cn(
+            "sport-nav-link flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1.5 font-display text-[13px] font-semibold transition-all duration-200 sm:px-3 sm:py-2 sm:text-sm",
+            onCompetitions
+              ? "bg-white text-accent shadow-sm"
+              : "text-white/85 hover:bg-white/10 hover:text-white"
+          )}
+        >
+          Competitions
+        </Link>
       </div>
     </nav>
   );

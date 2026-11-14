@@ -20,6 +20,7 @@ const sportSectionItems: Array<{ href: string; label: string }> = [
   { href: "/live", label: "Live" },
   { href: "/standings", label: "Table" },
   { href: "/competition", label: "Competition" },
+  { href: "/competitions", label: "Competitions" },
   { href: "/stats", label: "Statistics" },
   { href: "/teams", label: "Clubs" },
 ];
@@ -59,6 +60,7 @@ export function SiteNav({
     if (
       href === "/admin" ||
       href === "/demo" ||
+      href === "/competitions" ||
       href === PHANTOM_BRAND.path ||
       href.startsWith("/?auth=")
     ) {

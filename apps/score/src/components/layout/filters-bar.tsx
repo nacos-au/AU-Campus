@@ -6,6 +6,8 @@ import { getSportConfig } from "@/lib/utils/sport-config";
 import { cn } from "@/lib/utils/cn";
 import { toCompetitionOptions } from "@/lib/competition/competition-filter-utils";
 import { CompetitionFilters } from "@/components/layout/competition-filters";
+import { getScoreDemoMode } from "@/lib/data/mode";
+import { fetchTournamentsForSport } from "@/lib/data/repository";
 
 export function FiltersBar({ children }: { children: React.ReactNode }) {
   return (
@@ -30,15 +32,24 @@ function FilterChip({ label, className }: { label: string; className?: string })
   );
 }
 
+async function loadCompetitionOptions(sport: SportId) {
+  const sportDbId = sportToDbId(sport);
+  const demo = await getScoreDemoMode();
+  const tournaments = demo
+    ? getTournamentsForSport(sportDbId)
+    : await fetchTournamentsForSport(sportDbId);
+  return toCompetitionOptions(tournaments);
+}
+
 /** Matches page — competition + season + matchweek + home/away */
-export function MatchesFilters({
+export async function MatchesFilters({
   sport = "football",
   competitionId,
 }: {
   sport?: SportId;
   competitionId?: string;
 }) {
-  const competitions = toCompetitionOptions(getTournamentsForSport(sportToDbId(sport)));
+  const competitions = await loadCompetitionOptions(sport);
   return (
     <CompetitionFilters
       sport={sport}
@@ -51,14 +62,14 @@ export function MatchesFilters({
 }
 
 /** Table page — competition + season */
-export function TableFilters({
+export async function TableFilters({
   sport = "football",
   competitionId,
 }: {
   sport?: SportId;
   competitionId?: string;
 }) {
-  const competitions = toCompetitionOptions(getTournamentsForSport(sportToDbId(sport)));
+  const competitions = await loadCompetitionOptions(sport);
   return (
     <CompetitionFilters
       sport={sport}
@@ -71,14 +82,14 @@ export function TableFilters({
 }
 
 /** Stats dashboard — competition + season */
-export function StatsFilters({
+export async function StatsFilters({
   sport = "football",
   competitionId,
 }: {
   sport?: SportId;
   competitionId?: string;
 }) {
-  const competitions = toCompetitionOptions(getTournamentsForSport(sportToDbId(sport)));
+  const competitions = await loadCompetitionOptions(sport);
   return (
     <CompetitionFilters
       sport={sport}
@@ -91,14 +102,14 @@ export function StatsFilters({
 }
 
 /** Clubs page — competition + season */
-export function ClubsFilters({
+export async function ClubsFilters({
   sport = "football",
   competitionId,
 }: {
   sport?: SportId;
   competitionId?: string;
 }) {
-  const competitions = toCompetitionOptions(getTournamentsForSport(sportToDbId(sport)));
+  const competitions = await loadCompetitionOptions(sport);
   return (
     <CompetitionFilters
       sport={sport}
@@ -111,14 +122,14 @@ export function ClubsFilters({
 }
 
 /** Competition page — competition + season */
-export function CompetitionPageFilters({
+export async function CompetitionPageFilters({
   sport = "football",
   competitionId,
 }: {
   sport?: SportId;
   competitionId?: string;
 }) {
-  const competitions = toCompetitionOptions(getTournamentsForSport(sportToDbId(sport)));
+  const competitions = await loadCompetitionOptions(sport);
   return (
     <CompetitionFilters
       sport={sport}

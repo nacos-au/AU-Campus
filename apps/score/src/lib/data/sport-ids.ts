@@ -3,6 +3,48 @@ import { dbIdToSport, type SportId } from "@/lib/utils/sport";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
+/** Map a `sports.name` row to the public SportId slug used in URLs. */
+export function sportLabelToSportId(name: string): SportId {
+  const n = name.toLowerCase();
+  if (n.includes("basket")) return "basketball";
+  if (n.includes("volley")) return "volleyball";
+  if (n.includes("tennis")) return "tennis";
+  if (n.includes("track") || n.includes("athlet")) return "track";
+  return "football";
+}
+
+/**
+ * Resolve demo slugs (`sport-football`) or live UUIDs to the URL SportId.
+ * Pass an optional id→name map for batch pages (hub / live).
+ */
+export function sportRefToSportId(
+  sportRef: string,
+  uuidToName?: Map<string, string>
+): SportId {
+  if (sportRef.startsWith("sport-")) return dbIdToSport(sportRef);
+  if (
+    sportRef === "football" ||
+    sportRef === "basketball" ||
+    sportRef === "tennis" ||
+    sportRef === "volleyball" ||
+    sportRef === "track"
+  ) {
+    return sportRef;
+  }
+  const name = uuidToName?.get(sportRef);
+  return name ? sportLabelToSportId(name) : "football";
+}
+
+/** Load sports.id → name for Live UUID → SportId mapping. */
+export async function fetchSportNameMap(
+  supabase: Supabase
+): Promise<Map<string, string>> {
+  const { data } = (await supabase.from("sports").select("id, name")) as {
+    data: Array<{ id: string; name: string }> | null;
+  };
+  return new Map((data ?? []).map((r) => [r.id, r.name]));
+}
+
 /** Names used in the `sports` table (see scripts/seed.ts). */
 const SPORT_TABLE_NAMES: Record<SportId, string[]> = {
   football: ["Football", "Soccer"],

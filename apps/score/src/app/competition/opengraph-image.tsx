@@ -27,7 +27,7 @@ export default async function Image(props: {
 
   const tournament = demo
     ? getTournamentForSport(sportDbId, competition)
-    : ((await fetchTournamentForSport(sportDbId)) ?? getTournamentForSport(sportDbId, competition));
+    : await fetchTournamentForSport(sportDbId, competition);
 
   const fixtures = await fetchPublicMatches({
     sportDbId,

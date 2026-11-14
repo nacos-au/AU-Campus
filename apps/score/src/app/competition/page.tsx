@@ -24,6 +24,7 @@ import { getScoreDemoMode } from "@/lib/data/mode";
 import {
   fetchBracketFixtures,
   fetchGroupStandings,
+  fetchLeagueStandings,
   fetchMeetEvents,
   fetchTournamentForSport,
 } from "@/lib/data/repository";
@@ -36,10 +37,12 @@ import { formatDescription, formatLabel } from "@/lib/competition/format-labels"
 function CompetitionDetails({
   tournament,
   rules,
+  regulations,
   isLeague,
 }: {
   tournament: Tournament;
   rules: string[];
+  regulations: string[];
   isLeague: boolean;
 }) {
   const facts: { label: string; value: string; hint?: string }[] = [
@@ -91,10 +94,28 @@ function CompetitionDetails({
               </dd>
             </div>
           )}
+          {regulations.length > 0 && (
+            <div className="sm:col-span-2">
+              <dt className="text-xs font-bold uppercase opacity-50">Regulations</dt>
+              <dd className="mt-2 space-y-1.5">
+                {regulations.map((line) => (
+                  <p key={line} className="text-sm leading-snug opacity-80">
+                    {line}
+                  </p>
+                ))}
+              </dd>
+            </div>
+          )}
         </dl>
       </div>
     </details>
   );
+}
+
+function regulationsFromConfig(config: Tournament["config"]): string[] {
+  const raw = config?.regulations;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((x): x is string => typeof x === "string" && x.trim().length > 0);
 }
 
 export async function generateMetadata({
@@ -116,6 +137,8 @@ export async function generateMetadata({
   };
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function CompetitionPage({
   searchParams,
 }: {
@@ -130,16 +153,19 @@ export default async function CompetitionPage({
 
   const tournament = demo
     ? getTournamentForSport(sportDbId, competition)
-    : ((await fetchTournamentForSport(sportDbId)) ?? getTournamentForSport(sportDbId, competition));
+    : await fetchTournamentForSport(sportDbId, competition);
 
   if (!tournament) {
     return (
       <>
         <BrandedSection title="Competition" activeSport={activeSport} />
         <PageContent>
+          <CompetitionPageFilters sport={activeSport} />
           <div className="mx-auto max-w-[1200px] px-4 py-10 text-center sm:px-6">
             <p className="opacity-70">
-              No competitions for {SPORT_LABELS[activeSport]} in demo data yet.
+              {demo
+                ? `No competitions for ${SPORT_LABELS[activeSport]} in demo data yet.`
+                : `No published competitions for ${SPORT_LABELS[activeSport]} yet.`}
             </p>
           </div>
         </PageContent>
@@ -148,17 +174,22 @@ export default async function CompetitionPage({
   }
 
   const rules = formatTournamentRules(tournament.rules, sportDbId);
-  const isLeague = tournament.competition_type === "league";
+  const regulations = regulationsFromConfig(tournament.config);
+  const isLeague = tournament.competition_type === "league" || tournament.category === "league";
   const groupStandings = demo
     ? getGroupStandingsForTournament(tournament.id)
-    : await fetchGroupStandings(sportDbId);
+    : await fetchGroupStandings(sportDbId, tournament.id);
   const bracketFixtures = demo
     ? getBracketFixturesForTournament(tournament.id)
-    : await fetchBracketFixtures(sportDbId);
+    : await fetchBracketFixtures(sportDbId, tournament.id);
   const meetEvents = demo
     ? getMeetEventsForTournament(tournament.id)
-    : await fetchMeetEvents(sportDbId);
-  const leagueStandings = isLeague ? getStandingsBySport(activeSport, tournament.id) : [];
+    : await fetchMeetEvents(sportDbId, tournament.id);
+  const leagueStandings = isLeague
+    ? demo
+      ? getStandingsBySport(activeSport, tournament.id)
+      : await fetchLeagueStandings(sportDbId, tournament.id)
+    : [];
   const showNextMatch = isLeague && sportSupportsNextMatch(activeSport);
   const isTrack = sportDbId === "sport-track";
   const isTennis = sportDbId === "sport-tennis";
@@ -186,7 +217,12 @@ export default async function CompetitionPage({
             <CompetitionTimeline phases={tournament.phases} tournament={tournament} />
           )}
 
-          <CompetitionDetails tournament={tournament} rules={rules} isLeague={isLeague} />
+          <CompetitionDetails
+            tournament={tournament}
+            rules={rules}
+            regulations={regulations}
+            isLeague={isLeague}
+          />
 
           {isLeague && leagueStandings.length > 0 && (
             <section>

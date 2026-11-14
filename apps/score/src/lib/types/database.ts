@@ -214,6 +214,8 @@ export interface Tournament {
   phases?: CompetitionTimelinePhase[];
   /** Hidden from public/keepers until published. */
   is_draft?: boolean;
+  /** Builder / regulations / squad caps (JSONB). */
+  config?: Record<string, unknown> | null;
 }
 
 export interface Match {

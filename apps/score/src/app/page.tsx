@@ -5,7 +5,7 @@ import { MatchesFilters } from "@/components/layout/filters-bar";
 import { PageContent } from "@/components/layout/page-content";
 import { getTournamentForSport } from "@/lib/data/demo-competition";
 import { getMatchesBySport, getSportConfig } from "@/lib/data/get-by-sport";
-import { fetchPublicMatches } from "@/lib/data/repository";
+import { fetchPublicMatches, fetchTournamentForSport } from "@/lib/data/repository";
 import { getScoreDemoMode } from "@/lib/data/mode";
 import { parseSportParam, sportToDbId } from "@/lib/utils/sport";
 import type { Match } from "@/lib/types/database";
@@ -39,20 +39,22 @@ export default async function MatchesPage({
   const { sport, competition } = await searchParams;
   const activeSport = parseSportParam(sport);
   const config = getSportConfig(activeSport);
+  const sportDbId = sportToDbId(activeSport);
   const demo = await getScoreDemoMode();
-  const tournament = getTournamentForSport(sportToDbId(activeSport), competition);
+  const tournament = demo
+    ? getTournamentForSport(sportDbId, competition)
+    : await fetchTournamentForSport(sportDbId, competition);
 
   const matches = demo
     ? getMatchesBySport(activeSport, tournament?.id)
     : (
         await fetchPublicMatches({
-          sportDbId: sportToDbId(activeSport),
+          sportDbId,
           status: ["live", "paused", "scheduled", "completed"],
           limit: 80,
         })
       )
         .filter((m) => !tournament?.id || m.tournament_id === tournament.id)
-        // Live first, then by kickoff
         .sort((a, b) => {
           const rank = (s: string) => (s === "live" || s === "paused" ? 0 : s === "scheduled" ? 1 : 2);
           const d = rank(a.status) - rank(b.status);

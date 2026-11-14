@@ -7,6 +7,7 @@ import type {
   PeriodScore,
   Player,
   SetScore,
+  StandingRow,
   Team,
   Tournament,
   TrackResult,
@@ -21,7 +22,9 @@ import {
   getGroupStandingsForSport,
   getMeetEventsForSport,
   getTournamentForSport,
+  getTournamentsForSport,
 } from "@/lib/data/demo-competition";
+import { buildNextMatchMapFromFixtures } from "@/lib/standings/next-match";
 import {
   getCreatedDemoTournament,
   nextMatchday,
@@ -69,7 +72,36 @@ type TournamentRow = {
   rules: Record<string, unknown>;
   format?: string;
   phases?: Tournament["phases"];
+  competition_type?: string | null;
+  is_draft?: boolean | null;
+  title_holder_team_id?: string | null;
+  title_holder_name?: string | null;
+  title_holder_season?: string | null;
+  config?: Record<string, unknown> | null;
 };
+
+function mapTournamentRow(data: TournamentRow): Tournament {
+  return {
+    id: data.id,
+    name: data.name,
+    sport_id: data.sport_id,
+    category: data.category as Tournament["category"],
+    format: data.format as Tournament["format"],
+    competition_type: (data.competition_type as Tournament["competition_type"]) ?? undefined,
+    rules: (data.rules ?? {}) as Tournament["rules"],
+    season: data.season,
+    phases: data.phases,
+    is_draft: Boolean(data.is_draft),
+    config: data.config ?? null,
+    title_holder: data.title_holder_name
+      ? {
+          team_id: data.title_holder_team_id,
+          team_name: data.title_holder_name,
+          season: data.title_holder_season ?? "Previous",
+        }
+      : null,
+  };
+}
 
 type BracketRow = {
   id: string;
@@ -105,54 +137,75 @@ type MeetEventRow = {
   venue: string | null;
 };
 
-export async function fetchTournamentForSport(sportDbId: string): Promise<Tournament | null> {
-  if (!hasSupabaseConfig() || (await getScoreDemoMode())) return getTournamentForSport(sportDbId);
-
-  const supabase = await createClient();
-  const { data: sports } = await supabase.from("sports").select("id").limit(1);
-  if (!sports?.length) return null;
-
-  const { data } = await supabase
-    .from("tournaments")
-    .select("*")
-    .eq("sport_id", sportDbId)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle() as { data: TournamentRow | null };
-
-  if (!data) return null;
-  return {
-    id: data.id,
-    name: data.name,
-    sport_id: data.sport_id,
-    category: data.category as Tournament["category"],
-    format: data.format as Tournament["format"],
-    rules: (data.rules ?? {}) as Tournament["rules"],
-    season: data.season,
-    phases: data.phases,
-  };
-}
-
-export async function fetchGroupStandings(sportDbId: string): Promise<GroupStandingRow[]> {
-  if (!hasSupabaseConfig() || (await getScoreDemoMode())) return getGroupStandingsForSport(sportDbId);
+/** Published (non-draft) competitions for a sport — Live mode only returns real rows. */
+export async function fetchTournamentsForSport(sportDbId: string): Promise<Tournament[]> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    return getTournamentsForSport(sportDbId);
+  }
 
   const supabase = await createClient();
   const sportUuid = await resolveSportUuid(supabase, sportDbId);
   if (typeof sportUuid !== "string") return [];
 
-  // Prefer latest league/event tournament for this sport (skip drafts when column exists).
-  const { data: tournamentRows } = (await supabase
+  const { data } = (await supabase
     .from("tournaments")
-    .select("id, name, category, is_draft")
+    .select("*")
     .eq("sport_id", sportUuid)
+    .eq("is_draft", false)
     .neq("category", "friendly")
-    .order("created_at", { ascending: false })
-    .limit(5)) as {
-    data: Array<{ id: string; name: string; category: string; is_draft?: boolean | null }> | null;
-  };
+    .order("created_at", { ascending: false })) as { data: TournamentRow[] | null };
 
-  const tournament = (tournamentRows ?? []).find((t) => t.is_draft !== true) ?? null;
+  return (data ?? []).map(mapTournamentRow);
+}
+
+/** All published competitions across sports (Competitions hub). */
+export async function fetchPublicCompetitions(): Promise<Tournament[]> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    return (
+      [
+        "sport-football",
+        "sport-basketball",
+        "sport-volleyball",
+        "sport-tennis",
+        "sport-track",
+      ] as const
+    ).flatMap((s) => getTournamentsForSport(s));
+  }
+
+  const supabase = await createClient();
+  const { data } = (await supabase
+    .from("tournaments")
+    .select("*")
+    .eq("is_draft", false)
+    .neq("category", "friendly")
+    .order("created_at", { ascending: false })) as { data: TournamentRow[] | null };
+
+  return (data ?? []).map(mapTournamentRow);
+}
+
+export async function fetchTournamentForSport(
+  sportDbId: string,
+  tournamentId?: string
+): Promise<Tournament | null> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    return getTournamentForSport(sportDbId, tournamentId);
+  }
+
+  const all = await fetchTournamentsForSport(sportDbId);
+  if (tournamentId) return all.find((t) => t.id === tournamentId) ?? null;
+  return all[0] ?? null;
+}
+
+export async function fetchGroupStandings(
+  sportDbId: string,
+  tournamentId?: string
+): Promise<GroupStandingRow[]> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) return getGroupStandingsForSport(sportDbId);
+
+  const tournament = await fetchTournamentForSport(sportDbId, tournamentId);
   if (!tournament) return [];
+
+  const supabase = await createClient();
 
   const { data: teamRows } = (await supabase
     .from("tournament_teams")
@@ -173,9 +226,10 @@ export async function fetchGroupStandings(sportDbId: string): Promise<GroupStand
 
   const { data: matches } = (await supabase
     .from("matches")
-    .select("*")
+    .select(
+      "*, home_team:teams!home_team_id(*, department:departments(*)), away_team:teams!away_team_id(*, department:departments(*))"
+    )
     .eq("tournament_id", tournament.id)
-    .eq("status", "completed")
     .is("deleted_at", null)) as { data: Match[] | null };
 
   if (!teamRows?.length) return [];
@@ -193,23 +247,37 @@ export async function fetchGroupStandings(sportDbId: string): Promise<GroupStand
     };
   });
 
-  const table = recomputeStandingsFromMatches(matches ?? [], teams);
+  const completed = (matches ?? []).filter((m) => m.status === "completed");
+  const table = recomputeStandingsFromMatches(completed, teams);
+  const nextByTeam = buildNextMatchMapFromFixtures(matches ?? []);
 
-  // Shape as a single synthetic group for the existing standings UI.
   return table.map((row) => ({
     ...row,
+    next_match: nextByTeam.get(row.team_id) ?? null,
     group_id: tournament.id,
     group_name: tournament.name,
   }));
 }
 
-export async function fetchBracketFixtures(sportDbId: string): Promise<BracketFixture[]> {
+/** League table rows for Table / Competition pages. */
+export async function fetchLeagueStandings(
+  sportDbId: string,
+  tournamentId?: string
+): Promise<StandingRow[]> {
+  const rows = await fetchGroupStandings(sportDbId, tournamentId);
+  return rows.map(({ group_id: _g, group_name: _n, ...row }) => row);
+}
+
+export async function fetchBracketFixtures(
+  sportDbId: string,
+  tournamentId?: string
+): Promise<BracketFixture[]> {
   if (!hasSupabaseConfig() || (await getScoreDemoMode())) return getBracketFixturesForSport(sportDbId);
 
-  const supabase = await createClient();
-  const tournament = await fetchTournamentForSport(sportDbId);
+  const tournament = await fetchTournamentForSport(sportDbId, tournamentId);
   if (!tournament) return [];
 
+  const supabase = await createClient();
   const { data } = await supabase
     .from("bracket_fixtures")
     .select("*")
@@ -243,13 +311,16 @@ export async function fetchBracketFixtures(sportDbId: string): Promise<BracketFi
   }));
 }
 
-export async function fetchMeetEvents(sportDbId: string): Promise<MeetEventFixture[]> {
+export async function fetchMeetEvents(
+  sportDbId: string,
+  tournamentId?: string
+): Promise<MeetEventFixture[]> {
   if (!hasSupabaseConfig() || (await getScoreDemoMode())) return getMeetEventsForSport(sportDbId);
 
-  const supabase = await createClient();
-  const tournament = await fetchTournamentForSport(sportDbId);
+  const tournament = await fetchTournamentForSport(sportDbId, tournamentId);
   if (!tournament) return [];
 
+  const supabase = await createClient();
   const { data } = await supabase
     .from("meet_events")
     .select("*")
@@ -671,7 +742,9 @@ export async function fetchPublicMatches(opts?: {
   limit?: number;
 }): Promise<Match[]> {
   if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
-    let rows = listAllDemoMatches().filter((m) => !m.deleted_at);
+    let rows = listAllDemoMatches()
+      .filter((m) => !m.deleted_at)
+      .filter((m) => !m.tournament?.is_draft);
     if (opts?.sportDbId) rows = rows.filter((m) => m.sport_id === opts.sportDbId);
     if (opts?.status?.length) rows = rows.filter((m) => opts.status!.includes(m.status as "scheduled" | "live" | "paused" | "completed"));
     return rows.slice(0, opts?.limit ?? 100);
@@ -681,9 +754,10 @@ export async function fetchPublicMatches(opts?: {
   let query = supabase
     .from("matches")
     .select(
-      "*, venue:venues(*), home_team:teams!home_team_id(*, department:departments(*)), away_team:teams!away_team_id(*, department:departments(*)), tournament:tournaments(*)"
+      "*, venue:venues(*), home_team:teams!home_team_id(*, department:departments(*)), away_team:teams!away_team_id(*, department:departments(*)), tournament:tournaments!inner(*)"
     )
     .is("deleted_at", null)
+    .eq("tournament.is_draft", false)
     .order("scheduled_at", { ascending: true })
     .limit(opts?.limit ?? 100);
 

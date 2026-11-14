@@ -9,9 +9,12 @@ import {
   getTournamentForSport,
 } from "@/lib/data/demo-competition";
 import { getSportConfig } from "@/lib/data/get-by-sport";
+import { getScoreDemoMode } from "@/lib/data/mode";
+import { fetchTournamentForSport } from "@/lib/data/repository";
 import { parseSportParam, sportToDbId, SPORT_LABELS } from "@/lib/utils/sport";
 
 export const metadata = { title: "Clubs" };
+export const dynamic = "force-dynamic";
 
 export default async function TeamsPage({
   searchParams,
@@ -22,13 +25,19 @@ export default async function TeamsPage({
   const activeSport = parseSportParam(sport);
   const sportDbId = sportToDbId(activeSport);
   const config = getSportConfig(activeSport);
-  const tournament = getTournamentForSport(sportDbId, competition);
-  const registeredIds = tournament ? getRegisteredTeamIdsForTournament(tournament.id) : null;
-  const teams = DEMO_TEAMS.filter(
-    (t) => t.sport_id === sportDbId && (!registeredIds || registeredIds.includes(t.id))
-  );
+  const demo = await getScoreDemoMode();
+  const tournament = demo
+    ? getTournamentForSport(sportDbId, competition)
+    : await fetchTournamentForSport(sportDbId, competition);
+  const registeredIds =
+    demo && tournament ? getRegisteredTeamIdsForTournament(tournament.id) : null;
+  const teams = demo
+    ? DEMO_TEAMS.filter(
+        (t) => t.sport_id === sportDbId && (!registeredIds || registeredIds.includes(t.id))
+      )
+    : [];
   const trackAthletes =
-    activeSport === "track"
+    demo && activeSport === "track"
       ? DEMO_PLAYERS.filter((p) => p.position === "Sprinter")
       : [];
 
@@ -77,7 +86,11 @@ export default async function TeamsPage({
                 })
               )
             ) : teams.length === 0 ? (
-              <p className="p-8 text-center opacity-70">No clubs registered for this sport yet.</p>
+              <p className="p-8 text-center opacity-70">
+                {demo
+                  ? "No clubs registered for this sport yet."
+                  : "Club directory for live competitions is managed in Admin. Open Competition for the table and fixtures."}
+              </p>
             ) : (
               teams.map((team) => {
                 const dept = DEMO_DEPARTMENTS.find((d) => d.id === team.department_id);

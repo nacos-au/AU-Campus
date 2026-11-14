@@ -6,7 +6,11 @@ import { LiveBadge } from "@/components/layout/section-title";
 import { TeamCrest } from "@/components/ui/team-crest";
 import { FeedbackLauncher } from "@/components/feedback/feedback-launcher";
 import { fetchPublicMatches } from "@/lib/data/repository";
-import { parseSportParam, sportToDbId, dbIdToSport } from "@/lib/utils/sport";
+import { fetchSportNameMap, sportRefToSportId } from "@/lib/data/sport-ids";
+import { getScoreDemoMode } from "@/lib/data/mode";
+import { hasSupabaseConfig } from "@/lib/demo-mode";
+import { createClient } from "@/lib/supabase/server";
+import { parseSportParam, sportToDbId } from "@/lib/utils/sport";
 import { getSportConfig } from "@/lib/utils/sport-config";
 
 export const metadata = { title: "Live · AU Score" };
@@ -20,6 +24,11 @@ export default async function LiveEventsPage({
 }) {
   const { sport } = await searchParams;
   const activeSport = parseSportParam(sport);
+  const demo = !hasSupabaseConfig() || (await getScoreDemoMode());
+  const sportNames =
+    demo ? new Map<string, string>() : await fetchSportNameMap(await createClient());
+  const toSport = (ref: string) => sportRefToSportId(ref, sportNames);
+
   const live = await fetchPublicMatches({
     sportDbId: sportToDbId(activeSport),
     status: ["live", "paused"],
@@ -53,7 +62,7 @@ export default async function LiveEventsPage({
             ) : (
               <div className="table-card divide-y divide-rule overflow-hidden">
                 {live.map((m) => {
-                  const s = dbIdToSport(m.sport_id);
+                  const s = toSport(m.sport_id);
                   const config = getSportConfig(s);
                   return (
                     <Link
@@ -104,7 +113,7 @@ export default async function LiveEventsPage({
             ) : (
               <div className="table-card divide-y divide-rule overflow-hidden">
                 {upcoming.map((m) => {
-                  const s = dbIdToSport(m.sport_id);
+                  const s = toSport(m.sport_id);
                   return (
                     <Link
                       key={m.id}
