@@ -32,6 +32,19 @@ export function SportNav() {
   return (
     <nav className="branded-sport-nav border-b border-[#003d20]">
       <div className="hide-scrollbar mx-auto flex max-w-[1200px] gap-2 overflow-x-auto px-3 py-2 sm:gap-3 sm:px-6 sm:py-2.5">
+        <Link
+          href="/competitions"
+          data-active={onCompetitions}
+          className={cn(
+            "sport-nav-link flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1.5 font-display text-[13px] font-semibold transition-all duration-200 sm:px-3 sm:py-2 sm:text-sm",
+            onCompetitions
+              ? "bg-white text-accent shadow-sm"
+              : "text-white/85 hover:bg-white/10 hover:text-white"
+          )}
+        >
+          Competitions
+        </Link>
+
         {SPORTS.map(({ id, label }) => {
           const isActive = activeSport === id;
           const params = new URLSearchParams(searchParams.toString());
@@ -58,19 +71,6 @@ export function SportNav() {
             </Link>
           );
         })}
-
-        <Link
-          href="/competitions"
-          data-active={onCompetitions}
-          className={cn(
-            "sport-nav-link flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1.5 font-display text-[13px] font-semibold transition-all duration-200 sm:px-3 sm:py-2 sm:text-sm",
-            onCompetitions
-              ? "bg-white text-accent shadow-sm"
-              : "text-white/85 hover:bg-white/10 hover:text-white"
-          )}
-        >
-          Competitions
-        </Link>
       </div>
     </nav>
   );

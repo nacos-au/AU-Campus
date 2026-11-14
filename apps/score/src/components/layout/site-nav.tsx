@@ -16,11 +16,11 @@ const LOGO_SRC = "/AU Logo.webp";
 
 /** Sport-scoped sections (get ?sport=). */
 const sportSectionItems: Array<{ href: string; label: string }> = [
+  { href: "/competitions", label: "Competitions" },
   { href: "/", label: "Matches" },
   { href: "/live", label: "Live" },
   { href: "/standings", label: "Table" },
   { href: "/competition", label: "Competition" },
-  { href: "/competitions", label: "Competitions" },
   { href: "/stats", label: "Statistics" },
   { href: "/teams", label: "Clubs" },
 ];

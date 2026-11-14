@@ -18,9 +18,9 @@ export function PageSubNav({ activeSport }: { activeSport: SportId }) {
   const config = getSportConfig(activeSport);
 
   const subNavItems = [
+    { href: "/competition", label: "Competition" },
     { href: "/", label: "Matches" },
     { href: "/standings", label: "Table" },
-    { href: "/competition", label: "Competition" },
     { href: "/stats", label: "Statistics" },
     { href: "/teams", label: config.clubsLabel },
   ];
