@@ -66,12 +66,30 @@ Inspired by the Premier League matches page CTA.
 
 ---
 
-## 4. Implementation Priority
+## 4. Digest — Public Correction Notes (NYT-style)
+
+Not in the current Digest demo. Distinct from the existing **Updated** byline timestamp and editor version history.
+
+### What it would be
+
+- Optional editor flag when approving an edit: “This is a correction”
+- Short public note on the article (e.g. “Correction: An earlier version misstated the vote tally…”)
+- Used for **factual error accountability**, not routine copy edits
+
+### Why parked
+
+- **Updated** + version diffs already cover authenticity for the demo
+- Corrections need editorial policy copy, UI, and a stored `correction_note` (or similar) — defer until after fair assignment / holds / weekly issues settle
+
+---
+
+## 5. Implementation Priority
 
 | Feature | Priority | Depends On |
 |---------|----------|------------|
 | Player Comparison | Phase 2 | Live player stats aggregation |
 | Head-to-Head | Phase 2 | Match history in database |
 | Add Fixtures to Calendar | Phase 2 | Matches in database |
+| Digest correction notes | Later | Digest live + editorial policy |
 
 These will be built after the core platform (live scoring, standings, profiles, auth) is complete and connected to Supabase.
