@@ -4,6 +4,7 @@ export type ArticleStatus =
   | "awaiting_editor"
   | "awaiting_writer"
   | "published"
+  | "scheduled"
   | "archived";
 export type AdSlot = "leaderboard" | "sidebar" | "infeed";
 export type WeeklyIssueStatus =
@@ -55,6 +56,8 @@ export interface Article {
   byline?: string | null;
   like_count?: number;
   sponsored_by?: string | null;
+  /** When set and status is scheduled, story stays off the public site until this time. */
+  embargo_at?: string | null;
   published_at: string | null;
   created_at: string;
   updated_at: string;

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AdSlot } from "@/components/AdSlot";
 import { StoryCard } from "@/components/stories";
+import { promoteDueEmbargoes } from "@/lib/articles";
 import { isPublicSectionSlug } from "@/lib/features";
 import type { ArticleWithMeta, Section } from "@/lib/types";
 
@@ -14,6 +15,7 @@ export default async function SectionPage({
 }) {
   const { slug } = await params;
   const supabase = await createClient();
+  await promoteDueEmbargoes(supabase);
 
   const { data: section } = await supabase
     .from("sections")

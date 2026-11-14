@@ -69,6 +69,7 @@ export function ReviewClient({
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [embargoLocal, setEmbargoLocal] = useState("");
   const { confirm } = useConfirm();
 
   const { data: comments = [] } = useQuery({
@@ -125,13 +126,34 @@ export function ReviewClient({
   }
 
   async function act(kind: "changes" | "approve") {
+    const embargoIso =
+      kind === "approve" && embargoLocal
+        ? new Date(embargoLocal).toISOString()
+        : null;
+    const embargoFuture =
+      embargoIso && new Date(embargoIso).getTime() > Date.now();
+
     const ok = await confirm(
       kind === "approve"
-        ? {
-            title: "Approve and publish?",
-            body: "The story goes live on the site immediately.",
-            confirmLabel: "Publish",
-          }
+        ? embargoFuture
+          ? {
+              title: "Approve with embargo?",
+              body: `The story stays off the public site until ${new Date(
+                embargoIso!
+              ).toLocaleString()}. Editors can still open it in the newsroom.`,
+              confirmLabel: "Set embargo",
+            }
+          : isRevision
+            ? {
+                title: "Approve this edit?",
+                body: "The live story updates immediately for readers.",
+                confirmLabel: "Publish edit",
+              }
+            : {
+                title: "Approve and publish?",
+                body: "The story goes live on the site immediately.",
+                confirmLabel: "Publish now",
+              }
         : {
             title: "Send back to the writer?",
             body: "They’ll be notified and can revise using your comments.",
@@ -143,7 +165,10 @@ export function ReviewClient({
     setError(null);
     const { error } =
       kind === "approve"
-        ? await supabase.rpc("review_approve", { p_article_id: articleId })
+        ? await supabase.rpc("review_approve", {
+            p_article_id: articleId,
+            ...(embargoFuture ? { p_embargo_at: embargoIso } : {}),
+          })
         : await supabase.rpc("review_request_changes", {
             p_article_id: articleId,
             p_note: null,
@@ -261,12 +286,28 @@ export function ReviewClient({
 
         {canReview && (
           <div className="mt-5 flex flex-col gap-2 border-t border-rule pt-5">
+            {!isRevision && (
+              <label className="block text-xs font-semibold uppercase tracking-wide text-ink-soft">
+                Embargo (optional)
+                <input
+                  type="datetime-local"
+                  value={embargoLocal}
+                  onChange={(e) => setEmbargoLocal(e.target.value)}
+                  className="mt-1 w-full border border-rule-dark px-3 py-2 text-sm font-normal normal-case tracking-normal text-ink"
+                />
+                <span className="mt-1 block text-[11px] font-normal normal-case tracking-normal text-ink-soft">
+                  Leave empty to publish now. Future time = hold off the public site until then.
+                </span>
+              </label>
+            )}
             <button
               onClick={() => act("approve")}
               disabled={busy}
               className="bg-green-700 py-3 text-xs font-semibold uppercase tracking-wider text-white hover:bg-green-800 disabled:opacity-50"
             >
-              Approve &amp; publish
+              {embargoLocal && !isRevision
+                ? "Approve with embargo"
+                : "Approve & publish"}
             </button>
             {!isAuthor && (
               <button

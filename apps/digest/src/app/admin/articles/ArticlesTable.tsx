@@ -21,6 +21,7 @@ const STATUS_STYLES: Record<ArticleStatus, string> = {
   awaiting_editor: "bg-amber-100 text-amber-800",
   awaiting_writer: "bg-red-100 text-red-700",
   published: "bg-green-100 text-green-800",
+  scheduled: "bg-sky-100 text-sky-800",
   archived: "bg-ink/10 text-ink-soft",
 };
 
@@ -29,6 +30,7 @@ const STATUS_LABELS: Record<ArticleStatus, string> = {
   awaiting_editor: "With editor",
   awaiting_writer: "Needs changes",
   published: "Live",
+  scheduled: "Embargoed",
   archived: "Archived",
 };
 
@@ -56,9 +58,16 @@ export function ArticlesTable({
   const searchParams = useSearchParams();
   const initialFilter = (searchParams.get("filter") as Filter | null) ?? "all";
   const [filter, setFilter] = useState<Filter>(
-    ["all", "review", "draft", "awaiting_editor", "awaiting_writer", "published", "archived"].includes(
-      initialFilter
-    )
+    [
+      "all",
+      "review",
+      "draft",
+      "awaiting_editor",
+      "awaiting_writer",
+      "published",
+      "scheduled",
+      "archived",
+    ].includes(initialFilter)
       ? initialFilter
       : "all"
   );
@@ -212,6 +221,7 @@ export function ArticlesTable({
     { id: "awaiting_editor", label: "With editor" },
     { id: "awaiting_writer", label: "Needs changes" },
     { id: "published", label: "Live" },
+    { id: "scheduled", label: "Embargoed" },
     { id: "archived", label: "Archived" },
   ];
 
@@ -295,6 +305,9 @@ export function ArticlesTable({
                   >
                     {eff.revision ? "Edit · " : ""}
                     {STATUS_LABELS[eff.status]}
+                    {a.status === "scheduled" && a.embargo_at
+                      ? ` · ${new Date(a.embargo_at).toLocaleString()}`
+                      : ""}
                   </span>
                 </div>
 
