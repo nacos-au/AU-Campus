@@ -6,7 +6,7 @@ interface TiptapNode {
   content?: TiptapNode[];
 }
 
-/** Lift scheduled stories whose embargo has passed (no cron required). */
+/** Lift parked (“post later”) stories whose release time has passed — no cron. */
 export async function promoteDueEmbargoes(supabase: SupabaseClient) {
   try {
     await supabase.rpc("promote_due_embargoes");

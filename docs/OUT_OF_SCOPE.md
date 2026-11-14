@@ -83,7 +83,26 @@ Not in the current Digest demo. Distinct from the existing **Updated** byline ti
 
 ---
 
-## 5. Implementation Priority
+## 5. Digest — Dedicated Cron for Parked Posts
+
+**Not building now.** Parked posts (“post later”) already work without a cron: editors set a release time; status stays `scheduled` until that time; the next public page load calls `promote_due_embargoes` and flips due stories live.
+
+### What is parked (out of scope)
+
+- Vercel Cron / cron-job.org / any always-on scheduler hitting `/api/cron/promote-holds`
+- Guaranteeing release at the exact minute with zero site traffic
+
+### Why parked
+
+- Free Vercel Hobby cannot run frequent crons; a paid plan or third-party cron is unnecessary for the demo
+- Page-load promote is enough for campus traffic and demos
+- Revisit only if quiet-hour releases must fire with no visitors
+
+The route and `CRON_SECRET` may remain in the codebase for later; do not wire them for the current phase.
+
+---
+
+## 6. Implementation Priority
 
 | Feature | Priority | Depends On |
 |---------|----------|------------|
@@ -91,5 +110,6 @@ Not in the current Digest demo. Distinct from the existing **Updated** byline ti
 | Head-to-Head | Phase 2 | Match history in database |
 | Add Fixtures to Calendar | Phase 2 | Matches in database |
 | Digest correction notes | Later | Digest live + editorial policy |
+| Digest release cron | Later | Need exact-time release with no traffic |
 
 These will be built after the core platform (live scoring, standings, profiles, auth) is complete and connected to Supabase.

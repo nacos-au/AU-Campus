@@ -2,21 +2,17 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
- * Lift “held for release” stories whose hold time has passed.
- * Prefer a free external ping (cron-job.org) over Vercel Cron — Hobby only allows
- * about one run per day; frequent schedules need a paid Vercel plan.
+ * OUT OF SCOPE — dedicated cron for parked posts (see docs/OUT_OF_SCOPE.md).
  *
- * cron-job.org (free): GET https://<host>/api/cron/promote-holds every 5 min,
- * header Authorization: Bearer <CRON_SECRET>.
- *
- * Without any cron, homepage/section/article loads still promote due holds.
+ * Parked stories already go live via promote_due_embargoes on public page loads.
+ * Keep this route for a later phase if exact-time release with zero traffic is required.
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
     return NextResponse.json(
-      { error: "CRON_SECRET is not configured" },
-      { status: 500 }
+      { error: "Release cron is out of scope; parked posts use page-load promote" },
+      { status: 501 }
     );
   }
 
