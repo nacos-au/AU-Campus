@@ -47,10 +47,7 @@ update public.profiles set role = 'writer' where id = '00000000-0000-0000-0000-0
 insert into public.sections (slug, name, position) values
   ('news', 'News', 1),
   ('campus', 'Campus Life', 2),
-  ('sports', 'Sports', 3),
-  ('opinion', 'Opinion', 4),
-  ('culture', 'Culture', 5),
-  ('science', 'Science & Tech', 6);
+  ('sports', 'Sports', 3);
 
 -- ─── Articles ───────────────────────────────────────────────────────────────
 
@@ -113,7 +110,7 @@ values
      'The arguments against a 24-hour library — staffing costs, security, electricity — are real but solvable, and other institutions of comparable size solved them years ago.',
      'A university that asks for world-class output must provide world-class access. The books should not sleep before the students do.']),
    'https://picsum.photos/seed/library/1200/800',
-   (select id from public.sections where slug = 'opinion'),
+   (select id from public.sections where slug = 'news'),
    '00000000-0000-0000-0000-000000000003', 'published', false, now() - interval '1 day'),
 
   ('theatre-arts-stages-wole-soyinka-classic',
@@ -124,7 +121,7 @@ values
      'Director and final-year student Ifeoma Chukwu defended the choice, arguing the play''s questions about duty and interference have never been contemporary costume away from relevance.',
      'The production runs for two more weekends at the Arts Theatre, with proceeds funding the department''s touring programme.']),
    'https://picsum.photos/seed/theatre/1200/800',
-   (select id from public.sections where slug = 'culture'),
+   (select id from public.sections where slug = 'campus'),
    '00000000-0000-0000-0000-000000000003', 'published', false, now() - interval '1 day 4 hours'),
 
   ('robotics-club-wins-national-competition',
@@ -135,7 +132,7 @@ values
      'The system pairs a conveyor, a camera and a neural network the team trained on a dataset they photographed themselves over six weeks in a hostel room.',
      'The team received a cash prize and an incubation offer, and says a field version for rice mills is already in design.']),
    'https://picsum.photos/seed/robotics/1200/800',
-   (select id from public.sections where slug = 'science'),
+   (select id from public.sections where slug = 'sports'),
    '00000000-0000-0000-0000-000000000003', 'published', false, now() - interval '2 days'),
 
   ('convocation-week-what-to-expect',
@@ -168,7 +165,7 @@ values
      'The handful of departments that publish marking rubrics report fewer grade disputes, not more. Transparency, it turns out, is cheaper than arbitration.',
      'The Senate should make rubric publication university policy before the next examination cycle.']),
    'https://picsum.photos/seed/grading/1200/800',
-   (select id from public.sections where slug = 'opinion'),
+   (select id from public.sections where slug = 'news'),
    '00000000-0000-0000-0000-000000000003', 'published', false, now() - interval '3 days 8 hours'),
 
   ('campus-food-prices-investigation',
@@ -190,7 +187,7 @@ values
      'Topping the list is a final-year economics student whose recording, made in a borrowed studio session, has crossed a million streams.',
      'The society''s end-of-year concert holds on the last Friday of the semester at the amphitheatre.']),
    'https://picsum.photos/seed/music/1200/800',
-   (select id from public.sections where slug = 'culture'),
+   (select id from public.sections where slug = 'campus'),
    '00000000-0000-0000-0000-000000000003', 'published', false, now() - interval '4 days 12 hours'),
 
   ('solar-microgrid-pilot',
@@ -201,7 +198,7 @@ values
      'The installation pairs rooftop panels with battery storage sized to carry afternoon practical sessions through grid outages.',
      'If the pilot holds through the rainy season, the works department says the design will be costed for the library and the teaching hospital annex.']),
    'https://picsum.photos/seed/solar/1200/800',
-   (select id from public.sections where slug = 'science'),
+   (select id from public.sections where slug = 'sports'),
    '00000000-0000-0000-0000-000000000003', 'published', false, now() - interval '5 days');
 
 -- One draft and one submitted article so the CMS queues aren't empty.

@@ -105,6 +105,8 @@ create policy "weekly_issue_slots: editors write" on public.weekly_issue_slots
   for all using (private.is_digest_editor())
   with check (private.is_digest_editor());
 
+-- Prefer hard-delete via digest_composer_fix_APPLY_ALL.sql.
+-- Soft demote kept as a no-op fallback if those rows still exist:
 update public.sections
 set position = case slug
   when 'news' then 1

@@ -17,6 +17,7 @@ export interface Profile {
   id: string;
   display_name: string;
   username?: string | null;
+  email?: string | null;
   bio?: string | null;
   role: Role;
   /** Cross-platform owner — treated as Digest admin everywhere */

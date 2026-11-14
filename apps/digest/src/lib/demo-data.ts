@@ -112,12 +112,12 @@ export const demoSections: Section[] = [
   { id: 1, slug: "news", name: "News", position: 1 },
   { id: 2, slug: "campus", name: "Campus Life", position: 2 },
   { id: 3, slug: "sports", name: "Sports", position: 3 },
-  { id: 4, slug: "opinion", name: "Opinion", position: 4 },
-  { id: 5, slug: "culture", name: "Culture", position: 5 },
-  { id: 6, slug: "science", name: "Science & Tech", position: 6 },
 ];
 
-const [news, campus, sports, opinion, culture, science] = demoSections;
+const [news, campus, sports] = demoSections;
+const opinion = news;
+const culture = campus;
+const science = sports;
 
 // ─── Articles ────────────────────────────────────────────────────────────────
 

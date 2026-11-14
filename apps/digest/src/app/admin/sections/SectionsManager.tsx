@@ -89,7 +89,7 @@ export function SectionsManager() {
     <div>
       <PageHeader
         title="Sections"
-        description="Newsroom desks that appear in the nav and footer — News, Sports, Opinion, and the rest."
+        description="Newsroom desks that appear in the nav and footer — News, Campus Life, and Sports."
       />
 
       <div className="flex flex-wrap gap-3 border border-rule bg-gray-50/60 p-4">

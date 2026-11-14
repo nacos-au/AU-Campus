@@ -3,6 +3,7 @@
 import { PageHeader, btn } from "@/components/admin/ui";
 import { useConfirm } from "@/components/ConfirmDialog";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
@@ -52,7 +53,15 @@ export function ArticlesTable({
 }) {
   const supabase = useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
-  const [filter, setFilter] = useState<Filter>("all");
+  const searchParams = useSearchParams();
+  const initialFilter = (searchParams.get("filter") as Filter | null) ?? "all";
+  const [filter, setFilter] = useState<Filter>(
+    ["all", "review", "draft", "awaiting_editor", "awaiting_writer", "published", "archived"].includes(
+      initialFilter
+    )
+      ? initialFilter
+      : "all"
+  );
   const [error, setError] = useState<string | null>(null);
   const { confirm } = useConfirm();
 

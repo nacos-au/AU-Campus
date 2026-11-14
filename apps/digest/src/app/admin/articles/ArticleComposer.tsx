@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -11,6 +11,7 @@ import ImageExt from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extensions";
 import { createClient } from "@/lib/supabase/client";
 import { slugify } from "@/lib/articles";
+import { isPublicSectionSlug } from "@/lib/features";
 import { uploadCover } from "@/lib/uploads";
 import { locales, localeNames } from "@/i18n/locales";
 import { RichText } from "@/components/RichText";
@@ -18,6 +19,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import type { Article, Profile, RevisionPayload, Section } from "@/lib/types";
 
 const EMPTY_DOC = { type: "doc", content: [] };
+const AUTOSAVE_MS = 2000;
 
 const AlignedImage = ImageExt.extend({
   addAttributes() {
@@ -71,19 +73,24 @@ export function ArticleComposer({
   revision,
   userId,
   isStaff = false,
+  isSuperAdmin = false,
   locked = false,
 }: {
   article: Article | null;
-  /** Pending edit of a live article (if any). Overrides article fields. */
   revision?: RevisionPayload | null;
   userId: string;
   isStaff?: boolean;
+  isSuperAdmin?: boolean;
   locked?: boolean;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
+  const replaceImageRef = useRef<HTMLInputElement>(null);
+  const coverFileRef = useRef<HTMLInputElement>(null);
   const articleIdRef = useRef<string | null>(article?.id ?? null);
+  const dirtyRef = useRef(false);
+  const savingRef = useRef(false);
   const { prompt } = useConfirm();
 
   const initial = revision ?? article;
@@ -96,31 +103,37 @@ export function ArticleComposer({
   );
   const [language, setLanguage] = useState(initial?.language ?? "en");
   const [coverUrl, setCoverUrl] = useState(initial?.cover_url ?? "");
-  const [assignedEditorId, setAssignedEditorId] = useState(
-    article?.assigned_editor_id ?? ""
+  const [overrideEditorId, setOverrideEditorId] = useState(
+    isSuperAdmin ? (article?.assigned_editor_id ?? "") : ""
   );
   const [showSettings, setShowSettings] = useState(false);
   const [preview, setPreview] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(
+    article ? new Date(article.updated_at) : null
+  );
 
   const isLive = article?.status === "published";
 
   const { data: sections = [] } = useQuery({
-    queryKey: ["sections"],
+    queryKey: ["sections-public-desks"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sections")
         .select("*")
         .order("position");
       if (error) throw error;
-      return data as Section[];
+      return ((data ?? []) as Section[]).filter((s) =>
+        isPublicSectionSlug(s.slug)
+      );
     },
   });
 
   const editorsQuery = useQuery({
     queryKey: ["newsroom-editors"],
+    enabled: isSuperAdmin || isStaff,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
@@ -147,6 +160,9 @@ export function ArticleComposer({
     editable: !locked,
     immediatelyRender: false,
     editorProps: { attributes: { class: "article-body composer-body" } },
+    onUpdate: () => {
+      dirtyRef.current = true;
+    },
   });
 
   const ui = useEditorState({
@@ -169,90 +185,161 @@ export function ArticleComposer({
     }),
   });
 
+  function markDirty() {
+    dirtyRef.current = true;
+  }
+
   function payload(): RevisionPayload {
     return {
-      title: title.trim(),
+      title: title.trim() || "Untitled draft",
       dek: dek.trim() || null,
       body: editor?.getJSON() ?? EMPTY_DOC,
       cover_url: coverUrl || null,
       byline: byline.trim() || null,
-      sponsored_by: isStaff ? sponsoredBy.trim() || null : (article?.sponsored_by ?? null),
-      section_id: Number(resolvedSection),
+      sponsored_by: isStaff
+        ? sponsoredBy.trim() || null
+        : (article?.sponsored_by ?? null),
+      section_id: Number(resolvedSection) || Number(sections[0]?.id) || 0,
       language,
     };
   }
 
-  /** Persist the current content; returns the article id. */
-  async function persist(): Promise<string> {
-    const p = payload();
-    if (!p.title) throw new Error("A headline is required.");
-    if (!p.section_id) throw new Error("Pick a section in Continue.");
+  const persist = useCallback(
+    async (opts?: { requireHeadline?: boolean }): Promise<string> => {
+      const requireHeadline = opts?.requireHeadline ?? false;
+      const p = payload();
+      if (requireHeadline && !title.trim()) {
+        throw new Error("A headline is required.");
+      }
+      if (!p.section_id) {
+        throw new Error("No section available. Ask an editor to restore desks.");
+      }
 
-    // Live article, not sole editor → saved as a revision, live copy untouched.
-    if (isLive && article && !soleEditor) {
-      const { error } = await supabase.rpc("save_revision", {
-        p_article_id: article.id,
-        p_payload: p,
-      });
-      if (error) throw error;
-      return article.id;
-    }
+      if (isLive && article && !soleEditor) {
+        const { error } = await supabase.rpc("save_revision", {
+          p_article_id: article.id,
+          p_payload: { ...p, title: title.trim() || p.title },
+        });
+        if (error) throw error;
+        dirtyRef.current = false;
+        return article.id;
+      }
 
-    if (articleIdRef.current) {
-      const { error } = await supabase
+      const row = {
+        title: title.trim() || p.title,
+        dek: p.dek,
+        body: p.body,
+        cover_url: p.cover_url,
+        byline: p.byline,
+        sponsored_by: p.sponsored_by,
+        section_id: p.section_id,
+        language: p.language,
+      };
+
+      if (articleIdRef.current) {
+        const { error } = await supabase
+          .from("articles")
+          .update(row)
+          .eq("id", articleIdRef.current);
+        if (error) throw error;
+        dirtyRef.current = false;
+        return articleIdRef.current;
+      }
+
+      const slug = `${slugify(row.title)}-${Date.now().toString(36)}`;
+      const { data, error } = await supabase
         .from("articles")
-        .update({
-          title: p.title,
-          dek: p.dek,
-          body: p.body,
-          cover_url: p.cover_url,
-          byline: p.byline,
-          sponsored_by: p.sponsored_by,
-          section_id: p.section_id,
-          language: p.language,
-        })
-        .eq("id", articleIdRef.current);
+        .insert({ ...row, slug, status: "draft", author_id: userId })
+        .select("id")
+        .single();
       if (error) throw error;
-      return articleIdRef.current;
-    }
-
-    const slug = `${slugify(p.title)}-${Date.now().toString(36)}`;
-    const { data, error } = await supabase
-      .from("articles")
-      .insert({ ...p, slug, status: "draft", author_id: userId })
-      .select("id")
-      .single();
-    if (error) throw error;
-    articleIdRef.current = data.id;
-    return data.id as string;
-  }
+      articleIdRef.current = data.id;
+      dirtyRef.current = false;
+      return data.id as string;
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- payload reads live state
+    [
+      article,
+      byline,
+      coverUrl,
+      isLive,
+      language,
+      resolvedSection,
+      sections,
+      soleEditor,
+      sponsoredBy,
+      supabase,
+      title,
+      dek,
+      userId,
+      isStaff,
+      editor,
+    ]
+  );
 
   const saveDraft = useMutation({
-    mutationFn: persist,
+    mutationFn: async () => persist({ requireHeadline: true }),
     onSuccess: (id) => {
       setError(null);
-      setNotice("Saved.");
+      setNotice("Draft saved.");
+      setLastSavedAt(new Date());
       if (!article) router.replace(`/admin/articles/${id}/edit`);
     },
     onError: (e: Error) => setError(e.message),
   });
 
+  // Autosave every ~2s while dirty
+  useEffect(() => {
+    if (locked) return;
+    const tick = window.setInterval(async () => {
+      if (!dirtyRef.current || savingRef.current) return;
+      if (!title.trim() && !dek.trim() && !coverUrl) {
+        const json = editor?.getJSON();
+        const empty =
+          !json ||
+          !json.content ||
+          json.content.length === 0 ||
+          (json.content.length === 1 &&
+            json.content[0]?.type === "paragraph" &&
+            !json.content[0]?.content);
+        if (empty) return;
+      }
+      savingRef.current = true;
+      try {
+        const id = await persist({ requireHeadline: false });
+        setLastSavedAt(new Date());
+        setNotice("Autosaved");
+        setError(null);
+        if (!article && id) {
+          router.replace(`/admin/articles/${id}/edit`);
+        }
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        savingRef.current = false;
+      }
+    }, AUTOSAVE_MS);
+    return () => window.clearInterval(tick);
+  }, [article, coverUrl, dek, editor, locked, persist, router, title]);
+
   const send = useMutation({
     mutationFn: async (action: "submit" | "publish") => {
-      const id = await persist();
+      const id = await persist({ requireHeadline: true });
       if (action === "publish") {
-        if (isLive) return; // sole editor edits live copy directly
+        if (isLive) return;
         const { error } = await supabase.rpc("review_approve", {
           p_article_id: id,
         });
         if (error) throw error;
         return;
       }
-      if (!assignedEditorId) throw new Error("Choose an editor to review this.");
-      const { error } = await supabase.rpc("submit_article", {
+      const args: { p_article_id: string; p_editor?: string } = {
         p_article_id: id,
-        p_editor: assignedEditorId,
-      });
+      };
+      if (isSuperAdmin && overrideEditorId) {
+        args.p_editor = overrideEditorId;
+      }
+      const { error } = await supabase.rpc("submit_article", args);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -262,22 +349,32 @@ export function ArticleComposer({
     onError: (e: Error) => setError(e.message),
   });
 
-  async function uploadInline(file: File | undefined) {
+  async function uploadInline(file: File | undefined, replace = false) {
     if (!file || !editor) return;
     setUploading(true);
     setError(null);
     try {
       const url = await uploadCover(supabase, file, "articles");
-      editor
-        .chain()
-        .focus()
-        .insertContent({ type: "image", attrs: { src: url, align: "center" } })
-        .run();
+      if (replace && editor.isActive("image")) {
+        editor
+          .chain()
+          .focus()
+          .updateAttributes("image", { src: url })
+          .run();
+      } else {
+        editor
+          .chain()
+          .focus()
+          .insertContent({ type: "image", attrs: { src: url, align: "center" } })
+          .run();
+      }
+      dirtyRef.current = true;
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
+      if (replaceImageRef.current) replaceImageRef.current.value = "";
     }
   }
 
@@ -286,10 +383,12 @@ export function ArticleComposer({
     setUploading(true);
     try {
       setCoverUrl(await uploadCover(supabase, file, "articles"));
+      dirtyRef.current = true;
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setUploading(false);
+      if (coverFileRef.current) coverFileRef.current.value = "";
     }
   }
 
@@ -305,10 +404,12 @@ export function ArticleComposer({
     if (url === null) return;
     if (!url) editor.chain().focus().unsetLink().run();
     else editor.chain().focus().setLink({ href: url }).run();
+    dirtyRef.current = true;
   }
 
   function setAlign(align: "left" | "center" | "wide") {
     editor?.chain().focus().updateAttributes("image", { align }).run();
+    dirtyRef.current = true;
   }
 
   async function setCaption() {
@@ -317,7 +418,10 @@ export function ArticleComposer({
     const cap = await prompt({
       title: "Image caption",
       confirmLabel: "Save",
-      input: { placeholder: "Describe the photo, credit the photographer", defaultValue: prev ?? "" },
+      input: {
+        placeholder: "Describe the photo, credit the photographer",
+        defaultValue: prev ?? "",
+      },
     });
     if (cap === null) return;
     editor
@@ -325,6 +429,7 @@ export function ArticleComposer({
       .focus()
       .updateAttributes("image", { title: cap || null, alt: cap || null })
       .run();
+    dirtyRef.current = true;
   }
 
   const busy = saveDraft.isPending || send.isPending || uploading;
@@ -338,27 +443,43 @@ export function ArticleComposer({
         ? "With editor"
         : article.status === "awaiting_writer"
           ? "Changes requested"
-          : "Draft";
+          : article.status === "archived"
+            ? "Archived"
+            : "Draft";
 
   return (
     <div className="-mx-4 -mt-6 sm:-mx-6 sm:-mt-8 lg:-mx-8">
-      {/* Top bar */}
       <div className="sticky top-0 z-30 flex items-center gap-2 border-b border-rule bg-paper px-3 py-2 sm:px-6 lg:px-8">
         <Link
-          href="/admin/articles"
+          href="/admin/articles?filter=draft"
           className="text-sm text-ink-soft hover:text-ink"
-          aria-label="Back to articles"
+          aria-label="Back to drafts"
         >
-          ←<span className="ml-1 hidden sm:inline">Articles</span>
+          ←<span className="ml-1 hidden sm:inline">Drafts</span>
         </Link>
         <span className="ml-1 inline-flex items-center gap-1.5 rounded-full border border-rule px-2.5 py-0.5 text-[11px] font-semibold text-ink-soft">
-          {saveDraft.isPending ? (
+          {saveDraft.isPending || (notice === "Autosaved" && dirtyRef.current === false) ? (
             <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
           ) : notice ? (
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
           ) : null}
-          {saveDraft.isPending ? "Saving…" : notice ? "Saved" : statusLabel}
+          {saveDraft.isPending
+            ? "Saving…"
+            : notice === "Autosaved"
+              ? "Autosaved"
+              : notice
+                ? "Saved"
+                : statusLabel}
         </span>
+        {lastSavedAt && (
+          <span className="hidden text-[10px] text-ink-soft sm:inline">
+            {lastSavedAt.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            })}
+          </span>
+        )}
         {article && (
           <Link
             href={`/admin/review/${article.id}`}
@@ -398,7 +519,6 @@ export function ArticleComposer({
         </p>
       )}
 
-      {/* Toolbar */}
       {!preview && !locked && (
         <div className="sticky top-[49px] z-20 flex items-center gap-0.5 overflow-x-auto border-b border-rule bg-paper px-2 py-1.5 sm:justify-center sm:px-6 [scrollbar-width:none]">
           <Btn title="Undo" disabled={!ui?.canUndo} onClick={() => editor?.chain().focus().undo().run()}>↺</Btn>
@@ -412,6 +532,7 @@ export function ArticleComposer({
               const c = editor?.chain().focus();
               if (v === "p") c?.setParagraph().run();
               else c?.setHeading({ level: v === "h2" ? 2 : 3 }).run();
+              markDirty();
             }}
             className="h-8 shrink-0 border border-rule-dark bg-paper px-2 text-sm"
           >
@@ -420,26 +541,33 @@ export function ArticleComposer({
             <option value="h3">Subheading</option>
           </select>
           <Sep />
-          <Btn title="Bold" active={ui?.bold} onClick={() => editor?.chain().focus().toggleBold().run()}>B</Btn>
-          <Btn title="Italic" active={ui?.italic} onClick={() => editor?.chain().focus().toggleItalic().run()}><em>I</em></Btn>
-          <Btn title="Underline" active={ui?.underline} onClick={() => editor?.chain().focus().toggleUnderline().run()}><u>U</u></Btn>
-          <Btn title="Strikethrough" active={ui?.strike} onClick={() => editor?.chain().focus().toggleStrike().run()}><s>S</s></Btn>
+          <Btn title="Bold" active={ui?.bold} onClick={() => { editor?.chain().focus().toggleBold().run(); markDirty(); }}>B</Btn>
+          <Btn title="Italic" active={ui?.italic} onClick={() => { editor?.chain().focus().toggleItalic().run(); markDirty(); }}><em>I</em></Btn>
+          <Btn title="Underline" active={ui?.underline} onClick={() => { editor?.chain().focus().toggleUnderline().run(); markDirty(); }}><u>U</u></Btn>
+          <Btn title="Strikethrough" active={ui?.strike} onClick={() => { editor?.chain().focus().toggleStrike().run(); markDirty(); }}><s>S</s></Btn>
           <Sep />
           <Btn title="Link" active={ui?.link} onClick={setLink}>🔗</Btn>
           <Btn title="Insert image" onClick={() => fileRef.current?.click()}>
             {uploading ? "…" : "🖼"}
           </Btn>
           <Sep />
-          <Btn title="Bullet list" active={ui?.bullet} onClick={() => editor?.chain().focus().toggleBulletList().run()}>•</Btn>
-          <Btn title="Numbered list" active={ui?.ordered} onClick={() => editor?.chain().focus().toggleOrderedList().run()}>1.</Btn>
-          <Btn title="Quote" active={ui?.quote} onClick={() => editor?.chain().focus().toggleBlockquote().run()}>“ ”</Btn>
-          <Btn title="Divider" onClick={() => editor?.chain().focus().setHorizontalRule().run()}>—</Btn>
+          <Btn title="Bullet list" active={ui?.bullet} onClick={() => { editor?.chain().focus().toggleBulletList().run(); markDirty(); }}>•</Btn>
+          <Btn title="Numbered list" active={ui?.ordered} onClick={() => { editor?.chain().focus().toggleOrderedList().run(); markDirty(); }}>1.</Btn>
+          <Btn title="Quote" active={ui?.quote} onClick={() => { editor?.chain().focus().toggleBlockquote().run(); markDirty(); }}>“ ”</Btn>
+          <Btn title="Divider" onClick={() => { editor?.chain().focus().setHorizontalRule().run(); markDirty(); }}>—</Btn>
           <input
             ref={fileRef}
             type="file"
             accept="image/*"
             hidden
-            onChange={(e) => uploadInline(e.target.files?.[0])}
+            onChange={(e) => uploadInline(e.target.files?.[0], false)}
+          />
+          <input
+            ref={replaceImageRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={(e) => uploadInline(e.target.files?.[0], true)}
           />
           {ui?.image && (
             <>
@@ -447,17 +575,27 @@ export function ArticleComposer({
               <span className="shrink-0 px-1 text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
                 Image
               </span>
+              <Btn title="Replace image" onClick={() => replaceImageRef.current?.click()}>
+                Replace
+              </Btn>
               <Btn title="Align left, text wraps" active={ui.align === "left"} onClick={() => setAlign("left")}>◧</Btn>
               <Btn title="Center" active={ui.align === "center"} onClick={() => setAlign("center")}>▣</Btn>
               <Btn title="Wide" active={ui.align === "wide"} onClick={() => setAlign("wide")}>▭</Btn>
               <Btn title="Caption" onClick={setCaption}>Cap</Btn>
-              <Btn title="Remove image" onClick={() => editor?.chain().focus().deleteSelection().run()}>✕</Btn>
+              <Btn
+                title="Remove image"
+                onClick={() => {
+                  editor?.chain().focus().deleteSelection().run();
+                  markDirty();
+                }}
+              >
+                ✕
+              </Btn>
             </>
           )}
         </div>
       )}
 
-      {/* Page */}
       <div className="mx-auto max-w-[44rem] px-4 pb-24 pt-8 sm:px-6">
         {preview ? (
           <article>
@@ -481,7 +619,10 @@ export function ArticleComposer({
           <>
             <textarea
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                markDirty();
+              }}
               readOnly={locked}
               rows={1}
               placeholder="Title"
@@ -489,7 +630,10 @@ export function ArticleComposer({
             />
             <textarea
               value={dek}
-              onChange={(e) => setDek(e.target.value)}
+              onChange={(e) => {
+                setDek(e.target.value);
+                markDirty();
+              }}
               readOnly={locked}
               rows={1}
               placeholder="Add a subtitle…"
@@ -499,12 +643,65 @@ export function ArticleComposer({
               <span className="text-ink-soft">By</span>
               <input
                 value={byline}
-                onChange={(e) => setByline(e.target.value)}
+                onChange={(e) => {
+                  setByline(e.target.value);
+                  markDirty();
+                }}
                 readOnly={locked}
-                placeholder="Your name or series, e.g. Achievers in Plain Sight"
+                placeholder="Your name or series"
                 className="w-64 max-w-[60vw] bg-transparent font-semibold focus:outline-none"
               />
             </label>
+
+            {/* Cover photo — editable in the compose canvas */}
+            {!locked && (
+              <div className="mt-6 border border-dashed border-rule-dark bg-gray-50/50 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">
+                    Cover photo
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      disabled={uploading}
+                      onClick={() => coverFileRef.current?.click()}
+                      className="text-xs font-semibold uppercase tracking-wider text-accent hover:text-accent-hover"
+                    >
+                      {coverUrl ? "Change" : "Add cover"}
+                    </button>
+                    {coverUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCoverUrl("");
+                          markDirty();
+                        }}
+                        className="text-xs font-semibold uppercase tracking-wider text-ink-soft hover:text-ink"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {coverUrl ? (
+                  <div className="relative mt-2 aspect-video w-full overflow-hidden border border-rule">
+                    <Image src={coverUrl} alt="Cover" fill className="object-cover" />
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-ink-soft">
+                    Optional. Used on the homepage and story page.
+                  </p>
+                )}
+                <input
+                  ref={coverFileRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => uploadCoverFile(e.target.files?.[0])}
+                />
+              </div>
+            )}
+
             <div className="tiptap-editor mt-6">
               <EditorContent editor={editor} />
             </div>
@@ -528,11 +725,10 @@ export function ArticleComposer({
           disabled={busy || locked}
           className="mt-6 w-full border border-ink py-2.5 text-xs font-semibold uppercase tracking-wider disabled:opacity-40 sm:hidden"
         >
-          {saveDraft.isPending ? "Saving…" : "Save"}
+          {saveDraft.isPending ? "Saving…" : "Save draft"}
         </button>
       </div>
 
-      {/* Continue sheet */}
       {showSettings && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center">
           <div className="max-h-[90vh] w-full overflow-y-auto bg-paper p-5 sm:max-w-lg">
@@ -552,7 +748,10 @@ export function ArticleComposer({
                 Section
                 <select
                   value={resolvedSection}
-                  onChange={(e) => setSectionId(Number(e.target.value))}
+                  onChange={(e) => {
+                    setSectionId(Number(e.target.value));
+                    markDirty();
+                  }}
                   className="mt-1 block w-full border border-rule-dark px-3 py-2 text-sm text-ink"
                 >
                   {sections.map((s) => (
@@ -567,7 +766,10 @@ export function ArticleComposer({
                 Language
                 <select
                   value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
+                  onChange={(e) => {
+                    setLanguage(e.target.value);
+                    markDirty();
+                  }}
                   className="mt-1 block w-full border border-rule-dark px-3 py-2 text-sm text-ink"
                 >
                   {locales.map((l) => (
@@ -587,20 +789,38 @@ export function ArticleComposer({
                     <Image src={coverUrl} alt="Cover" fill className="object-cover" />
                   </div>
                 )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => uploadCoverFile(e.target.files?.[0])}
-                  className="mt-2 block w-full text-sm"
-                />
+                <div className="mt-2 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => coverFileRef.current?.click()}
+                    className="text-xs font-semibold uppercase tracking-wider text-accent"
+                  >
+                    {coverUrl ? "Change cover" : "Upload cover"}
+                  </button>
+                  {coverUrl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCoverUrl("");
+                        markDirty();
+                      }}
+                      className="text-xs font-semibold uppercase tracking-wider text-ink-soft"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
               </div>
 
               {isStaff && (
                 <label className="block text-xs font-semibold uppercase tracking-wide text-ink-soft">
-                  Sponsored by (optional — marks this a paid post)
+                  Sponsored by (optional)
                   <input
                     value={sponsoredBy}
-                    onChange={(e) => setSponsoredBy(e.target.value)}
+                    onChange={(e) => {
+                      setSponsoredBy(e.target.value);
+                      markDirty();
+                    }}
                     placeholder="Campus Bookshop"
                     className="mt-1 block w-full border border-rule-dark px-3 py-2 text-sm text-ink"
                   />
@@ -608,14 +828,22 @@ export function ArticleComposer({
               )}
 
               {!soleEditor && (
+                <p className="border border-rule bg-gray-50 px-3 py-2 text-sm text-ink-soft">
+                  An editor is assigned automatically when you send — workload is
+                  balanced across the desk
+                  {isSuperAdmin ? ". As super admin you can override below." : "."}
+                </p>
+              )}
+
+              {isSuperAdmin && !soleEditor && (
                 <label className="block text-xs font-semibold uppercase tracking-wide text-ink-soft">
-                  Editor to review
+                  Override editor (super admin)
                   <select
-                    value={assignedEditorId}
-                    onChange={(e) => setAssignedEditorId(e.target.value)}
+                    value={overrideEditorId}
+                    onChange={(e) => setOverrideEditorId(e.target.value)}
                     className="mt-1 block w-full border border-rule-dark px-3 py-2 text-sm text-ink"
                   >
-                    <option value="">Choose…</option>
+                    <option value="">Auto-assign (fair rotation)</option>
                     {otherEditors.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.display_name}
@@ -652,7 +880,11 @@ export function ArticleComposer({
                 </button>
               )}
               <button
-                onClick={() => saveDraft.mutate(undefined, { onSuccess: () => setShowSettings(false) })}
+                onClick={() =>
+                  saveDraft.mutate(undefined, {
+                    onSuccess: () => setShowSettings(false),
+                  })
+                }
                 disabled={busy}
                 className="border border-ink px-5 py-3 text-xs font-semibold uppercase tracking-wider disabled:opacity-50"
               >

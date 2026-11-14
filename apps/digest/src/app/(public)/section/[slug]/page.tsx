@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AdSlot } from "@/components/AdSlot";
 import { StoryCard } from "@/components/stories";
+import { isPublicSectionSlug } from "@/lib/features";
 import type { ArticleWithMeta, Section } from "@/lib/types";
 
 export const revalidate = 60;
@@ -20,7 +21,7 @@ export default async function SectionPage({
     .eq("slug", slug)
     .single<Section>();
 
-  if (!section) notFound();
+  if (!section || !isPublicSectionSlug(section.slug)) notFound();
 
   const { data } = await supabase
     .from("articles")

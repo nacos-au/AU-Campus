@@ -8,6 +8,7 @@ export default async function NewArticlePage() {
       article={null}
       userId={profile.id}
       isStaff={hasRole(profile, "editor")}
+      isSuperAdmin={!!profile.is_super_admin}
     />
   );
 }
