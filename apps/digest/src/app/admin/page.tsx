@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createAuthClient } from "@/lib/supabase/auth-client";
 import { getSessionProfile, hasRole } from "@/lib/auth";
 import { formatNaira } from "@/lib/site";
 import { Card, Empty, Pill, Stat, btn } from "@/components/admin/ui";
@@ -29,7 +29,7 @@ function ago(iso: string) {
 }
 
 export default async function AdminDashboard() {
-  const supabase = await createClient();
+  const supabase = await createAuthClient();
   const { profile } = await getSessionProfile();
   if (!profile) return null;
   const staff = hasRole(profile, "editor");

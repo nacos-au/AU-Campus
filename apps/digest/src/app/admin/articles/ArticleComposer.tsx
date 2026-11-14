@@ -277,18 +277,26 @@ export function ArticleComposer({
     ]
   );
 
+  /** Keep the browser URL on /edit without remounting the composer (avoids 404 flashes). */
+  function syncEditUrl(id: string) {
+    if (typeof window === "undefined") return;
+    const next = `/admin/articles/${id}/edit`;
+    if (window.location.pathname === next) return;
+    window.history.replaceState(window.history.state, "", next);
+  }
+
   const saveDraft = useMutation({
     mutationFn: async () => persist({ requireHeadline: true }),
     onSuccess: (id) => {
       setError(null);
       setNotice("Draft saved.");
       setLastSavedAt(new Date());
-      if (!article) router.replace(`/admin/articles/${id}/edit`);
+      syncEditUrl(id);
     },
     onError: (e: Error) => setError(e.message),
   });
 
-  // Autosave every ~2s while dirty
+  // Autosave every ~2s while dirty — stay on the same page so typing isn’t interrupted.
   useEffect(() => {
     if (locked) return;
     const tick = window.setInterval(async () => {
@@ -310,9 +318,7 @@ export function ArticleComposer({
         setLastSavedAt(new Date());
         setNotice("Autosaved");
         setError(null);
-        if (!article && id) {
-          router.replace(`/admin/articles/${id}/edit`);
-        }
+        syncEditUrl(id);
       } catch (e) {
         setError((e as Error).message);
       } finally {
@@ -320,7 +326,7 @@ export function ArticleComposer({
       }
     }, AUTOSAVE_MS);
     return () => window.clearInterval(tick);
-  }, [article, coverUrl, dek, editor, locked, persist, router, title]);
+  }, [coverUrl, dek, editor, locked, persist, title]);
 
   const send = useMutation({
     mutationFn: async (action: "submit" | "publish") => {

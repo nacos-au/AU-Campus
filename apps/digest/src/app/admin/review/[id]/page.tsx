@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole, hasRole } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAuthClient } from "@/lib/supabase/auth-client";
 import type { Article, ReviewComment, RevisionPayload } from "@/lib/types";
 import { ReviewClient } from "./ReviewClient";
 
@@ -12,13 +12,13 @@ export default async function ReviewPage({
 }) {
   const { profile } = await requireRole("writer");
   const { id } = await params;
-  const supabase = await createClient();
+  const supabase = await createAuthClient();
 
   const { data: article } = await supabase
     .from("articles")
     .select("*")
     .eq("id", id)
-    .single<Article>();
+    .maybeSingle<Article>();
   if (!article) notFound();
 
   const { data: rev } = await supabase
