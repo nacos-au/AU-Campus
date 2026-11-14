@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signIn, type AuthState } from "@/app/actions/auth";
+import { PasswordInput } from "@/components/password-input";
 
 export function SignInForm() {
   const searchParams = useSearchParams();
@@ -33,13 +34,13 @@ export function SignInForm() {
 
         <label className="block">
           <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">Password</span>
-          <input
+          <PasswordInput
             name="password"
-            type="password"
             required
             minLength={8}
             autoComplete="current-password"
-            className="mt-1 w-full border border-rule bg-white px-4 py-3 text-sm text-ink focus:border-accent focus:outline-none"
+            wrapperClassName="mt-1"
+            className="w-full border border-rule bg-white px-4 py-3 text-sm text-ink focus:border-accent focus:outline-none"
           />
         </label>
 

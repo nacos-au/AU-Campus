@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { useSearchParams } from "next/navigation";
 import { signUp, type AuthState } from "@/app/actions/auth";
+import { PasswordInput } from "@/components/password-input";
 import { SCORE_URL } from "@/lib/urls";
 import { USERNAME_HINT, USERNAME_MAX } from "@/lib/username";
 
@@ -109,13 +110,13 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
           <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
             Password
           </span>
-          <input
+          <PasswordInput
             name="password"
-            type="password"
             required
             minLength={8}
             autoComplete="new-password"
-            className="mt-1 w-full border border-rule bg-white px-4 py-3 text-sm text-ink focus:border-accent focus:outline-none"
+            wrapperClassName="mt-1"
+            className="w-full border border-rule bg-white px-4 py-3 text-sm text-ink focus:border-accent focus:outline-none"
           />
         </label>
 
