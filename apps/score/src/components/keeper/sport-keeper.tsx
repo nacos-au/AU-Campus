@@ -60,7 +60,11 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
     startRunning,
     stopClock,
     setPeriod,
+    enterHalfTime,
+    startSecondHalf,
+    enterFullTime,
     formatTime,
+    formatStoppageTime,
     formatMatchMinute,
     boardStoppage,
     setElapsed,
@@ -70,6 +74,7 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
       period: match.current_period === "not_started" ? "half_1" : match.current_period,
       stoppageSeconds: match.clock_stoppage_seconds ?? 0,
       boardedStoppageMinutes: match.clock_boarded_stoppage_minutes ?? 0,
+      elapsedSeconds: match.clock_elapsed_seconds ?? 0,
     },
     { syncToServer: true }
   );
@@ -91,7 +96,6 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
   } | null>(null);
   const [finishPrompt, setFinishPrompt] = useState<{ logId: string; athleteName: string } | null>(null);
   const [finishTimeInput, setFinishTimeInput] = useState("");
-  const [stoppageExactOpen, setStoppageExactOpen] = useState(false);
   const [startError, setStartError] = useState("");
 
   const allowsEt = Boolean(match.allows_extra_time ?? match.tournament?.rules?.extra_time);
@@ -173,29 +177,25 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
     startRunning(sport === "football" ? "half_1" : match.current_period);
   }
 
-  async function syncPeriod(period: string) {
-    const resetElapsed = period === "half_2" || period.startsWith("extra_time");
-    if (resetElapsed && sport === "football") {
-      const boarded = boardStoppage();
-      if (boarded > 0) {
-        // Persist announced +N so the public timeline can show additional time.
-        addLog(
-          createKeeperLog({
-            match_time: formatMatchMinute(),
-            period: clock.period,
-            team_id: "",
-            team_name: "",
-            team_code: "",
-            team_logo_url: null,
-            player_id: null,
-            player_name: `+${boarded}`,
-            event_type: "stoppage_boarded",
-            details: { minutes: boarded, boarded_minutes: boarded },
-          })
-        );
-      }
-    }
-    setPeriod(period, { resetElapsed });
+  function logBoardedStoppage(fromPeriod: string, boarded: number) {
+    if (boarded <= 0) return;
+    addLog(
+      createKeeperLog({
+        match_time: formatMatchMinute(),
+        period: fromPeriod,
+        team_id: "",
+        team_name: "",
+        team_code: "",
+        team_logo_url: null,
+        player_id: null,
+        player_name: `+${boarded}`,
+        event_type: "stoppage_boarded",
+        details: { minutes: boarded, boarded_minutes: boarded },
+      })
+    );
+  }
+
+  async function patchPeriod(period: string, extra?: Record<string, unknown>) {
     try {
       await fetch(`/api/matches/${match.id}`, {
         method: "PATCH",
@@ -203,11 +203,60 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
         body: JSON.stringify({
           current_period: period,
           went_to_extra_time: period.startsWith("extra_time") || undefined,
+          ...extra,
         }),
       });
+      setLiveMatch((prev) => ({ ...prev, current_period: period, ...extra }));
     } catch {
       /* local still works */
     }
+  }
+
+  async function handleEnterHalfTime() {
+    const from = clock.period;
+    const boarded = boardStoppage();
+    logBoardedStoppage(from, boarded);
+    enterHalfTime();
+    await patchPeriod("half_time");
+  }
+
+  async function handleStartSecondHalf() {
+    startSecondHalf();
+    await patchPeriod("half_2");
+  }
+
+  async function handleEnterFullTime() {
+    const from = clock.period;
+    const boarded = boardStoppage();
+    logBoardedStoppage(from, boarded);
+    enterFullTime();
+    await patchPeriod("full_time");
+  }
+
+  async function syncPeriod(period: string) {
+    if (sport === "football") {
+      if (period === "half_time") {
+        await handleEnterHalfTime();
+        return;
+      }
+      if (period === "half_2") {
+        await handleStartSecondHalf();
+        return;
+      }
+      if (period === "full_time") {
+        await handleEnterFullTime();
+        return;
+      }
+      if (period.startsWith("extra_time")) {
+        const boarded = boardStoppage();
+        logBoardedStoppage(clock.period, boarded);
+        setPeriod(period, { resetElapsed: true });
+        await patchPeriod(period);
+        return;
+      }
+    }
+    setPeriod(period);
+    await patchPeriod(period);
   }
 
   async function handleEndMatch() {
@@ -559,6 +608,9 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
               allowsExtraTime={allowsEt}
               allowsPenaltyShootout={allowsPens}
               onSelectPeriod={(p) => void syncPeriod(p)}
+              onEnterHalfTime={() => void handleEnterHalfTime()}
+              onStartSecondHalf={() => void handleStartSecondHalf()}
+              onEnterFullTime={() => void handleEnterFullTime()}
               onEndMatch={() => void handleEndMatch()}
               showEndMatch={false}
             />
@@ -583,6 +635,9 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
               allowsExtraTime={allowsEt}
               allowsPenaltyShootout={allowsPens}
               onSelectPeriod={(p) => void syncPeriod(p)}
+              onEnterHalfTime={() => void handleEnterHalfTime()}
+              onStartSecondHalf={() => void handleStartSecondHalf()}
+              onEnterFullTime={() => void handleEnterFullTime()}
               onEndMatch={() => void handleEndMatch()}
               showEndMatch={lifecycle.isLive}
             />
@@ -610,6 +665,11 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
                 {primaryScore.away}
               </span>
             </div>
+            {(clock.period === "half_time" || clock.period === "full_time") && (
+              <p className="mt-1 font-display text-base font-semibold text-accent">
+                {clock.period === "half_time" ? "Halftime" : "Full time"}
+              </p>
+            )}
             {setScore && (
               <p className="mt-0.5 font-display text-sm font-bold tabular-nums opacity-70">
                 {config.setScoreLabel}: {setScore.home}-{setScore.away}
@@ -618,45 +678,69 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
           </div>
         )}
 
-        {config.showRunningClock ? (
+        {config.showRunningClock &&
+        clock.period !== "half_time" &&
+        clock.period !== "full_time" ? (
           <div className="mb-3 text-center">
             <div className="inline-flex items-center justify-center gap-2">
               <span className="font-mono text-3xl font-bold tabular-nums sm:text-4xl">
                 {formatTime()}
               </span>
               {sport === "football" &&
-                (clock.isTimeLost || clock.boardedStoppageMinutes > 0) && (
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setStoppageExactOpen((o) => !o)}
-                      className="btn-filled rounded-full px-2.5 py-0.5 font-display text-sm font-extrabold tabular-nums"
-                      aria-label="Show exact stoppage time"
-                    >
-                      +{Math.max(1, clock.boardedStoppageMinutes || 0)}
-                    </button>
-                    {stoppageExactOpen && (
-                      <div className="absolute left-1/2 top-full z-30 mt-1 -translate-x-1/2 whitespace-nowrap rounded-lg border border-rule bg-white px-3 py-2 shadow-lg">
-                        <p className="text-[10px] font-bold uppercase tracking-wide text-accent/50">
-                          Waste / ET
-                        </p>
-                        <p className="font-mono text-lg font-bold tabular-nums text-accent">
-                          {String(Math.floor(clock.stoppageSeconds / 60)).padStart(2, "0")}:
-                          {String(clock.stoppageSeconds % 60).padStart(2, "0")}
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                (clock.inStoppagePhase || clock.boardedStoppageMinutes > 0) && (
+                  <span className="btn-filled rounded-full px-2.5 py-0.5 font-display text-sm font-extrabold tabular-nums">
+                    +{Math.max(1, clock.boardedStoppageMinutes || 0)}
+                  </span>
                 )}
             </div>
+            {sport === "football" && (clock.inStoppagePhase || clock.isTimeLost) && (
+              <p className="mt-1 font-mono text-lg font-bold tabular-nums text-accent">
+                Stoppage {formatStoppageTime()}
+              </p>
+            )}
             {config.showPeriodBadge && (
               <p className="mt-1 font-display text-xs font-bold uppercase tracking-wide text-accent/55">
                 {periodLabel}
-                {clock.isTimeLost ? " · wasting" : ""}
+                {clock.inStoppagePhase ? " · stoppage" : ""}
               </p>
             )}
+            {sport === "football" && loggingEnabled && (
+              <div className="mt-3 flex flex-wrap justify-center gap-2">
+                {clock.period === "half_1" && clock.atRegulation && (
+                  <button
+                    type="button"
+                    onClick={() => void handleEnterHalfTime()}
+                    className="btn-filled rounded-lg px-3 py-1.5 font-display text-xs font-bold"
+                  >
+                    End stoppage → Halftime
+                  </button>
+                )}
+                {clock.period === "half_2" && clock.atRegulation && (
+                  <button
+                    type="button"
+                    onClick={() => void handleEnterFullTime()}
+                    className="btn-filled rounded-lg px-3 py-1.5 font-display text-xs font-bold"
+                  >
+                    End stoppage → Full time
+                  </button>
+                )}
+              </div>
+            )}
           </div>
-        ) : (
+        ) : config.showRunningClock &&
+          (clock.period === "half_time" || clock.period === "full_time") ? (
+          <div className="mb-3 text-center">
+            {clock.period === "half_time" && loggingEnabled && (
+              <button
+                type="button"
+                onClick={() => void handleStartSecondHalf()}
+                className="btn-filled rounded-lg px-4 py-2 font-display text-sm font-bold"
+              >
+                Start 2nd half
+              </button>
+            )}
+          </div>
+        ) : !config.showRunningClock ? (
           <div className="mb-3 text-center">
             <span className="font-display text-lg font-extrabold">{match.home_team?.name}</span>
             {config.showPeriodBadge && (
@@ -665,20 +749,22 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
               </p>
             )}
           </div>
-        )}
+        ) : null}
 
-        {config.showClockToggles && (
+        {config.showClockToggles &&
+          clock.period !== "half_time" &&
+          clock.period !== "full_time" && (
           <div className="mx-auto max-w-md">
             <MatchClockControls
               variant={clockVariant}
               size={sport === "football" ? "lg" : "md"}
               isRunning={clock.isRunning}
-              isTimeLost={clock.isTimeLost}
+              isTimeLost={clock.isTimeLost || Boolean(clock.inStoppagePhase)}
               disabled={!loggingEnabled}
               onStop={() => setRunning(false)}
               onResume={() => setRunning(true)}
               onPlaying={() => {
-                if (!clock.isRunning) setRunning(true);
+                if (!clock.isRunning && !clock.atRegulation) setRunning(true);
               }}
               onTimeLost={() => setTimeLost(!clock.isTimeLost)}
               clockOnLabel={config.clockOnLabel}

@@ -8,7 +8,7 @@ import { TeamCrest } from "@/components/ui/team-crest";
 import { MatchStatusPill } from "@/components/match/match-status-pill";
 import {
   clockFromServer,
-  regulationMinutesForPeriod,
+  cumulativeCapSeconds,
   useMatchClock,
 } from "@/lib/keeper/use-match-clock";
 import type { LifecycleStatus } from "@/lib/match/use-match-lifecycle";
@@ -27,11 +27,8 @@ function showPublicAddedTime(
   boardedMinutes: number
 ): boolean {
   if (boardedMinutes <= 0) return false;
-  const regulation = regulationMinutesForPeriod(period);
-  // half_2 regulation is 45 of the second half → wall clock ~90'
-  const thresholdMin =
-    period === "half_2" ? 90 : period.startsWith("extra_time") ? 90 + regulation : regulation;
-  return Math.floor(elapsedSeconds / 60) >= thresholdMin;
+  if (period === "half_time" || period === "full_time") return false;
+  return elapsedSeconds >= cumulativeCapSeconds(period);
 }
 
 export function MatchLivePanel({
@@ -71,6 +68,12 @@ export function MatchLivePanel({
     match.current_period,
   ]);
 
+  const period = clock.period || match.current_period || "half_1";
+  const isBreak =
+    period === "half_time" ||
+    period === "halftime" ||
+    period === "full_time" ||
+    status === "completed";
   const displayTime = liveTime ?? formatTime();
   const progress = Math.min(100, (elapsedMinutes / totalMinutes) * 100);
   const markers = eventsToMarkers(events, "football");
@@ -78,11 +81,7 @@ export function MatchLivePanel({
   const awayCode = match.away_team?.department?.short_code ?? "A";
   const stats = getMatchStats(match.id, events, match.home_team_id ?? "");
   const boarded = match.clock_boarded_stoppage_minutes ?? clock.boardedStoppageMinutes ?? 0;
-  const showAdded = showPublicAddedTime(
-    clock.elapsedSeconds,
-    clock.period || match.current_period || "half_1",
-    boarded
-  );
+  const showAdded = showPublicAddedTime(clock.elapsedSeconds, period, boarded);
 
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -98,9 +97,9 @@ export function MatchLivePanel({
             <MatchStatusPill
               status={status}
               scheduledAt={match.scheduled_at}
-              currentPeriod={match.current_period}
+              currentPeriod={period}
               sport="football"
-              liveTime={isLive ? displayTime : undefined}
+              liveTime={isLive && !isBreak ? displayTime : undefined}
             />
             <div className="mt-2 flex items-center justify-center gap-3 sm:gap-4">
               <span

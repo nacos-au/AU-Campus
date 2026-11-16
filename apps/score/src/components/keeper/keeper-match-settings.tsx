@@ -16,6 +16,9 @@ export function KeeperMatchSettings({
   allowsExtraTime,
   allowsPenaltyShootout,
   onSelectPeriod,
+  onEnterHalfTime,
+  onStartSecondHalf,
+  onEnterFullTime,
   onEndMatch,
   showEndMatch,
 }: {
@@ -30,6 +33,9 @@ export function KeeperMatchSettings({
   allowsExtraTime?: boolean;
   allowsPenaltyShootout?: boolean;
   onSelectPeriod?: (period: string) => void;
+  onEnterHalfTime?: () => void;
+  onStartSecondHalf?: () => void;
+  onEnterFullTime?: () => void;
   onEndMatch?: () => void;
   showEndMatch?: boolean;
 }) {
@@ -217,23 +223,69 @@ export function KeeperMatchSettings({
                 </div>
               )}
 
-              {sport === "football" && onSelectPeriod && period && (
+              {sport === "football" && period && (
                 <div className="mb-6 space-y-3 border-b border-rule pb-5">
                   <p className="text-xs font-bold uppercase tracking-wide text-accent/50">
                     Half / period
                   </p>
                   <p className="text-xs text-accent/60">
-                    Intentional period changes only — boards stoppage when moving to 2nd or ET.
+                    End stoppage boards +N, then Halftime or Full time. Start 2nd half resumes from
+                    45:00.
                   </p>
-                  <FootballPeriodControls
-                    period={period}
-                    allowsExtraTime={allowsExtraTime}
-                    allowsPenaltyShootout={allowsPenaltyShootout}
-                    onSelect={(p) => {
-                      onSelectPeriod(p);
-                      setMessage(`Period set to ${p.replace(/_/g, " ")}.`);
-                    }}
-                  />
+                  <div className="flex flex-col gap-2">
+                    {period === "half_1" && onEnterHalfTime && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onEnterHalfTime();
+                          setMessage("Halftime.");
+                        }}
+                        className="btn-filled w-full rounded-lg px-4 py-2 text-sm font-bold"
+                      >
+                        End stoppage → Halftime
+                      </button>
+                    )}
+                    {period === "half_time" && onStartSecondHalf && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onStartSecondHalf();
+                          setMessage("2nd half started.");
+                        }}
+                        className="btn-filled w-full rounded-lg px-4 py-2 text-sm font-bold"
+                      >
+                        Start 2nd half
+                      </button>
+                    )}
+                    {period === "half_2" && onEnterFullTime && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onEnterFullTime();
+                          setMessage("Full time.");
+                        }}
+                        className="btn-filled w-full rounded-lg px-4 py-2 text-sm font-bold"
+                      >
+                        End stoppage → Full time
+                      </button>
+                    )}
+                  </div>
+                  {onSelectPeriod && (
+                    <>
+                      <p className="pt-2 text-xs text-accent/60">
+                        Optional ET / pens (settings only).
+                      </p>
+                      <FootballPeriodControls
+                        period={period}
+                        allowsExtraTime={allowsExtraTime}
+                        allowsPenaltyShootout={allowsPenaltyShootout}
+                        onSelect={(p) => {
+                          onSelectPeriod(p);
+                          setMessage(`Period set to ${p.replace(/_/g, " ")}.`);
+                        }}
+                      />
+                    </>
+                  )}
                 </div>
               )}
 

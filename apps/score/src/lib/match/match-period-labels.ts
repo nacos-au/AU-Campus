@@ -1,11 +1,11 @@
 import type { SportId } from "@/lib/utils/sport";
 
 const PERIOD_STATUS_LABELS: Record<string, string> = {
-  half_time: "Half time",
-  halftime: "Half time",
+  half_time: "Halftime",
+  halftime: "Halftime",
   extra_time: "Extra time",
   penalty_shootout: "Penalties",
-  full_time: "Finished",
+  full_time: "Full time",
 };
 
 export function matchPeriodStatusLabel(period: string, sport: SportId): string | null {

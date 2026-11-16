@@ -2,10 +2,15 @@ import Link from "next/link";
 import { PlayerAvatar, TeamCrest } from "@/components/ui/team-crest";
 import { LineupPlayerBadges } from "@/components/match/lineup-player-badges";
 import type { DemoMatchEvent } from "@/lib/data/demo-match-details";
-import { getPitchLineup, resolvePitchSlotPlayer, type PitchLineupSlot, type TeamPitchLineup } from "@/lib/data/demo-lineups";
+import {
+  getPitchLineup,
+  resolvePitchSlotPlayer,
+  type PitchLineupSlot,
+  type TeamPitchLineup,
+} from "@/lib/data/demo-lineups";
 import { formationSlotPosition } from "@/lib/match/formation-layout";
 import { buildLineupPlayerEvents } from "@/lib/match/lineup-player-events";
-import type { Match } from "@/lib/types/database";
+import type { Match, Player } from "@/lib/types/database";
 import type { SportId } from "@/lib/utils/sport";
 import { cn } from "@/lib/utils/cn";
 
@@ -18,14 +23,31 @@ export function FootballLineupPitch({
   events,
   sport,
   motmPlayerId,
+  homeLineup: homeOverride,
+  awayLineup: awayOverride,
+  playersById,
 }: {
   match: Match;
   events: DemoMatchEvent[];
   sport: SportId;
   motmPlayerId: string | null;
+  /** Prefer DB / predicted XI over demo-only pitch maps. */
+  homeLineup?: TeamPitchLineup | null;
+  awayLineup?: TeamPitchLineup | null;
+  playersById?: Map<string, Player> | Record<string, Player>;
 }) {
-  const homeLineup = match.home_team_id ? getPitchLineup(match.id, match.home_team_id) : null;
-  const awayLineup = match.away_team_id ? getPitchLineup(match.id, match.away_team_id) : null;
+  const homeLineup =
+    homeOverride !== undefined
+      ? homeOverride
+      : match.home_team_id
+        ? getPitchLineup(match.id, match.home_team_id)
+        : null;
+  const awayLineup =
+    awayOverride !== undefined
+      ? awayOverride
+      : match.away_team_id
+        ? getPitchLineup(match.id, match.away_team_id)
+        : null;
   const matchStarted = match.status === "live" || match.status === "completed";
 
   if (!homeLineup && !awayLineup) {
@@ -37,7 +59,17 @@ export function FootballLineupPitch({
   }
 
   const isCompleted = match.status === "completed";
-  const shared = { match, homeLineup, awayLineup, sport, events, matchStarted, motmPlayerId, isCompleted };
+  const shared = {
+    match,
+    homeLineup,
+    awayLineup,
+    sport,
+    events,
+    matchStarted,
+    motmPlayerId,
+    isCompleted,
+    playersById,
+  };
 
   return (
     <>
@@ -60,6 +92,7 @@ interface PitchCardProps {
   matchStarted: boolean;
   motmPlayerId: string | null;
   isCompleted: boolean;
+  playersById?: Map<string, Player> | Record<string, Player>;
 }
 
 /** Portrait pitch, teams stacked top/bottom — used on small screens. */
@@ -72,6 +105,7 @@ function MobilePitchCard({
   matchStarted,
   motmPlayerId,
   isCompleted,
+  playersById,
 }: PitchCardProps) {
   return (
     <div className="overflow-hidden rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
@@ -89,6 +123,7 @@ function MobilePitchCard({
             matchStarted={matchStarted}
             motmPlayerId={motmPlayerId}
             isCompleted={isCompleted}
+            playersById={playersById}
           />
         )}
         {awayLineup && (
@@ -98,6 +133,7 @@ function MobilePitchCard({
             sport={sport}
             events={events}
             matchStarted={matchStarted}
+            playersById={playersById}
             motmPlayerId={motmPlayerId}
             isCompleted={isCompleted}
           />
@@ -121,6 +157,7 @@ function DesktopPitchCard({
   matchStarted,
   motmPlayerId,
   isCompleted,
+  playersById,
 }: PitchCardProps) {
   return (
     <div className="mx-auto max-w-[920px] overflow-hidden rounded-xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
@@ -146,6 +183,7 @@ function DesktopPitchCard({
               matchStarted={matchStarted}
               motmPlayerId={motmPlayerId}
               isCompleted={isCompleted}
+              playersById={playersById}
               orientation="horizontal"
               compact
             />
@@ -159,6 +197,7 @@ function DesktopPitchCard({
               matchStarted={matchStarted}
               motmPlayerId={motmPlayerId}
               isCompleted={isCompleted}
+              playersById={playersById}
               orientation="horizontal"
               compact
             />
@@ -295,6 +334,7 @@ function TeamOnPitch({
   matchStarted,
   motmPlayerId,
   isCompleted,
+  playersById,
   orientation = "vertical",
   compact = false,
 }: {
@@ -305,6 +345,7 @@ function TeamOnPitch({
   matchStarted: boolean;
   motmPlayerId: string | null;
   isCompleted: boolean;
+  playersById?: Map<string, Player> | Record<string, Player>;
   orientation?: "vertical" | "horizontal";
   compact?: boolean;
 }) {
@@ -314,7 +355,7 @@ function TeamOnPitch({
     <>
       {lineup.rows.map((row, rowIndex) =>
         row.map((slot, colIndex) => {
-          const player = resolvePitchSlotPlayer(slot);
+          const player = resolvePitchSlotPlayer(slot, playersById);
           if (!player) return null;
 
           const rawPos = formationSlotPosition(

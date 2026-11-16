@@ -124,8 +124,19 @@ export function resolveLineupPlayers(lineup: SubmittedLineup): (Player & { is_st
   });
 }
 
-export function resolvePitchSlotPlayer(slot: PitchLineupSlot): (Player & PitchLineupSlot) | null {
-  const player = DEMO_PLAYERS.find((p) => p.id === slot.player_id);
+export function resolvePitchSlotPlayer(
+  slot: PitchLineupSlot,
+  playersById?: Map<string, Player> | Record<string, Player>
+): (Player & PitchLineupSlot) | null {
+  let player: Player | undefined;
+  if (playersById instanceof Map) {
+    player = playersById.get(slot.player_id);
+  } else if (playersById) {
+    player = playersById[slot.player_id];
+  }
+  if (!player) {
+    player = DEMO_PLAYERS.find((p) => p.id === slot.player_id);
+  }
   return player ? { ...player, ...slot } : null;
 }
 
@@ -146,4 +157,34 @@ export function buildPitchRows(
     idx += count;
   }
   return rows;
+}
+
+const DEFAULT_FORMATION = "4-3-3";
+
+/** Softascore-style pitch XI from resolved starters (DB or predicted pool). */
+export function buildTeamPitchLineup(opts: {
+  matchId: string;
+  teamId: string;
+  formation?: string | null;
+  starters: Array<{
+    id: string;
+    jersey_number?: number | null;
+    is_captain?: boolean;
+  }>;
+}): TeamPitchLineup | null {
+  if (!opts.starters.length) return null;
+  const formation = opts.formation?.trim() || DEFAULT_FORMATION;
+  const slots: PitchLineupSlot[] = opts.starters.map((p, i) => ({
+    player_id: p.id,
+    jersey_number: p.jersey_number && p.jersey_number > 0 ? p.jersey_number : i + 1,
+    is_captain: p.is_captain,
+  }));
+  const rows = buildPitchRows(formation, slots);
+  if (!rows.length) return null;
+  return {
+    match_id: opts.matchId,
+    team_id: opts.teamId,
+    formation,
+    rows,
+  };
 }

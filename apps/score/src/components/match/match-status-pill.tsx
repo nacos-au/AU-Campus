@@ -43,18 +43,18 @@ export function MatchStatusPill({
   );
 
   if (status === "completed" || currentPeriod === "full_time") {
-    return <span className={pillClass}>Finished</span>;
+    return <span className={pillClass}>Full time</span>;
   }
 
   if (status === "live") {
     const periodLabel = matchPeriodStatusLabel(currentPeriod, sport);
-    const stoppage =
+    const breakPeriod =
       currentPeriod === "half_time" ||
       currentPeriod === "halftime" ||
       currentPeriod === "extra_time" ||
       currentPeriod === "penalty_shootout";
 
-    if (stoppage && periodLabel) {
+    if (breakPeriod && periodLabel) {
       return <span className={pillClass}>{periodLabel}</span>;
     }
 
