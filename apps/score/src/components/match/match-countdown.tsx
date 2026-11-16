@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import {
-  formatCountdown,
+  formatKickoffLabel,
   formatKickoffTime,
+  formatNegativeCountdown,
   getKickoffCountdown,
   type KickoffCountdownState,
 } from "@/lib/match/match-countdown";
@@ -38,7 +39,7 @@ export function MatchCountdown({
   if (state.phase === "far") {
     return (
       <p className={cn("text-sm opacity-70", className)}>
-        Kickoff {formatKickoffTime(state.scheduledAt)}
+        {formatKickoffLabel(state.scheduledAt)}
       </p>
     );
   }
@@ -53,10 +54,10 @@ export function MatchCountdown({
         )}
       >
         <span className="text-[10px] font-bold uppercase tracking-wide text-accent">
-          Starts in
+          To kick-off
         </span>
         <span className="font-mono text-xl font-bold tabular-nums text-accent sm:text-2xl">
-          {formatCountdown(state.msUntil)}
+          {formatNegativeCountdown(state.msUntil)}
         </span>
         <span className="text-xs opacity-60">{formatKickoffTime(state.scheduledAt)}</span>
       </div>
@@ -71,7 +72,7 @@ export function MatchCountdown({
       )}
     >
       <span className="h-2 w-2 animate-pulse rounded-full bg-accent" />
-      Awaiting kickoff · {formatKickoffTime(state.scheduledAt)}
+      Awaiting kickoff · 0:00
     </div>
   );
 }

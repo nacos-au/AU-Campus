@@ -189,6 +189,22 @@ BEGIN
 
 END $$;
 
+-- Venue: Main Field for every AUSA fixture
+INSERT INTO public.venues (name, location)
+SELECT 'Main Field', 'Achievers University, Owo'
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.venues v
+  WHERE lower(v.name) = 'main field' AND v.deleted_at IS NULL
+);
+
+UPDATE public.matches m
+SET venue_id = v.id
+FROM public.venues v
+JOIN public.tournaments t ON t.name = 'AUSA Interfaculty Football League'
+WHERE lower(v.name) = 'main field'
+  AND v.deleted_at IS NULL
+  AND m.tournament_id = t.id;
+
 -- Players + pools + rosters (outside big DECLARE for readability)
 CREATE TEMP TABLE IF NOT EXISTS _ausa_players (
   team_code text NOT NULL,

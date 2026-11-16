@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { CompetitionRosterPlayer } from "@/lib/data/competition-rosters";
 import {
   defaultLineupStatusForKickoff,
@@ -8,9 +8,13 @@ import {
   lineupStatusLabel,
 } from "@/lib/match/lineup-window";
 import type { LineupSheetStatus } from "@/lib/types/database";
+import { cn } from "@/lib/utils/cn";
+
+type Zone = "pool" | "xi" | "bench";
 
 /**
- * Quick XI picker from a competition squad for a match side.
+ * Drag-and-drop XI builder from a competition squad for a match side.
+ * Requires full starters + at least one sub; optional captain + coach.
  */
 export function AdminMatchLineupPanel({
   matchId,
@@ -19,6 +23,7 @@ export function AdminMatchLineupPanel({
   teamName,
   scheduledAt,
   maxStarters = 11,
+  defaultCoach = "",
 }: {
   matchId: string;
   tournamentId: string;
@@ -26,17 +31,23 @@ export function AdminMatchLineupPanel({
   teamName: string;
   scheduledAt?: string | null;
   maxStarters?: number;
+  defaultCoach?: string;
 }) {
   const [pool, setPool] = useState<CompetitionRosterPlayer[]>([]);
-  const [starters, setStarters] = useState<Set<string>>(new Set());
-  const [bench, setBench] = useState<Set<string>>(new Set());
+  const [xi, setXi] = useState<string[]>([]);
+  const [bench, setBench] = useState<string[]>([]);
+  const [captainId, setCaptainId] = useState<string | null>(null);
+  const [coachName, setCoachName] = useState(defaultCoach);
   const [status, setStatus] = useState<LineupSheetStatus>(
     defaultLineupStatusForKickoff(scheduledAt)
   );
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [dragId, setDragId] = useState<string | null>(null);
   const predictedWindow = isPredictedLineupWindow(scheduledAt);
+
+  const byId = useMemo(() => new Map(pool.map((p) => [p.player_id, p])), [pool]);
 
   const load = useCallback(async () => {
     try {
@@ -49,13 +60,17 @@ export function AdminMatchLineupPanel({
 
       const lineupJson = (await lineupRes.json()) as {
         lineup?: {
-          players?: Array<{ player_id: string; is_starting: boolean }>;
+          players?: Array<{ player_id: string; is_starting: boolean; is_captain?: boolean }>;
           status?: LineupSheetStatus;
+          coach_name?: string | null;
         } | null;
       };
       const players = lineupJson.lineup?.players ?? [];
-      setStarters(new Set(players.filter((p) => p.is_starting).map((p) => p.player_id)));
-      setBench(new Set(players.filter((p) => !p.is_starting).map((p) => p.player_id)));
+      setXi(players.filter((p) => p.is_starting).map((p) => p.player_id));
+      setBench(players.filter((p) => !p.is_starting).map((p) => p.player_id));
+      setCaptainId(players.find((p) => p.is_captain)?.player_id ?? null);
+      if (lineupJson.lineup?.coach_name) setCoachName(lineupJson.lineup.coach_name);
+      else if (defaultCoach) setCoachName(defaultCoach);
       if (lineupJson.lineup?.status) {
         setStatus(lineupJson.lineup.status);
       } else {
@@ -64,44 +79,77 @@ export function AdminMatchLineupPanel({
     } catch {
       setPool([]);
     }
-  }, [tournamentId, teamId, matchId, scheduledAt]);
+  }, [tournamentId, teamId, matchId, scheduledAt, defaultCoach]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  function toggle(playerId: string, as: "start" | "bench") {
-    setStarters((prev) => {
-      const next = new Set(prev);
-      if (as === "start") {
-        if (next.has(playerId)) next.delete(playerId);
-        else if (next.size < maxStarters) next.add(playerId);
-      } else next.delete(playerId);
-      return next;
-    });
-    setBench((prev) => {
-      const next = new Set(prev);
-      if (as === "bench") {
-        if (next.has(playerId)) next.delete(playerId);
-        else next.add(playerId);
-      } else next.delete(playerId);
-      return next;
-    });
+  const unused = pool.filter(
+    (p) => !xi.includes(p.player_id) && !bench.includes(p.player_id)
+  );
+
+  function removeFromAll(playerId: string) {
+    setXi((prev) => prev.filter((id) => id !== playerId));
+    setBench((prev) => prev.filter((id) => id !== playerId));
+    setCaptainId((c) => (c === playerId ? null : c));
+  }
+
+  function moveTo(playerId: string, zone: Zone) {
+    removeFromAll(playerId);
+    if (zone === "xi") {
+      setXi((prev) => {
+        if (prev.includes(playerId)) return prev;
+        if (prev.length >= maxStarters) return prev;
+        return [...prev, playerId];
+      });
+    } else if (zone === "bench") {
+      setBench((prev) => (prev.includes(playerId) ? prev : [...prev, playerId]));
+    }
+  }
+
+  function onDrop(zone: Zone) {
+    if (!dragId) return;
+    moveTo(dragId, zone);
+    setDragId(null);
   }
 
   async function submit() {
     setBusy(true);
     setError("");
     setMessage("");
+    if (xi.length < maxStarters) {
+      setError(`Need ${maxStarters} starters (have ${xi.length}).`);
+      setBusy(false);
+      return;
+    }
+    if (bench.length < 1) {
+      setError("Add at least one substitute to the bench.");
+      setBusy(false);
+      return;
+    }
     const players = [
-      ...[...starters].map((id) => ({ player_id: id, is_starting: true })),
-      ...[...bench].map((id) => ({ player_id: id, is_starting: false })),
+      ...xi.map((id) => ({
+        player_id: id,
+        is_starting: true,
+        is_captain: captainId === id,
+      })),
+      ...bench.map((id) => ({
+        player_id: id,
+        is_starting: false,
+        is_captain: false,
+      })),
     ];
     try {
       const res = await fetch(`/api/matches/${matchId}/lineup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ team_id: teamId, players, status }),
+        body: JSON.stringify({
+          team_id: teamId,
+          players,
+          status,
+          coach_name: coachName.trim() || null,
+        }),
       });
       const json = (await res.json()) as { error?: string; status?: LineupSheetStatus };
       if (!res.ok) {
@@ -128,8 +176,10 @@ export function AdminMatchLineupPanel({
   return (
     <div className="space-y-3 rounded-xl border border-rule p-4">
       <h3 className="font-display text-sm font-extrabold">
-        {teamName} XI · {starters.size}/{maxStarters} starters
+        {teamName} XI · {xi.length}/{maxStarters} starters · {bench.length} sub
+        {bench.length === 1 ? "" : "s"}
       </h3>
+
       <label className="block text-xs">
         <span className="font-semibold text-accent/70">Sheet status</span>
         <select
@@ -143,40 +193,99 @@ export function AdminMatchLineupPanel({
           <option value="confirmed">Confirmed</option>
         </select>
       </label>
-      <ul className="max-h-56 space-y-1 overflow-y-auto text-sm">
-        {pool.map((p) => {
-          const isStart = starters.has(p.player_id);
-          const isBench = bench.has(p.player_id);
-          return (
-            <li key={p.player_id} className="flex items-center gap-2">
-              <span className="min-w-0 flex-1 truncate font-semibold">
-                {p.first_name} {p.last_name}
-              </span>
-              <button
-                type="button"
-                onClick={() => toggle(p.player_id, "start")}
-                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                  isStart ? "btn-filled" : "border border-rule"
-                }`}
-              >
-                XI
-              </button>
-              <button
-                type="button"
-                onClick={() => toggle(p.player_id, "bench")}
-                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                  isBench ? "btn-filled" : "border border-rule"
-                }`}
-              >
-                Bench
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+
+      <label className="block text-xs">
+        <span className="font-semibold text-accent/70">Coach</span>
+        <input
+          className="mt-1 w-full rounded-lg border border-rule px-2 py-1.5 text-sm"
+          value={coachName}
+          onChange={(e) => setCoachName(e.target.value)}
+          placeholder="Coach name"
+        />
+      </label>
+
+      <p className="text-[11px] text-accent/55">
+        Drag players into Starting XI or Bench. Mark one starter as captain.
+      </p>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <DropZone
+          title="Squad pool"
+          zone="pool"
+          onDrop={() => onDrop("pool")}
+          active={Boolean(dragId)}
+        >
+          {unused.map((p) => (
+            <DraggablePlayer
+              key={p.player_id}
+              player={p}
+              dragging={dragId === p.player_id}
+              onDragStart={() => setDragId(p.player_id)}
+              onDragEnd={() => setDragId(null)}
+            />
+          ))}
+          {unused.length === 0 && (
+            <p className="px-2 py-3 text-center text-[11px] opacity-50">All named</p>
+          )}
+        </DropZone>
+
+        <DropZone
+          title={`Starting XI (${xi.length}/${maxStarters})`}
+          zone="xi"
+          onDrop={() => onDrop("xi")}
+          active={Boolean(dragId)}
+          accent
+        >
+          {xi.map((id) => {
+            const p = byId.get(id);
+            if (!p) return null;
+            return (
+              <DraggablePlayer
+                key={id}
+                player={p}
+                dragging={dragId === id}
+                onDragStart={() => setDragId(id)}
+                onDragEnd={() => setDragId(null)}
+                captain={captainId === id}
+                onCaptain={() => setCaptainId(id)}
+                onRemove={() => moveTo(id, "pool")}
+              />
+            );
+          })}
+          {xi.length === 0 && (
+            <p className="px-2 py-3 text-center text-[11px] opacity-50">Drop starters here</p>
+          )}
+        </DropZone>
+
+        <DropZone
+          title={`Bench (${bench.length})`}
+          zone="bench"
+          onDrop={() => onDrop("bench")}
+          active={Boolean(dragId)}
+        >
+          {bench.map((id) => {
+            const p = byId.get(id);
+            if (!p) return null;
+            return (
+              <DraggablePlayer
+                key={id}
+                player={p}
+                dragging={dragId === id}
+                onDragStart={() => setDragId(id)}
+                onDragEnd={() => setDragId(null)}
+                onRemove={() => moveTo(id, "pool")}
+              />
+            );
+          })}
+          {bench.length === 0 && (
+            <p className="px-2 py-3 text-center text-[11px] opacity-50">Drop subs here</p>
+          )}
+        </DropZone>
+      </div>
+
       <button
         type="button"
-        disabled={busy || starters.size === 0}
+        disabled={busy || xi.length < maxStarters || bench.length < 1}
         onClick={() => void submit()}
         className="btn-filled rounded-full px-4 py-2 text-xs font-bold disabled:opacity-40"
       >
@@ -185,5 +294,107 @@ export function AdminMatchLineupPanel({
       {error && <p className="text-sm text-red-600">{error}</p>}
       {message && <p className="text-sm text-emerald-700">{message}</p>}
     </div>
+  );
+}
+
+function DropZone({
+  title,
+  zone,
+  children,
+  onDrop,
+  active,
+  accent,
+}: {
+  title: string;
+  zone: Zone;
+  children: React.ReactNode;
+  onDrop: () => void;
+  active: boolean;
+  accent?: boolean;
+}) {
+  return (
+    <div
+      data-zone={zone}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        onDrop();
+      }}
+      className={cn(
+        "min-h-[140px] rounded-lg border border-dashed p-2",
+        accent ? "border-accent/40 bg-accent/5" : "border-rule bg-surface/40",
+        active && "ring-2 ring-accent/30"
+      )}
+    >
+      <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-wide text-accent/55">
+        {title}
+      </p>
+      <ul className="max-h-52 space-y-1 overflow-y-auto">{children}</ul>
+    </div>
+  );
+}
+
+function DraggablePlayer({
+  player,
+  dragging,
+  onDragStart,
+  onDragEnd,
+  captain,
+  onCaptain,
+  onRemove,
+}: {
+  player: CompetitionRosterPlayer;
+  dragging: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  captain?: boolean;
+  onCaptain?: () => void;
+  onRemove?: () => void;
+}) {
+  return (
+    <li
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", player.player_id);
+        e.dataTransfer.effectAllowed = "move";
+        onDragStart();
+      }}
+      onDragEnd={onDragEnd}
+      className={cn(
+        "flex cursor-grab items-center gap-1.5 rounded-md border border-rule bg-white px-2 py-1.5 text-xs active:cursor-grabbing",
+        dragging && "opacity-40"
+      )}
+    >
+      <span className="min-w-0 flex-1 truncate font-semibold">
+        {player.first_name} {player.last_name}
+        {captain ? " (c)" : ""}
+      </span>
+      {onCaptain && (
+        <button
+          type="button"
+          onClick={onCaptain}
+          className={cn(
+            "rounded-full px-1.5 py-0.5 text-[9px] font-bold",
+            captain ? "btn-filled" : "border border-rule"
+          )}
+          title="Captain"
+        >
+          C
+        </button>
+      )}
+      {onRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="text-[10px] font-bold text-accent/40 hover:text-accent"
+          aria-label="Remove"
+        >
+          ×
+        </button>
+      )}
+    </li>
   );
 }

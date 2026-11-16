@@ -1,40 +1,43 @@
+import Link from "next/link";
 import type { Match } from "@/lib/types/database";
-import { formatFootballRules } from "@/lib/data/demo-competition";
+import { competitionPhaseLabel } from "@/lib/match/competition-phase-label";
 import { TennisLineupBanner } from "@/components/match/tennis-lineup";
 import { dbIdToSport } from "@/lib/utils/sport";
 
-export function MatchRulesBanner({ match }: { match: Match }) {
+/**
+ * Competition name + plain match-day text (no chips/pills on white).
+ */
+export function MatchRulesBanner({
+  match,
+  sport,
+}: {
+  match: Match;
+  sport?: string;
+}) {
   const tournament = match.tournament;
-  const rules = formatFootballRules(tournament?.rules ?? {});
-  const variant = match.match_variant;
-  const phase = match.competition_phase;
-  const chips = [
-    ...rules,
-    match.allows_extra_time ? "Extra time if drawn" : null,
-    match.allows_penalty_shootout ? "Pens if still level" : null,
-  ].filter((x, i, arr): x is string => Boolean(x) && arr.indexOf(x) === i);
+  const phaseLabel = competitionPhaseLabel(match.competition_phase);
+  const sportSlug = sport ?? dbIdToSport(match.sport_id);
+  const competitionHref = tournament?.id
+    ? `/competition?sport=${sportSlug}&competition=${tournament.id}`
+    : `/competition?sport=${sportSlug}`;
 
-  if (!phase && !variant && chips.length === 0) return null;
+  if (!tournament?.name && !phaseLabel) return null;
 
   return (
-    <div className="mx-auto max-w-[1200px] px-4 sm:px-6">
-      <div className="mb-6 flex flex-wrap gap-2">
-        {phase && (
-          <span className="rounded-full border border-rule bg-white px-3 py-1 font-display text-xs font-bold uppercase">
-            {phase.replace(/_/g, " ")}
-          </span>
-        )}
-        {variant && variant !== "standard" && (
-          <span className="rounded-full border border-accent bg-accent/5 px-3 py-1 font-display text-xs font-bold uppercase text-accent">
-            {variant}
-          </span>
-        )}
-        {chips.map((rule) => (
-          <span key={rule} className="rounded-full border border-rule bg-surface px-3 py-1 text-xs font-semibold opacity-70">
-            {rule}
-          </span>
-        ))}
-      </div>
+    <div className="mx-auto max-w-[1200px] px-4 pb-2 pt-4 text-center sm:px-6">
+      {tournament?.name && (
+        <Link
+          href={competitionHref}
+          className="font-display text-sm font-bold text-accent/70 hover:text-accent hover:underline"
+        >
+          {tournament.name}
+        </Link>
+      )}
+      {phaseLabel && (
+        <p className="mt-1 font-display text-xs font-semibold uppercase tracking-wide text-accent/45">
+          {phaseLabel}
+        </p>
+      )}
     </div>
   );
 }

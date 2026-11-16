@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import {
-  formatCountdown,
-  formatKickoffTime24,
+  formatKickoffLabel,
+  formatNegativeCountdown,
   getKickoffCountdown,
 } from "@/lib/match/match-countdown";
 import { matchPeriodStatusLabel } from "@/lib/match/match-period-labels";
@@ -83,16 +83,21 @@ export function MatchStatusPill({
 
   const state = getKickoffCountdown(scheduledAt);
   if (!state || state.phase === "far") {
-    return <span className={pillClass}>{formatKickoffTime24(scheduledAt)}</span>;
-  }
-
-  if (state.phase === "countdown" || state.phase === "awaiting") {
     return (
-      <span className={cn(pillClass, "text-red-300")}>
-        {formatCountdown(Math.max(0, state.msUntil))}
+      <span className={cn(pillClass, "font-display tracking-wide")}>
+        {formatKickoffLabel(scheduledAt)}
       </span>
     );
   }
 
-  return <span className={pillClass}>{formatKickoffTime24(scheduledAt)}</span>;
+  if (state.phase === "countdown") {
+    return (
+      <span className={cn(pillClass, "text-red-300")}>
+        {formatNegativeCountdown(state.msUntil)}
+      </span>
+    );
+  }
+
+  // Past kickoff, still scheduled — awaiting keeper start
+  return <span className={cn(pillClass, "text-red-300")}>0:00</span>;
 }

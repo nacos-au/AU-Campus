@@ -177,7 +177,13 @@ function buildFootballPitchData(
           matchId: match.id,
           teamId: match.home_team_id,
           formation: "4-3-3",
-          starters: home.resolved.filter((p) => p.is_starting).map((p) => ({ id: p.id })),
+          starters: home.players
+            .filter((p) => p.is_starting)
+            .map((p) => ({
+              id: p.player_id,
+              jersey_number: p.jersey_number,
+              is_captain: p.is_captain,
+            })),
         })
       : null;
   const awayPitch =
@@ -186,7 +192,13 @@ function buildFootballPitchData(
           matchId: match.id,
           teamId: match.away_team_id,
           formation: "4-3-3",
-          starters: away.resolved.filter((p) => p.is_starting).map((p) => ({ id: p.id })),
+          starters: away.players
+            .filter((p) => p.is_starting)
+            .map((p) => ({
+              id: p.player_id,
+              jersey_number: p.jersey_number,
+              is_captain: p.is_captain,
+            })),
         })
       : null;
 
@@ -239,6 +251,7 @@ function TeamLineupCard({
           {lineup && (
             <p className="text-[10px] font-bold uppercase tracking-wide text-accent/50">
               {lineupStatusLabel(lineup.status)}
+              {lineup.coach_name ? ` · Coach ${lineup.coach_name}` : ""}
             </p>
           )}
         </div>
@@ -247,7 +260,9 @@ function TeamLineupCard({
       {lineup && lineup.resolved.length > 0 ? (
         <div>
           <ul className="divide-y divide-rule">
-            {starters.map((p) => (
+            {starters.map((p) => {
+              const sheet = lineup.players.find((e) => e.player_id === p.id);
+              return (
               <li key={p.id} className="flex items-center gap-2.5 px-4 py-2">
                 <PlayerAvatar
                   firstName={p.first_name}
@@ -257,12 +272,14 @@ function TeamLineupCard({
                 />
                 <span className="min-w-0 flex-1 truncate text-sm font-semibold">
                   {p.first_name} {p.last_name}
+                  {sheet?.is_captain ? " (c)" : ""}
                 </span>
                 <span className="text-[10px] font-bold uppercase opacity-50">
                   {p.lineup_role ?? p.position ?? ""}
                 </span>
               </li>
-            ))}
+              );
+            })}
           </ul>
           {bench.length > 0 && (
             <>

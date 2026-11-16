@@ -1,6 +1,6 @@
 import { WinProbabilityVote } from "@/components/match/win-probability";
 import { MatchPageLiveBlock } from "@/components/match/match-page-live-block";
-import { MatchLifecycleBadge } from "@/components/match/match-lifecycle-badge";
+import { PrematchHero } from "@/components/match/prematch-hero";
 import { MatchEventsList } from "@/components/match/match-events-list";
 import { FootballMatchTimeline } from "@/components/match/football-match-timeline";
 import { ManOfTheMatchCard } from "@/components/match/man-of-the-match";
@@ -37,7 +37,6 @@ import {
 } from "@/lib/match/podium";
 import { getManOfTheMatch, getMatchMeta } from "@/lib/match/match-meta";
 import { supportsHeadToHead } from "@/lib/match/head-to-head";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -84,8 +83,9 @@ export default async function MatchPage({
   const setScores = liveSetScores.length ? liveSetScores : getSetScoresForMatch(id);
   const liveTrack = await fetchTrackResults(id);
   const trackResults = liveTrack.length ? liveTrack : getTrackResultsForMatch(id);
-  const isLive = match.status === "live";
+  const isLive = match.status === "live" || match.status === "paused";
   const isCompleted = match.status === "completed";
+  const isPrematch = match.status === "scheduled" || match.status === "postponed";
   const homeName = match.home_team?.name ?? "Home";
   const awayName = match.away_team?.name ?? "Away";
   const motm = isCompleted ? getManOfTheMatch(id) : null;
@@ -95,13 +95,16 @@ export default async function MatchPage({
     ? (match.home_team?.name ?? "Event")
     : `${homeName} vs ${awayName}`;
 
-  const showSetScores = matchSport === "tennis" || matchSport === "volleyball";
-  const showPeriodScores = matchSport === "basketball" || (matchSport === "football" && periodScores.length > 0);
+  const showSetScores =
+    !isPrematch && (matchSport === "tennis" || matchSport === "volleyball");
+  const showPeriodScores =
+    !isPrematch &&
+    (matchSport === "basketball" || (matchSport === "football" && periodScores.length > 0));
 
   const podium =
-    config.isEventSport && trackResults.length > 0
+    !isPrematch && config.isEventSport && trackResults.length > 0
       ? podiumFromTrackResults(trackResults)
-      : match.status === "completed" && (matchSport === "tennis" || matchSport === "volleyball")
+      : isCompleted && (matchSport === "tennis" || matchSport === "volleyball")
         ? podiumFromTeamScore(
             homeName,
             awayName,
@@ -110,7 +113,7 @@ export default async function MatchPage({
             match.home_team_id ?? undefined,
             match.away_team_id ?? undefined
           )
-        : match.status === "completed" && (matchSport === "football" || matchSport === "basketball")
+        : isCompleted && (matchSport === "football" || matchSport === "basketball")
           ? podiumFromPointsMatch(
               homeName,
               awayName,
@@ -124,31 +127,31 @@ export default async function MatchPage({
 
   return (
     <>
-      <BrandedSection title={title} activeSport={activeSport} />
+      <BrandedSection title={title} activeSport={activeSport} showSubNav={false} />
       <PageContent>
-        <MatchRulesBanner match={match} />
-        <div className="border-b border-rule py-10">
+        <MatchRulesBanner match={match} sport={matchSport} />
+        <div className="border-b border-rule py-6 sm:py-10">
           <div className="mx-auto max-w-[1200px] px-4 text-center sm:px-6">
-            <p className="mb-4 flex flex-wrap items-center justify-center gap-2 text-sm opacity-70">
-              {match.status === "postponed" ? (
+            {match.status === "postponed" && (
+              <p className="mb-4">
                 <span className="rounded-full bg-amber-100 px-3 py-1 font-display text-xs font-bold text-amber-900">
                   Postponed
                 </span>
-              ) : (
-                <MatchLifecycleBadge
-                  matchId={match.id}
-                  initialStatus={match.status as "scheduled" | "live" | "completed"}
-                  scheduledAt={match.scheduled_at}
-                />
-              )}
-              <Link href={`/competition?sport=${matchSport}`} className="hover:underline">
-                {match.tournament?.name}
-              </Link>
-            </p>
+              </p>
+            )}
             <DoublesLineup match={match} />
 
-            <MatchPageLiveBlock match={match} events={events} sport={matchSport} isEventSport={config.isEventSport} />
-            <PenaltyShootoutScore match={match} />
+            {isPrematch && match.status === "scheduled" ? (
+              <PrematchHero match={match} sport={matchSport} />
+            ) : isPrematch ? null : (
+              <MatchPageLiveBlock
+                match={match}
+                events={events}
+                sport={matchSport}
+                isEventSport={config.isEventSport}
+              />
+            )}
+            {!isPrematch && <PenaltyShootoutScore match={match} />}
             <div className="mt-5 flex justify-center">
               <ShareControls
                 title={title}
@@ -165,10 +168,10 @@ export default async function MatchPage({
           )}
 
           {!config.isEventSport && matchSport !== "tennis" && (
-            <MatchLineupsSection match={match} events={events} />
+            <MatchLineupsSection match={match} events={isPrematch ? [] : events} />
           )}
 
-          {config.isEventSport && trackResults.length > 0 && (
+          {!isPrematch && config.isEventSport && trackResults.length > 0 && (
             <section>
               <h2 className="mb-4 font-display text-xl font-extrabold">Results</h2>
               <TrackResultsTable results={trackResults} sport={matchSport} />
@@ -193,36 +196,37 @@ export default async function MatchPage({
             </section>
           )}
 
-          {isLive || match.status === "paused" ? (
-            <MatchLiveEventsPoller
-              matchId={id}
-              initialEvents={events}
-              match={match}
-              sport={matchSport}
-              periodScores={periodScores}
-              isCompleted={isCompleted}
-            />
-          ) : matchSport === "football" && events.length > 0 ? (
-            <FootballMatchTimeline
-              events={events}
-              homeTeamId={match.home_team_id ?? ""}
-              awayTeamId={match.away_team_id ?? ""}
-              homeScore={match.home_score}
-              awayScore={match.away_score}
-              periodScores={periodScores}
-              isCompleted={isCompleted}
-              sport={matchSport}
-              boardedStoppageMinutes={match.clock_boarded_stoppage_minutes}
-            />
-          ) : (
-            <MatchEventsList
-              events={events}
-              sport={matchSport}
-              title={config.isEventSport ? "Event Timeline" : "Match Events"}
-            />
-          )}
+          {!isPrematch &&
+            (isLive ? (
+              <MatchLiveEventsPoller
+                matchId={id}
+                initialEvents={events}
+                match={match}
+                sport={matchSport}
+                periodScores={periodScores}
+                isCompleted={isCompleted}
+              />
+            ) : matchSport === "football" && events.length > 0 ? (
+              <FootballMatchTimeline
+                events={events}
+                homeTeamId={match.home_team_id ?? ""}
+                awayTeamId={match.away_team_id ?? ""}
+                homeScore={match.home_score}
+                awayScore={match.away_score}
+                periodScores={periodScores}
+                isCompleted={isCompleted}
+                sport={matchSport}
+                boardedStoppageMinutes={match.clock_boarded_stoppage_minutes}
+              />
+            ) : (
+              <MatchEventsList
+                events={events}
+                sport={matchSport}
+                title={config.isEventSport ? "Event Timeline" : "Match Events"}
+              />
+            ))}
 
-          {config.showWinProbability && match.win_probability && (
+          {!isPrematch && config.showWinProbability && match.win_probability && (
             <WinProbabilityVote
               matchId={match.id}
               data={match.win_probability}

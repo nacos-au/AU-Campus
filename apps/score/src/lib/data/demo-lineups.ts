@@ -20,6 +20,8 @@ export interface SubmittedLineupEntry {
   player_id: string;
   is_starting: boolean;
   role?: string | null;
+  is_captain?: boolean;
+  jersey_number?: number | null;
 }
 
 export interface SubmittedLineup {
@@ -29,6 +31,7 @@ export interface SubmittedLineup {
   submitted_at: string;
   status?: LineupSheetStatus;
   published_at?: string | null;
+  coach_name?: string | null;
 }
 
 /** 4-3-3: GK, back four (LB–RB), midfield three, front three (LW–ST–RW). */

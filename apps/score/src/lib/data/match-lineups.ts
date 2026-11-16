@@ -28,6 +28,7 @@ type LineupRow = {
   submitted_at: string;
   status?: string | null;
   published_at?: string | null;
+  coach_name?: string | null;
 };
 
 function normalizeStatus(raw: string | null | undefined): LineupSheetStatus {
@@ -79,6 +80,7 @@ function toPublicLineup(row: LineupRow, resolved: ResolvedLineupPlayer[]): Publi
     submitted_at: row.submitted_at,
     status: normalizeStatus(row.status),
     published_at: row.published_at ?? row.submitted_at ?? null,
+    coach_name: row.coach_name ?? null,
     resolved,
   };
 }
@@ -100,12 +102,25 @@ export async function fetchMatchLineup(
   }
 
   const supabase = await createClient();
-  const { data } = (await supabase
+  let data: LineupRow | null = null;
+  const withCoach = (await supabase
     .from("match_lineups")
-    .select("match_id, team_id, players, submitted_at, status, published_at")
+    .select("match_id, team_id, players, submitted_at, status, published_at, coach_name")
     .eq("match_id", matchId)
     .eq("team_id", teamId)
-    .maybeSingle()) as { data: LineupRow | null };
+    .maybeSingle()) as { data: LineupRow | null; error: { message: string } | null };
+
+  if (withCoach.error?.message?.toLowerCase().includes("coach_name")) {
+    const fallback = (await supabase
+      .from("match_lineups")
+      .select("match_id, team_id, players, submitted_at, status, published_at")
+      .eq("match_id", matchId)
+      .eq("team_id", teamId)
+      .maybeSingle()) as { data: LineupRow | null };
+    data = fallback.data;
+  } else {
+    data = withCoach.data;
+  }
 
   if (!data) return null;
   const resolved = await resolvePlayersFromIds(data.players ?? []);
@@ -235,9 +250,26 @@ export async function submitMatchLineup(input: {
   team_id: string;
   players: SubmittedLineupEntry[];
   status?: LineupSheetStatus | null;
+  coach_name?: string | null;
+  min_starters?: number;
+  require_bench?: boolean;
 }): Promise<{ ok: true; status: LineupSheetStatus } | { error: string }> {
   const scheduledAt = await readMatchKickoff(input.match_id);
   const status = defaultLineupStatusForKickoff(scheduledAt, input.status);
+
+  const starters = input.players.filter((p) => p.is_starting);
+  const bench = input.players.filter((p) => !p.is_starting);
+  const minStarters = input.min_starters ?? 11;
+  if (starters.length < minStarters) {
+    return { error: `Name at least ${minStarters} starters (got ${starters.length}).` };
+  }
+  if (input.require_bench !== false && bench.length < 1) {
+    return { error: "Name at least one substitute on the bench." };
+  }
+  const captains = starters.filter((p) => p.is_captain);
+  if (captains.length > 1) {
+    return { error: "Only one captain can be named among the starters." };
+  }
 
   if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
     return { ok: true, status };
@@ -271,6 +303,7 @@ export async function submitMatchLineup(input: {
       submitted_at: now,
       status,
       published_at: now,
+      coach_name: input.coach_name?.trim() || null,
     } as Record<string, unknown>,
     { onConflict: "match_id,team_id" }
   )) as { error: { message: string } | null };

@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import {
-  formatCountdown,
-  formatKickoffTime24,
+  formatKickoffLabel,
+  formatNegativeCountdown,
   getKickoffCountdown,
 } from "@/lib/match/match-countdown";
 import { cn } from "@/lib/utils/cn";
@@ -30,15 +30,21 @@ export function FixtureKickoffLabel({
   const state = getKickoffCountdown(scheduledAt);
   if (!state || state.phase === "far") {
     return (
-      <span className="font-mono text-xs font-bold tabular-nums opacity-70">
-        {formatKickoffTime24(scheduledAt)}
+      <span className="font-display text-xs font-bold tabular-nums opacity-70">
+        {formatKickoffLabel(scheduledAt)}
       </span>
+    );
+  }
+
+  if (state.phase === "awaiting") {
+    return (
+      <span className={cn("font-mono text-xs font-bold tabular-nums text-accent")}>0:00</span>
     );
   }
 
   return (
     <span className={cn("font-mono text-xs font-bold tabular-nums text-accent")}>
-      {formatCountdown(Math.max(0, state.msUntil))}
+      {formatNegativeCountdown(state.msUntil)}
     </span>
   );
 }
