@@ -1,5 +1,4 @@
 import { FootballLineupPitch } from "@/components/match/football-lineup-pitch";
-import { ShareControls } from "@/components/share/share-controls";
 import { PlayerAvatar, TeamCrest } from "@/components/ui/team-crest";
 import { buildTeamPitchLineup, type TeamPitchLineup } from "@/lib/data/demo-lineups";
 import type { DemoMatchEvent } from "@/lib/data/demo-match-details";
@@ -37,10 +36,7 @@ export async function MatchLineupsSection({
   if (sheetUrl && match.status !== "completed" && !hasDbLineups) {
     return (
       <section>
-        <LineupsHeader
-          matchId={match.id}
-          subtitle="Official team sheet · published before kick-off"
-        />
+        <LineupsHeader subtitle="Official team sheet · published before kick-off" />
         <div className="table-card overflow-hidden p-2 sm:p-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -90,7 +86,7 @@ export async function MatchLineupsSection({
 
     return (
       <section>
-        <LineupsHeader matchId={match.id} subtitle={subtitle} />
+        <LineupsHeader subtitle={subtitle} />
         <FootballLineupPitch
           match={match}
           events={events}
@@ -122,7 +118,6 @@ export async function MatchLineupsSection({
     return (
       <section>
         <LineupsHeader
-          matchId={match.id}
           subtitle={
             hasDbLineups ? lineupStatusLabel(sheetStatus) : "Predicted XI · from squad pool"
           }
@@ -147,7 +142,7 @@ export async function MatchLineupsSection({
 
   return (
     <section>
-      <LineupsHeader matchId={match.id} />
+      <LineupsHeader />
       <p className="table-card px-4 py-8 text-center text-sm opacity-60">
         Lineups not available — not submitted by club.
       </p>
@@ -205,25 +200,11 @@ function buildFootballPitchData(
   return { homePitch, awayPitch, playersById };
 }
 
-function LineupsHeader({
-  matchId,
-  subtitle,
-}: {
-  matchId: string;
-  subtitle?: string;
-}) {
+function LineupsHeader({ subtitle }: { subtitle?: string }) {
   return (
-    <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h2 className="font-display text-xl font-extrabold">Lineups</h2>
-        {subtitle && <p className="mt-1 text-xs text-accent/55">{subtitle}</p>}
-      </div>
-      <ShareControls
-        title="Match lineups"
-        path={`/matches/${matchId}`}
-        posterPath={`/matches/${matchId}/lineup/opengraph-image`}
-        compact
-      />
+    <div className="mb-4">
+      <h2 className="font-display text-xl font-extrabold">Lineups</h2>
+      {subtitle && <p className="mt-1 text-xs text-accent/55">{subtitle}</p>}
     </div>
   );
 }

@@ -14,7 +14,6 @@ import { MatchLineupsSection } from "@/components/match/match-lineups-section";
 import { BrandedSection } from "@/components/layout/branded-section";
 import { PageContent } from "@/components/layout/page-content";
 import { MatchLiveEventsPoller } from "@/components/match/match-live-events-poller";
-import { ShareControls } from "@/components/share/share-controls";
 import { FeedbackLauncher } from "@/components/feedback/feedback-launcher";
 import {
   getPeriodScoresForMatch,
@@ -152,13 +151,6 @@ export default async function MatchPage({
               />
             )}
             {!isPrematch && <PenaltyShootoutScore match={match} />}
-            <div className="mt-5 flex justify-center">
-              <ShareControls
-                title={title}
-                path={`/matches/${id}`}
-                posterPath={`/matches/${id}/opengraph-image`}
-              />
-            </div>
           </div>
         </div>
 

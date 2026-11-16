@@ -188,8 +188,9 @@ export function AdminCompetitionSquadsPanel({
         Fill competition squads
       </h2>
       <p className="mt-1 text-sm opacity-70">
-        After publishing a competition, nominate players from each club&apos;s pool onto that
-        competition. Cap comes from the competition preset (e.g. pre-season 25).
+        Players are registered once under Players (club pool). Here you only select who is
+        named for this competition — not a second registration. Cap comes from the competition
+        preset (e.g. pre-season 25).
       </p>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
