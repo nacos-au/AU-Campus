@@ -180,7 +180,7 @@ const CONFIG: Record<SportId, KeeperSportConfig> = {
     clockOffLabel: "Waste",
     showPeriodBadge: false,
     assistAfter: ["goal"],
-    assistPromptLabel: "Add assist?",
+    assistPromptLabel: "Assist or solo goal?",
     foulSectionLabel: "Foul / card",
     logSectionLabel: "Match log",
     playerActions: [

@@ -35,8 +35,21 @@ export function AdminPlayersPanel() {
   const [positions, setPositions] = useState<string[]>([]);
   const [jersey, setJersey] = useState("");
   const [matric, setMatric] = useState("");
+  const [search, setSearch] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const positionOptions = SPORT_POSITION_DEFS[sport];
+
+  const visiblePlayers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return players;
+    return players.filter(
+      (p) =>
+        `${p.first_name} ${p.last_name}`.toLowerCase().includes(q) ||
+        (p.matric_number ?? "").toLowerCase().includes(q) ||
+        (p.team_name ?? "").toLowerCase().includes(q)
+    );
+  }, [players, search]);
 
   const load = useCallback(async (forSport: SportId, teamId: string) => {
     try {
@@ -81,7 +94,16 @@ export function AdminPlayersPanel() {
     }
   }, [departmentTeams, formClubId]);
 
-  async function handleAddPlayer() {
+  function resetForm() {
+    setEditingId(null);
+    setFirstName("");
+    setLastName("");
+    setPositions([]);
+    setJersey("");
+    setMatric("");
+  }
+
+  async function handleSavePlayer() {
     setError("");
     setMessage("");
     const first = firstName.trim();
@@ -101,6 +123,33 @@ export function AdminPlayersPanel() {
     }
     setBusy(true);
     try {
+      if (editingId) {
+        const res = await fetch("/api/roster", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            kind: "player_fields",
+            id: editingId,
+            first_name: first,
+            last_name: last,
+            team_id: formClubId,
+            position: formatPositions(positions),
+            jersey_number: jersey.trim() ? Number(jersey) : null,
+            matric_number: matricNorm || null,
+          }),
+        });
+        const json = (await res.json()) as { error?: string };
+        if (!res.ok) {
+          setError(json.error ?? "Could not update player");
+          return;
+        }
+        setMessage(`${first} ${last} updated.`);
+        resetForm();
+        window.dispatchEvent(new Event(ROSTER_UPDATED_EVENT));
+        await load(sport, clubId);
+        return;
+      }
+
       const res = await fetch("/api/roster", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -135,18 +184,13 @@ export function AdminPlayersPanel() {
         await load(sport, clubId);
         return;
       }
-      setFirstName("");
-      setLastName("");
-      setPositions([]);
-      setJersey("");
-      setMatric("");
+      resetForm();
       setMessage(`${first} ${last} registered.`);
-      // Show the club they just joined so the new row is visible.
       setClubId(formClubId);
       window.dispatchEvent(new Event(ROSTER_UPDATED_EVENT));
       await load(sport, formClubId);
     } catch {
-      setError("Could not add player");
+      setError(editingId ? "Could not update player" : "Could not add player");
     } finally {
       setBusy(false);
     }
@@ -205,31 +249,42 @@ export function AdminPlayersPanel() {
         />
       ) : (
         <>
-          <label className="block max-w-xs text-sm">
-            <span className="font-semibold">Filter by club</span>
-            <select
-              className={inputClass}
-              value={clubId}
-              onChange={(e) => setClubId(e.target.value)}
-            >
-              <option value="all">All clubs</option>
-              {departmentTeams.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="flex flex-wrap gap-3">
+            <label className="block min-w-[12rem] flex-1 text-sm">
+              <span className="font-semibold">Search players / clubs</span>
+              <input
+                className={inputClass}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Name, matric, or club…"
+              />
+            </label>
+            <label className="block max-w-xs text-sm">
+              <span className="font-semibold">Filter by club</span>
+              <select
+                className={inputClass}
+                value={clubId}
+                onChange={(e) => setClubId(e.target.value)}
+              >
+                <option value="all">All clubs</option>
+                {departmentTeams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
 
           <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
             <div className="table-card overflow-hidden">
               <ul className="divide-y divide-rule">
-                {players.length === 0 ? (
+                {visiblePlayers.length === 0 ? (
                   <li className="px-5 py-10 text-center text-sm text-accent/60">
                     No players registered for this filter yet.
                   </li>
                 ) : (
-                  players.map((p) => {
+                  visiblePlayers.map((p) => {
                     const initials = `${p.first_name[0] ?? ""}${p.last_name[0] ?? ""}`.toUpperCase();
                     const role =
                       formatPositionsDisplay(p.position) ||
@@ -250,6 +305,26 @@ export function AdminPlayersPanel() {
                             {p.matric_number ? ` · ${p.matric_number}` : ""}
                           </p>
                         </div>
+                        <button
+                          type="button"
+                          className="rounded-full border border-rule px-3 py-1 text-xs font-bold text-accent/70"
+                          onClick={() => {
+                            setEditingId(p.id);
+                            setFirstName(p.first_name);
+                            setLastName(p.last_name);
+                            setFormClubId(p.team_id);
+                            setJersey(p.jersey_number != null ? String(p.jersey_number) : "");
+                            setMatric(p.matric_number ?? "");
+                            setPositions(
+                              (p.position ?? "")
+                                .split(/[+/|,]/)
+                                .map((s) => s.trim())
+                                .filter(Boolean)
+                            );
+                          }}
+                        >
+                          Edit
+                        </button>
                         <ImageUploadField
                           compact
                           currentUrl={p.avatar_url}
@@ -266,7 +341,20 @@ export function AdminPlayersPanel() {
             </div>
 
             <div className="table-card h-fit space-y-4 p-5">
-              <h3 className="font-display text-lg font-extrabold">Add player</h3>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="font-display text-lg font-extrabold">
+                  {editingId ? "Edit player" : "Add player"}
+                </h3>
+                {editingId && (
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-accent/60 underline"
+                    onClick={() => resetForm()}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <label className="block text-sm">
                   <span className="font-semibold">First</span>
@@ -371,10 +459,10 @@ export function AdminPlayersPanel() {
               <button
                 type="button"
                 disabled={busy || !firstName.trim() || !lastName.trim() || !formClubId}
-                onClick={() => void handleAddPlayer()}
+                onClick={() => void handleSavePlayer()}
                 className="btn-filled w-full rounded-full px-4 py-2.5 font-display text-sm font-bold disabled:opacity-40"
               >
-                {busy ? "Saving…" : "Add player"}
+                {busy ? "Saving…" : editingId ? "Save changes" : "Add player"}
               </button>
               {error && <p className="text-sm text-red-600">{error}</p>}
               {message && <p className="text-sm text-accent/80">{message}</p>}

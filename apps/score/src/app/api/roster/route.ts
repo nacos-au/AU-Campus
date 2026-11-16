@@ -6,6 +6,7 @@ import {
   fetchTeamsForSport,
   importRoster,
   updatePlayerAvatar,
+  updatePlayerFields,
   updateTeamLogo,
   type RosterImportInput,
 } from "@/lib/data/roster";
@@ -94,28 +95,57 @@ export async function POST(request: Request) {
 }
 
 /**
- * Update image URLs on a team or player.
- * Body: { kind: "team_logo" | "player_avatar", id: string, url: string }
+ * Update image URLs or player profile fields.
+ * Images: { kind: "team_logo" | "player_avatar", id, url } — admin for logos; staff for avatars.
+ * Fields: { kind: "player_fields", id, first_name?, last_name?, matric_number?, position?, jersey_number?, team_id? }
  */
 export async function PATCH(request: Request) {
-  const gate = await requireAdmin();
-  if ("error" in gate) {
-    return NextResponse.json({ error: gate.error }, { status: gate.status });
-  }
-
   const body = (await request.json()) as {
     kind?: string;
     id?: string;
     url?: string;
+    first_name?: string;
+    last_name?: string;
+    matric_number?: string | null;
+    position?: string | null;
+    jersey_number?: number | null;
+    team_id?: string | null;
   };
 
   const id = body.id?.trim();
+  if (!id) {
+    return NextResponse.json({ error: "id is required" }, { status: 400 });
+  }
+
+  if (body.kind === "player_fields") {
+    const gate = await requireMatchStaff();
+    if ("error" in gate) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status });
+    }
+    const result = await updatePlayerFields(id, {
+      first_name: body.first_name,
+      last_name: body.last_name,
+      matric_number: body.matric_number,
+      position: body.position,
+      jersey_number: body.jersey_number,
+      team_id: body.team_id,
+    });
+    if ("error" in result) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
+    }
+    return NextResponse.json({ ok: true, player: result });
+  }
+
   const url = body.url?.trim();
-  if (!id || !url) {
-    return NextResponse.json({ error: "id and url are required" }, { status: 400 });
+  if (!url) {
+    return NextResponse.json({ error: "url is required for image updates" }, { status: 400 });
   }
 
   if (body.kind === "team_logo") {
+    const gate = await requireAdmin();
+    if ("error" in gate) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status });
+    }
     const result = await updateTeamLogo(id, url);
     if ("error" in result) {
       return NextResponse.json({ error: result.error }, { status: 400 });
@@ -124,6 +154,10 @@ export async function PATCH(request: Request) {
   }
 
   if (body.kind === "player_avatar") {
+    const gate = await requireMatchStaff();
+    if ("error" in gate) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status });
+    }
     const result = await updatePlayerAvatar(id, url);
     if ("error" in result) {
       return NextResponse.json({ error: result.error }, { status: 400 });
@@ -131,5 +165,8 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: true, player: result });
   }
 
-  return NextResponse.json({ error: "kind must be team_logo or player_avatar" }, { status: 400 });
+  return NextResponse.json(
+    { error: "kind must be team_logo, player_avatar, or player_fields" },
+    { status: 400 }
+  );
 }

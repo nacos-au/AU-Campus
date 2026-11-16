@@ -348,3 +348,77 @@ export async function updatePlayerAvatar(
   if (error || !data) return { error: error?.message ?? "Player not found" };
   return data;
 }
+
+export type UpdatePlayerFieldsInput = {
+  first_name?: string;
+  last_name?: string;
+  matric_number?: string | null;
+  position?: string | null;
+  jersey_number?: number | null;
+  team_id?: string | null;
+};
+
+export async function updatePlayerFields(
+  playerId: string,
+  fields: UpdatePlayerFieldsInput
+): Promise<Player | { error: string }> {
+  if (await inDemo()) {
+    return { error: "Player edit in demo mode is not persisted — use live." };
+  }
+  const supabase = await createClient();
+  const patch: Record<string, unknown> = {};
+  if (fields.first_name != null) patch.first_name = fields.first_name.trim();
+  if (fields.last_name != null) patch.last_name = fields.last_name.trim();
+  if (fields.matric_number !== undefined) {
+    patch.matric_number = fields.matric_number?.trim() || null;
+  }
+  if (fields.position !== undefined) patch.position = fields.position;
+  if (Object.keys(patch).length === 0 && fields.jersey_number === undefined && !fields.team_id) {
+    return { error: "No fields to update" };
+  }
+
+  let player: Player | null = null;
+  if (Object.keys(patch).length) {
+    const { data, error } = (await (supabase.from("players") as ReturnType<typeof supabase.from>)
+      .update(patch)
+      .eq("id", playerId)
+      .select("*")
+      .single()) as { data: Player | null; error: { message: string } | null };
+    if (error || !data) return { error: error?.message ?? "Player not found" };
+    player = data;
+  } else {
+    const { data } = (await supabase.from("players").select("*").eq("id", playerId).maybeSingle()) as {
+      data: Player | null;
+    };
+    player = data;
+    if (!player) return { error: "Player not found" };
+  }
+
+  if (fields.team_id || fields.jersey_number !== undefined) {
+    const teamId = fields.team_id;
+    if (teamId) {
+      const { error: regErr } = await (supabase.from("player_sport_registry") as ReturnType<
+        typeof supabase.from
+      >).upsert(
+        {
+          player_id: playerId,
+          team_id: teamId,
+          jersey_number: fields.jersey_number ?? null,
+          is_active: true,
+        } as Record<string, unknown>,
+        { onConflict: "player_id,team_id" }
+      );
+      if (regErr) return { error: regErr.message };
+    } else if (fields.jersey_number !== undefined) {
+      const { error: jerseyErr } = await (supabase.from("player_sport_registry") as ReturnType<
+        typeof supabase.from
+      >)
+        .update({ jersey_number: fields.jersey_number } as Record<string, unknown>)
+        .eq("player_id", playerId)
+        .eq("is_active", true);
+      if (jerseyErr) return { error: jerseyErr.message };
+    }
+  }
+
+  return player;
+}

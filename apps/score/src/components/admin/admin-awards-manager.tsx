@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ADMIN_AWARDS_STORAGE_KEY,
   AWARD_TYPE_OPTIONS,
@@ -13,7 +13,8 @@ import {
   type SeasonAward,
 } from "@/lib/data/demo-awards";
 import { useConfirm } from "@/components/ui/confirm-dialog";
-import { DEMO_PLAYERS, DEMO_TEAMS } from "@/lib/data/demo";
+import type { RosterPlayerRow } from "@/lib/data/demo-roster";
+import type { Team } from "@/lib/types/database";
 import { sportToDbId, SPORT_LABELS, type SportId } from "@/lib/utils/sport";
 
 const STORAGE_KEY = ADMIN_AWARDS_STORAGE_KEY;
@@ -22,16 +23,42 @@ export function AdminAwardsManager() {
   const { confirm, notify } = useConfirm();
   const [sport, setSport] = useState<SportId>("football");
   const [overrides, setOverrides] = useState<SeasonAward[]>([]);
+  const [liveAwards, setLiveAwards] = useState<SeasonAward[]>([]);
   const [awardType, setAwardType] = useState<AwardType>("player_of_season");
   const [customTitle, setCustomTitle] = useState("");
   const [playerId, setPlayerId] = useState("");
   const [teamId, setTeamId] = useState("");
+  const [playerQuery, setPlayerQuery] = useState("");
   const [week, setWeek] = useState("9");
   const [statValue, setStatValue] = useState("");
   const [lineup, setLineup] = useState<AwardLineupPlayer[]>([]);
   const [saved, setSaved] = useState(false);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [players, setPlayers] = useState<RosterPlayerRow[]>([]);
 
   const isLineupAward = awardType === "team_of_week" || awardType === "team_of_season";
+
+  const loadRoster = useCallback(async (forSport: SportId) => {
+    try {
+      const res = await fetch(`/api/roster?sport=${forSport}&players=1`);
+      const json = (await res.json()) as { teams?: Team[]; players?: RosterPlayerRow[] };
+      setTeams((json.teams ?? []).filter((t) => !t.is_guest));
+      setPlayers(json.players ?? []);
+    } catch {
+      setTeams([]);
+      setPlayers([]);
+    }
+  }, []);
+
+  const loadLiveAwards = useCallback(async (forSport: SportId) => {
+    try {
+      const res = await fetch(`/api/awards?sport=${forSport}`);
+      const json = (await res.json()) as { awards?: SeasonAward[] };
+      setLiveAwards(json.awards ?? []);
+    } catch {
+      setLiveAwards([]);
+    }
+  }, []);
 
   useEffect(() => {
     try {
@@ -42,10 +69,28 @@ export function AdminAwardsManager() {
     }
   }, []);
 
+  useEffect(() => {
+    void loadRoster(sport);
+    void loadLiveAwards(sport);
+  }, [sport, loadRoster, loadLiveAwards]);
+
   const sportDbId = sportToDbId(sport);
-  const awards = getAwardsForSport(sportDbId, overrides);
-  const teams = DEMO_TEAMS.filter((t) => t.sport_id === sportDbId);
-  const players = DEMO_PLAYERS;
+  const awards = liveAwards.length
+    ? liveAwards
+    : getAwardsForSport(sportDbId, overrides);
+
+  const filteredPlayers = useMemo(() => {
+    const q = playerQuery.trim().toLowerCase();
+    if (!q) return players.slice(0, 80);
+    return players
+      .filter(
+        (p) =>
+          `${p.first_name} ${p.last_name}`.toLowerCase().includes(q) ||
+          (p.matric_number ?? "").toLowerCase().includes(q) ||
+          (p.team_name ?? "").toLowerCase().includes(q)
+      )
+      .slice(0, 80);
+  }, [players, playerQuery]);
 
   function persist(next: SeasonAward[]) {
     setOverrides(next);
@@ -61,9 +106,7 @@ export function AdminAwardsManager() {
       }
       const player = players.find((p) => p.id === pid);
       if (!player) return prev;
-      const club = DEMO_TEAMS.find(
-        (t) => t.department_id === player.department_id && t.sport_id === sportDbId
-      );
+      const club = teams.find((t) => t.id === player.team_id);
       return [
         ...prev,
         {
@@ -135,11 +178,21 @@ export function AdminAwardsManager() {
     persist([...filtered, entry]);
 
     try {
-      await fetch("/api/awards", {
+      const res = await fetch("/api/awards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(entry),
       });
+      if (!res.ok) {
+        const json = (await res.json()) as { error?: string };
+        await notify({
+          tone: "warning",
+          title: "Award not saved to live DB",
+          body: json.error ?? "Check you are signed in as match staff.",
+        });
+      } else {
+        await loadLiveAwards(sport);
+      }
     } catch {
       /* demo/local still works */
     }
@@ -154,8 +207,9 @@ export function AdminAwardsManager() {
     <div className="table-card p-6">
       <h2 className="font-display text-lg font-extrabold">Season Awards</h2>
       <p className="mt-1 text-sm opacity-70">
-        Curate season awards per sport — presets or a custom title. No automatic top scorer.
-        Saved locally for demo; production uses <code className="text-xs">season_awards</code>.
+        Curate season awards with real players. Record keepers can publish; drafts stay off the
+        public board until published. No automatic top scorer yet — enter Golden Boot as a custom
+        award with a stat value.
       </p>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -213,17 +267,24 @@ export function AdminAwardsManager() {
             />
           </label>
         )}
-        <label className="block text-sm">
-          <span className="font-semibold">Player</span>
-          <select
+        <label className="block text-sm sm:col-span-2">
+          <span className="font-semibold">Player search</span>
+          <input
             className="mt-1 w-full rounded-lg border border-rule px-3 py-2"
+            value={playerQuery}
+            onChange={(e) => setPlayerQuery(e.target.value)}
+            placeholder="Name, matric, or club…"
+          />
+          <select
+            className="mt-2 w-full rounded-lg border border-rule px-3 py-2"
             value={playerId}
             onChange={(e) => setPlayerId(e.target.value)}
           >
             <option value="">—</option>
-            {players.map((p) => (
+            {filteredPlayers.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.first_name} {p.last_name}
+                {p.team_name ? ` · ${p.team_name}` : ""}
               </option>
             ))}
           </select>

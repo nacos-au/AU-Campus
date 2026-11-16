@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth/roles";
+import { requireMatchStaff } from "@/lib/auth/roles";
 import { getAwardsForSport } from "@/lib/data/demo-awards";
 import type { SeasonAward } from "@/lib/data/demo-awards";
 import { getScoreDemoMode } from "@/lib/data/mode";
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const gate = await requireAdmin();
+  const gate = await requireMatchStaff();
   if ("error" in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status });
   }

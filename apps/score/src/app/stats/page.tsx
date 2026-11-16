@@ -9,7 +9,7 @@ import { getAwardsForSport } from "@/lib/data/demo-awards";
 import { getTournamentForSport } from "@/lib/data/demo-competition";
 import { getStatCardsBySport, formatStatValue } from "@/lib/data/get-by-sport";
 import { getScoreDemoMode } from "@/lib/data/mode";
-import { fetchTournamentForSport } from "@/lib/data/repository";
+import { fetchSeasonAwards, fetchTournamentForSport } from "@/lib/data/repository";
 import { parseSportParam, sportToDbId, SPORT_LABELS } from "@/lib/utils/sport";
 import { cn } from "@/lib/utils/cn";
 
@@ -39,7 +39,7 @@ export default async function StatsPage({
     : await fetchTournamentForSport(sportDbId, competition);
   const awards = demo
     ? getAwardsForSport(sportDbId, undefined, tournament?.id)
-    : [];
+    : await fetchSeasonAwards(sportDbId);
 
   return (
     <>
@@ -108,6 +108,7 @@ export default async function StatsPage({
             initialAwards={awards}
             competitionId={tournament?.id}
             competitionType={tournament?.competition_type ?? "league"}
+            demoMode={demo}
           />
         </div>
       </PageContent>

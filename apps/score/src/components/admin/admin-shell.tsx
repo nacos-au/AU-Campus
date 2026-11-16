@@ -11,24 +11,42 @@ import {
   Users,
   UsersRound,
 } from "lucide-react";
+import type { SessionStaff } from "@/lib/auth/roles";
 import { cn } from "@/lib/utils/cn";
 
-export const ADMIN_NAV = [
+type AdminNavItem = {
+  href: string;
+  label: string;
+  icon: typeof LayoutGrid;
+  exact?: boolean;
+  /** Admin-only technical tools */
+  adminOnly?: boolean;
+};
+
+export const ADMIN_NAV: AdminNavItem[] = [
   { href: "/admin", label: "Hub", icon: LayoutGrid, exact: true },
-  { href: "/admin/clubs", label: "Clubs", icon: UsersRound },
+  { href: "/admin/clubs", label: "Clubs", icon: UsersRound, adminOnly: true },
   { href: "/admin/players", label: "Players", icon: Users },
   { href: "/admin/competitions", label: "Competitions", icon: Trophy },
   { href: "/admin/matches", label: "Matches", icon: Handshake },
-  { href: "/admin/feedback", label: "Feedback", icon: MessageSquare },
-] as const;
+  { href: "/admin/awards", label: "Awards", icon: Trophy },
+  { href: "/admin/feedback", label: "Feedback", icon: MessageSquare, adminOnly: true },
+];
 
-export function AdminSubNav() {
+function visibleNav(staff: SessionStaff | null | undefined): AdminNavItem[] {
+  if (!staff) return ADMIN_NAV.filter((i) => !i.adminOnly);
+  if (staff.isAdmin) return ADMIN_NAV;
+  return ADMIN_NAV.filter((i) => !i.adminOnly);
+}
+
+export function AdminSubNav({ staff }: { staff?: SessionStaff | null }) {
   const pathname = usePathname();
+  const items = visibleNav(staff);
 
   return (
     <nav className="border-b border-rule bg-wrapper">
       <div className="hide-scrollbar mx-auto flex max-w-[1200px] gap-1 overflow-x-auto px-3 py-2 sm:gap-2 sm:px-6">
-        {ADMIN_NAV.map(({ href, label, icon: Icon, ...rest }) => {
+        {items.map(({ href, label, icon: Icon, ...rest }) => {
           const exact = "exact" in rest && rest.exact;
           const active = exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
           return (
@@ -52,43 +70,63 @@ export function AdminSubNav() {
   );
 }
 
-export function AdminHubCards() {
+export function AdminHubCards({ staff }: { staff?: SessionStaff | null }) {
+  const isAdmin = Boolean(staff?.isAdmin ?? true);
   const cards = [
-    {
-      href: "/admin/clubs",
-      icon: UsersRound,
-      title: "Clubs",
-      body: "Add AU sides and guest opponents, then attach logos.",
-      cta: "Manage clubs",
-    },
+    ...(isAdmin
+      ? [
+          {
+            href: "/admin/clubs",
+            icon: UsersRound,
+            title: "Clubs",
+            body: "Add AU sides and guest opponents, then attach logos.",
+            cta: "Manage clubs",
+          },
+        ]
+      : []),
     {
       href: "/admin/players",
       icon: Users,
       title: "Players",
-      body: "Register athletes into an unlimited club pool — name first, photos later.",
-      cta: "Manage players",
+      body: isAdmin
+        ? "Register athletes into an unlimited club pool — name first, photos later."
+        : "Search and correct player names, matric, and positions.",
+      cta: isAdmin ? "Manage players" : "Edit players",
     },
     {
       href: "/admin/competitions",
       icon: Trophy,
-      title: "Competitions",
-      body: "Publish a comp, set squad caps, then fill each club’s competition squad.",
-      cta: "Create competition",
+      title: isAdmin ? "Competitions" : "Competition squads",
+      body: isAdmin
+        ? "Publish a comp, set squad caps, then fill each club’s competition squad."
+        : "Pick players from each club pool onto the named competition squad.",
+      cta: isAdmin ? "Create competition" : "Fill squads",
     },
     {
       href: "/admin/matches",
       icon: CalendarDays,
       title: "Matches",
-      body: "Friendlies, manual results, venues, and match edits.",
+      body: "Reconcile past results, friendlies, scorers, assists, and match edits.",
       cta: "Open matches",
     },
     {
-      href: "/admin/feedback",
-      icon: MessageSquare,
-      title: "Feedback",
-      body: "Read bug reports and ideas submitted from the public app.",
-      cta: "Open feedback",
+      href: "/admin/awards",
+      icon: Trophy,
+      title: "Season awards",
+      body: "Publish Golden Boot, POTS, TOTW with real players — drafts stay private until published.",
+      cta: "Manage awards",
     },
+    ...(isAdmin
+      ? [
+          {
+            href: "/admin/feedback",
+            icon: MessageSquare,
+            title: "Feedback",
+            body: "Read bug reports and ideas submitted from the public app.",
+            cta: "Open feedback",
+          },
+        ]
+      : []),
   ] as const;
 
   return (

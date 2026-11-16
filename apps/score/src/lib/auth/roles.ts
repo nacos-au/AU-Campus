@@ -12,10 +12,14 @@ export interface SessionStaff {
   isSuperAdmin: boolean;
   isAdmin: boolean;
   isRecordKeeper: boolean;
-  /** Can create/edit matches and post results */
+  /** Nested /admin desk (ops tools for keepers; full desk for admins) */
+  canAccessAdminDesk: boolean;
+  /** Can create/edit matches, reconcile results, season awards */
   canManageMatches: boolean;
   /** Can manage venue presets (admin only) */
   canManageVenues: boolean;
+  /** Clubs / competitions structure (admin only) */
+  canManageCompetitions: boolean;
   /** True when local demo fixtures granted staff without a signed-in user */
   isDemoBypass: boolean;
 }
@@ -40,8 +44,10 @@ function demoStaff(): SessionStaff {
     isSuperAdmin: true,
     isAdmin: true,
     isRecordKeeper: true,
+    canAccessAdminDesk: true,
     canManageMatches: true,
     canManageVenues: true,
+    canManageCompetitions: true,
     isDemoBypass: true,
   };
 }
@@ -130,6 +136,8 @@ export async function getSessionStaff(): Promise<SessionStaff | null> {
           ? "record_keeper"
           : normalizeScoreRole(legacyScoreRole);
 
+    const canManageMatches = isAdmin || isRecordKeeper;
+
     return {
       userId: user.id,
       email: profileRow?.email ?? user.email ?? null,
@@ -137,8 +145,10 @@ export async function getSessionStaff(): Promise<SessionStaff | null> {
       isSuperAdmin,
       isAdmin,
       isRecordKeeper,
-      canManageMatches: isAdmin || isRecordKeeper,
+      canAccessAdminDesk: canManageMatches,
+      canManageMatches,
       canManageVenues: isAdmin,
+      canManageCompetitions: isAdmin,
       isDemoBypass: false,
     };
   } catch {

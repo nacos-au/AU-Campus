@@ -500,6 +500,17 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
     updateLog(assistPrompt.logId, {
       assist_player_id: assistPlayerId,
       assist_player_name: `${assist.first_name} ${assist.last_name}`,
+      details: { solo_goal: false },
+    });
+    setAssistPrompt(null);
+  }
+
+  function markSoloGoal() {
+    if (!assistPrompt) return;
+    updateLog(assistPrompt.logId, {
+      assist_player_id: null,
+      assist_player_name: null,
+      details: { solo_goal: true },
     });
     setAssistPrompt(null);
   }
@@ -864,6 +875,9 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
       {loggingEnabled && assistPrompt && (
         <div className="mb-4 rounded-xl border border-[#004e28]/30 bg-[#004e28]/5 p-4">
           <p className="mb-3 text-center font-display text-sm font-bold">{config.assistPromptLabel}</p>
+          <p className="mb-3 text-center text-xs text-accent/60">
+            Pick an assister, or mark Solo if nobody assisted. Required before the next goal.
+          </p>
           <div className="flex flex-wrap justify-center gap-2">
             {assistSquad.map((p) => (
               <button
@@ -878,10 +892,10 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
             ))}
             <button
               type="button"
-              onClick={() => setAssistPrompt(null)}
-              className="interactive-btn rounded-lg border border-dashed border-rule px-3 py-2 text-xs font-semibold opacity-60"
+              onClick={() => markSoloGoal()}
+              className="interactive-btn rounded-lg border border-[#004e28]/40 bg-white px-3 py-2 font-display text-xs font-bold text-[#004e28]"
             >
-              Skip
+              Solo goal
             </button>
           </div>
         </div>
