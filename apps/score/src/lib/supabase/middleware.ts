@@ -51,6 +51,16 @@ export async function updateSession(request: NextRequest) {
   const started = startedRaw ? Number(startedRaw) : NaN;
   if (Number.isFinite(started) && Date.now() - started > AUTH_SESSION_MAX_MS) {
     await supabase.auth.signOut();
+    const isApi = request.nextUrl.pathname.startsWith("/api/");
+    if (isApi) {
+      const res = NextResponse.json(
+        { error: "Sign in required", reason: "session_expired" },
+        { status: 401 }
+      );
+      res.cookies.set(ADMIN_MODE_COOKIE, "", { path: "/", maxAge: 0 });
+      res.cookies.set(AUTH_SESSION_STARTED_COOKIE, "", { path: "/", maxAge: 0 });
+      return res;
+    }
     const redirect = NextResponse.redirect(
       new URL("/?auth=signin&reason=session_expired", request.url)
     );

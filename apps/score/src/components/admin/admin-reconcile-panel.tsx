@@ -75,8 +75,20 @@ export function AdminReconcilePanel() {
 
   const loadMatches = useCallback(async () => {
     try {
-      const res = await fetch("/api/matches");
-      const json = (await res.json()) as { matches?: Match[] };
+      const res = await fetch("/api/matches", { credentials: "same-origin" });
+      const json = (await res.json().catch(() => ({}))) as {
+        matches?: Match[];
+        error?: string;
+      };
+      if (!res.ok) {
+        setError(
+          res.status === 401
+            ? "Not signed in on AU Score. Sign in on this site, then refresh."
+            : json.error ?? "Could not load matches"
+        );
+        setMatches([]);
+        return;
+      }
       const rows: MatchOption[] = (json.matches ?? [])
         .filter((m) => m.home_team_id && m.away_team_id)
         .map((m) => ({
@@ -236,6 +248,7 @@ export function AdminReconcilePanel() {
 
       const res = await fetch(`/api/matches/${selected.id}/reconcile`, {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           home_score: homeScore,
@@ -252,8 +265,19 @@ export function AdminReconcilePanel() {
             : undefined,
         }),
       });
-      const json = (await res.json()) as { error?: string };
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        reason?: string;
+      };
       if (!res.ok) {
+        if (res.status === 401) {
+          setError(
+            json.reason === "session_expired"
+              ? "Score session expired (2h). Sign in again on au-score — Campus login is a different cookie."
+              : "Not signed in on AU Score. Open Score sign-in on this tab (Campus/Digest sessions do not carry over)."
+          );
+          return;
+        }
         setError(json.error ?? "Reconcile failed");
         return;
       }

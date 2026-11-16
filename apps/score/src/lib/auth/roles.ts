@@ -160,7 +160,13 @@ export async function requireMatchStaff(): Promise<
   { staff: SessionStaff } | { error: string; status: number }
 > {
   const staff = await getSessionStaff();
-  if (!staff) return { error: "Sign in required", status: 401 };
+  if (!staff) {
+    return {
+      error:
+        "Sign in required on AU Score (Campus/Digest tabs use separate cookies — sign in here, then retry).",
+      status: 401,
+    };
+  }
   if (!staff.canManageMatches) {
     return { error: "Admin or record keeper access required", status: 403 };
   }
