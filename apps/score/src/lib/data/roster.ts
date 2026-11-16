@@ -358,6 +358,70 @@ export type UpdatePlayerFieldsInput = {
   team_id?: string | null;
 };
 
+/**
+ * Remove a player from a club pool (and competition squads for that club).
+ * Keeps the players row if they already appear in match_events.
+ */
+export async function removePlayerFromClub(
+  playerId: string,
+  teamId: string
+): Promise<{ ok: true; kept_player_row: boolean } | { error: string }> {
+  if (await inDemo()) {
+    return { error: "Player remove in demo mode is not persisted — use live." };
+  }
+  const supabase = await createClient();
+
+  const { error: regErr } = await (supabase.from("player_sport_registry") as ReturnType<
+    typeof supabase.from
+  >)
+    .update({ is_active: false } as Record<string, unknown>)
+    .eq("player_id", playerId)
+    .eq("team_id", teamId);
+  if (regErr) return { error: regErr.message };
+
+  // Drop competition nominations for this club.
+  const { data: teamComps } = (await supabase
+    .from("tournament_teams")
+    .select("tournament_id")
+    .eq("team_id", teamId)) as { data: Array<{ tournament_id: string }> | null };
+
+  const tournamentIds = (teamComps ?? []).map((t) => t.tournament_id);
+  if (tournamentIds.length) {
+    await (supabase.from("tournament_rosters") as ReturnType<typeof supabase.from>)
+      .delete()
+      .eq("player_id", playerId)
+      .in("tournament_id", tournamentIds);
+  }
+
+  const { count } = (await supabase
+    .from("match_events")
+    .select("id", { count: "exact", head: true })
+    .eq("player_id", playerId)
+    .eq("is_void", false)) as { count: number | null };
+
+  const hasEvents = (count ?? 0) > 0;
+
+  const { data: otherRegs } = (await supabase
+    .from("player_sport_registry")
+    .select("team_id")
+    .eq("player_id", playerId)
+    .eq("is_active", true)) as { data: Array<{ team_id: string }> | null };
+
+  // Hard-delete player only when unused everywhere.
+  if (!hasEvents && !(otherRegs ?? []).length) {
+    const { error: delErr } = await (supabase.from("players") as ReturnType<typeof supabase.from>)
+      .delete()
+      .eq("id", playerId);
+    if (delErr) {
+      // Registry already deactivated — treat as success with kept row.
+      return { ok: true, kept_player_row: true };
+    }
+    return { ok: true, kept_player_row: false };
+  }
+
+  return { ok: true, kept_player_row: true };
+}
+
 export async function updatePlayerFields(
   playerId: string,
   fields: UpdatePlayerFieldsInput

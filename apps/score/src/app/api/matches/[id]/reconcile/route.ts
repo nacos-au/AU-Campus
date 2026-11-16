@@ -24,22 +24,22 @@ export async function POST(
     team_stats?: ReconcileTeamStatsInput[];
     goalkeepers?: ReconcileGkInput[];
     mark_completed?: boolean;
+    allow_score_only?: boolean;
   };
 
-  if (
-    typeof body.home_score !== "number" ||
-    typeof body.away_score !== "number" ||
-    !Array.isArray(body.goals)
-  ) {
-    return NextResponse.json(
-      { error: "home_score, away_score, and goals[] are required" },
-      { status: 400 }
-    );
+  if (typeof body.home_score !== "number" || typeof body.away_score !== "number") {
+    return NextResponse.json({ error: "home_score and away_score are required" }, { status: 400 });
   }
 
-  if (body.goals.length === 0 && (body.home_score > 0 || body.away_score > 0)) {
+  const goals = Array.isArray(body.goals) ? body.goals : [];
+  const allowScoreOnly = body.allow_score_only === true;
+
+  if (goals.length === 0 && (body.home_score > 0 || body.away_score > 0) && !allowScoreOnly) {
     return NextResponse.json(
-      { error: "Non-zero scores need named goal scorers (and assists / solo)." },
+      {
+        error:
+          "Add scorers, or set allow_score_only to save the final score without goal details yet.",
+      },
       { status: 400 }
     );
   }
@@ -47,7 +47,8 @@ export async function POST(
   const result = await reconcileMatchResult(id, {
     home_score: body.home_score,
     away_score: body.away_score,
-    goals: body.goals,
+    goals,
+    allow_score_only: allowScoreOnly,
     team_stats: body.team_stats,
     goalkeepers: body.goalkeepers,
     mark_completed: body.mark_completed,

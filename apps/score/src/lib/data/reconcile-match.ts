@@ -11,7 +11,8 @@ import {
 } from "@/lib/data/repository";
 
 export type ReconcileGoalInput = {
-  minute: number;
+  /** Optional while ops catch up — blank/`?` stored as unknown */
+  minute?: number | null;
   team_id: string;
   player_id: string;
   player_name: string;
@@ -19,6 +20,8 @@ export type ReconcileGoalInput = {
   assist_player_id?: string | null;
   assist_player_name?: string | null;
   solo_goal?: boolean;
+  /** Assister not confirmed yet */
+  assist_pending?: boolean;
   period?: string;
 };
 
@@ -37,7 +40,6 @@ export type ReconcileGkInput = {
   team_id: string;
   starter_player_id: string;
   starter_player_name: string;
-  /** Optional GK substitutions chronologically */
   subs?: Array<{
     minute: number;
     out_player_id: string;
@@ -51,6 +53,8 @@ export type ReconcileMatchInput = {
   home_score: number;
   away_score: number;
   goals: ReconcileGoalInput[];
+  /** Allow completing with score only (past comps / incomplete records) */
+  allow_score_only?: boolean;
   team_stats?: ReconcileTeamStatsInput[];
   goalkeepers?: ReconcileGkInput[];
   mark_completed?: boolean;
@@ -87,22 +91,40 @@ export async function reconcileMatchResult(
 
   const homeTeamId = match.home_team_id;
   const awayTeamId = match.away_team_id;
+  const scoreOnly = Boolean(input.allow_score_only) && input.goals.length === 0;
 
-  for (const g of input.goals) {
-    const details: Record<string, unknown> = {
-      player_name: g.player_name,
-      solo_goal: g.solo_goal === true,
-    };
-    if (g.assist_player_id) details.assist_player_id = g.assist_player_id;
-    if (g.assist_player_name) details.assist_player_name = g.assist_player_name;
-    const assistErr = validateGoalAssist(g.event_type, details);
-    if (assistErr) return { error: `${assistErr} (${g.player_name}, ${g.minute}')` };
+  if (!scoreOnly && input.goals.length > 0) {
+    for (const g of input.goals) {
+      if (!g.player_id) {
+        return { error: "Every listed goal needs a scorer (or use score-only mode)." };
+      }
+      const details: Record<string, unknown> = {
+        player_name: g.player_name,
+        solo_goal: g.solo_goal === true,
+        assist_pending: g.assist_pending === true,
+      };
+      if (g.assist_player_id) details.assist_player_id = g.assist_player_id;
+      if (g.assist_player_name) details.assist_player_name = g.assist_player_name;
+      const assistErr = validateGoalAssist(g.event_type, details, { allowPending: true });
+      if (assistErr) {
+        return {
+          error: `${assistErr} (${g.player_name}${g.minute != null ? `, ${g.minute}'` : ""})`,
+        };
+      }
+    }
+
+    const derived = countSideGoals(input.goals, homeTeamId, awayTeamId);
+    if (derived.home !== input.home_score || derived.away !== input.away_score) {
+      return {
+        error: `Goal list (${derived.home}-${derived.away}) does not match entered score (${input.home_score}-${input.away_score}).`,
+      };
+    }
   }
 
-  const derived = countSideGoals(input.goals, homeTeamId, awayTeamId);
-  if (derived.home !== input.home_score || derived.away !== input.away_score) {
+  if (!scoreOnly && input.goals.length === 0 && (input.home_score > 0 || input.away_score > 0)) {
     return {
-      error: `Goal list (${derived.home}-${derived.away}) does not match entered score (${input.home_score}-${input.away_score}).`,
+      error:
+        "Add goal rows, or enable score-only to save the final score without scorers yet.",
     };
   }
 
@@ -120,10 +142,14 @@ export async function reconcileMatchResult(
   }
 
   for (const g of input.goals) {
+    const minuteUnknown = g.minute == null || Number.isNaN(Number(g.minute));
+    const minute = minuteUnknown ? null : Number(g.minute);
     const details: Record<string, unknown> = {
       player_name: g.player_name,
       team_id: g.team_id,
       solo_goal: g.event_type === "goal" ? g.solo_goal === true : false,
+      assist_pending: g.event_type === "goal" ? g.assist_pending === true : false,
+      minute_unknown: minuteUnknown,
     };
     if (g.assist_player_id) details.assist_player_id = g.assist_player_id;
     if (g.assist_player_name) details.assist_player_name = g.assist_player_name;
@@ -133,14 +159,15 @@ export async function reconcileMatchResult(
       team_id: g.team_id,
       player_id: g.player_id,
       event_type: g.event_type,
-      period: g.period ?? (g.minute <= 45 ? "half_1" : "half_2"),
-      match_time: String(g.minute),
+      period:
+        g.period ??
+        (minute != null ? (minute <= 45 ? "half_1" : "half_2") : "full_time"),
+      match_time: minute != null ? String(minute) : "?",
       details,
     });
     if ("error" in created) return created;
   }
 
-  // Starting GK (+ optional GK subs) for clean-sheet stints via match_lineups JSONB.
   if (input.goalkeepers?.length) {
     const supabase = await createClient();
     for (const gk of input.goalkeepers) {

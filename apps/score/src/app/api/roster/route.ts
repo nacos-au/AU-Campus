@@ -5,6 +5,7 @@ import {
   fetchPlayersForSport,
   fetchTeamsForSport,
   importRoster,
+  removePlayerFromClub,
   updatePlayerAvatar,
   updatePlayerFields,
   updateTeamLogo,
@@ -136,6 +137,25 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: true, player: result });
   }
 
+  if (body.kind === "player_remove") {
+    const gate = await requireMatchStaff();
+    if ("error" in gate) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status });
+    }
+    const teamId = body.team_id?.trim();
+    if (!teamId) {
+      return NextResponse.json({ error: "team_id is required to remove from a club" }, { status: 400 });
+    }
+    const result = await removePlayerFromClub(id, teamId);
+    if ("error" in result) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
+    }
+    return NextResponse.json({
+      ok: true,
+      kept_player_row: result.kept_player_row,
+    });
+  }
+
   const url = body.url?.trim();
   if (!url) {
     return NextResponse.json({ error: "url is required for image updates" }, { status: 400 });
@@ -166,7 +186,7 @@ export async function PATCH(request: Request) {
   }
 
   return NextResponse.json(
-    { error: "kind must be team_logo, player_avatar, or player_fields" },
+    { error: "kind must be team_logo, player_avatar, player_fields, or player_remove" },
     { status: 400 }
   );
 }

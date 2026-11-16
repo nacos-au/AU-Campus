@@ -7,7 +7,8 @@ import { dbIdToSport, type SportId } from "@/lib/utils/sport";
 
 type GoalDraft = {
   key: string;
-  minute: number;
+  /** Empty string = minute unknown / pending */
+  minute: string;
   side: "home" | "away";
   event_type: "goal" | "penalty_scored" | "own_goal";
   player_id: string;
@@ -15,6 +16,7 @@ type GoalDraft = {
   assist_player_id: string;
   assist_player_name: string;
   solo_goal: boolean;
+  assist_pending: boolean;
 };
 
 type MatchOption = {
@@ -66,6 +68,7 @@ export function AdminReconcilePanel() {
     yellow_cards: 0,
     red_cards: 0,
   });
+  const [scoreOnly, setScoreOnly] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -113,6 +116,7 @@ export function AdminReconcilePanel() {
     setHomeScore(selected.home_score);
     setAwayScore(selected.away_score);
     setGoals([]);
+    setScoreOnly(false);
     setHomeGkId("");
     setAwayGkId("");
     setMessage("");
@@ -135,11 +139,12 @@ export function AdminReconcilePanel() {
   }, [selected]);
 
   function addGoal() {
+    setScoreOnly(false);
     setGoals((prev) => [
       ...prev,
       {
         key: newKey(),
-        minute: 1,
+        minute: "",
         side: "home",
         event_type: "goal",
         player_id: "",
@@ -147,6 +152,7 @@ export function AdminReconcilePanel() {
         assist_player_id: "",
         assist_player_name: "",
         solo_goal: false,
+        assist_pending: true,
       },
     ]);
   }
@@ -167,33 +173,63 @@ export function AdminReconcilePanel() {
     setError("");
     setMessage("");
     try {
-      const payloadGoals = goals.map((g) => {
-        const team_id = g.side === "home" ? selected.home_team_id : selected.away_team_id;
-        return {
-          minute: g.minute,
-          team_id,
-          player_id: g.player_id,
-          player_name: g.player_name,
-          event_type: g.event_type,
-          assist_player_id: g.solo_goal || g.event_type !== "goal" ? null : g.assist_player_id || null,
-          assist_player_name:
-            g.solo_goal || g.event_type !== "goal" ? null : g.assist_player_name || null,
-          solo_goal: g.event_type === "goal" ? g.solo_goal : false,
-        };
-      });
+      const useScoreOnly = scoreOnly || goals.length === 0;
 
-      for (const g of payloadGoals) {
-        if (!g.player_id) {
-          setError("Every goal needs a scorer from the club pool.");
-          setBusy(false);
-          return;
+      const payloadGoals = useScoreOnly
+        ? []
+        : goals.map((g) => {
+            const team_id = g.side === "home" ? selected.home_team_id : selected.away_team_id;
+            const minuteTrim = g.minute.trim();
+            const minuteNum = minuteTrim === "" ? null : Number(minuteTrim);
+            return {
+              minute: minuteNum != null && !Number.isNaN(minuteNum) ? minuteNum : null,
+              team_id,
+              player_id: g.player_id,
+              player_name: g.player_name,
+              event_type: g.event_type,
+              assist_player_id:
+                g.solo_goal || g.assist_pending || g.event_type !== "goal"
+                  ? null
+                  : g.assist_player_id || null,
+              assist_player_name:
+                g.solo_goal || g.assist_pending || g.event_type !== "goal"
+                  ? null
+                  : g.assist_player_name || null,
+              solo_goal: g.event_type === "goal" ? g.solo_goal : false,
+              assist_pending: g.event_type === "goal" ? g.assist_pending : false,
+            };
+          });
+
+      if (!useScoreOnly) {
+        for (const g of payloadGoals) {
+          if (!g.player_id) {
+            setError("Every goal needs a scorer from the club pool.");
+            setBusy(false);
+            return;
+          }
         }
       }
 
       const homeGk = homePlayers.find((p) => p.id === homeGkId);
       const awayGk = awayPlayers.find((p) => p.id === awayGkId);
-      if (!homeGk || !awayGk) {
-        setError("Pick a starting goalkeeper for each side (needed for clean sheets).");
+      const goalkeepers =
+        homeGk && awayGk
+          ? [
+              {
+                team_id: selected.home_team_id,
+                starter_player_id: homeGk.id,
+                starter_player_name: `${homeGk.first_name} ${homeGk.last_name}`,
+              },
+              {
+                team_id: selected.away_team_id,
+                starter_player_id: awayGk.id,
+                starter_player_name: `${awayGk.first_name} ${awayGk.last_name}`,
+              },
+            ]
+          : undefined;
+
+      if (!useScoreOnly && (!homeGk || !awayGk)) {
+        setError("Pick a starting GK for each side when logging scorers (clean sheets), or use score-only.");
         setBusy(false);
         return;
       }
@@ -205,19 +241,9 @@ export function AdminReconcilePanel() {
           home_score: homeScore,
           away_score: awayScore,
           goals: payloadGoals,
+          allow_score_only: useScoreOnly,
           mark_completed: true,
-          goalkeepers: [
-            {
-              team_id: selected.home_team_id,
-              starter_player_id: homeGk.id,
-              starter_player_name: `${homeGk.first_name} ${homeGk.last_name}`,
-            },
-            {
-              team_id: selected.away_team_id,
-              starter_player_id: awayGk.id,
-              starter_player_name: `${awayGk.first_name} ${awayGk.last_name}`,
-            },
-          ],
+          goalkeepers,
           team_stats: statsOpen
             ? [
                 { team_id: selected.home_team_id, ...homeStats },
@@ -231,7 +257,11 @@ export function AdminReconcilePanel() {
         setError(json.error ?? "Reconcile failed");
         return;
       }
-      setMessage("Match reconciled and marked completed.");
+      setMessage(
+        useScoreOnly
+          ? "Score saved and match completed (scorers can be added later)."
+          : "Match reconciled and marked completed."
+      );
       await loadMatches();
     } catch {
       setError("Network error saving reconcile.");
@@ -245,8 +275,8 @@ export function AdminReconcilePanel() {
       <div>
         <h3 className="font-display text-lg font-extrabold">Reconcile result</h3>
         <p className="mt-1 text-sm text-accent/70">
-          Backfill final score, scorers, assists (or solo), and starting GKs for clean sheets.
-          Optional team stats below. Required for accurate past matches.
+          Past comps can be score-only (e.g. FOSMAS 2–1 LAW). For newer matches add scorers —
+          minute and assist can stay pending until you have real names.
         </p>
       </div>
 
@@ -334,19 +364,37 @@ export function AdminReconcilePanel() {
             </label>
           </div>
 
+          <label className="flex items-center gap-2 text-sm font-semibold">
+            <input
+              type="checkbox"
+              checked={scoreOnly}
+              onChange={(e) => {
+                setScoreOnly(e.target.checked);
+                if (e.target.checked) setGoals([]);
+              }}
+            />
+            Score only (no scorers yet — for past results like MLS 1–1 FONAS)
+          </label>
+
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-2">
               <h4 className="font-display text-sm font-extrabold">Goals</h4>
-              <button type="button" className="btn-filled rounded-full px-3 py-1.5 text-xs font-bold" onClick={addGoal}>
+              <button
+                type="button"
+                disabled={scoreOnly}
+                className="btn-filled rounded-full px-3 py-1.5 text-xs font-bold disabled:opacity-40"
+                onClick={addGoal}
+              >
                 Add goal
               </button>
             </div>
-            {goals.length === 0 && (
+            {!scoreOnly && goals.length === 0 && (
               <p className="text-sm text-accent/60">
-                Add one row per goal. Open-play goals need an assist or Solo.
+                Optional for now: leave minute blank, mark assist Pending, or Solo when known.
               </p>
             )}
-            {goals.map((g) => {
+            {!scoreOnly &&
+              goals.map((g) => {
               const sidePlayers = g.side === "home" ? homePlayers : awayPlayers;
               return (
                 <div key={g.key} className="grid gap-2 rounded-lg border border-rule p-3 sm:grid-cols-6">
@@ -358,7 +406,8 @@ export function AdminReconcilePanel() {
                       max={120}
                       className={inputClass}
                       value={g.minute}
-                      onChange={(e) => updateGoal(g.key, { minute: Number(e.target.value) })}
+                      placeholder="?"
+                      onChange={(e) => updateGoal(g.key, { minute: e.target.value })}
                     />
                   </label>
                   <label className="text-xs sm:col-span-1">
@@ -417,11 +466,11 @@ export function AdminReconcilePanel() {
                   </label>
                   {g.event_type === "goal" ? (
                     <label className="text-xs sm:col-span-2">
-                      Assist / Solo
+                      Assist / Solo / Pending
                       <div className="mt-1 flex flex-wrap items-center gap-2">
                         <select
                           className="min-w-0 flex-1 rounded-lg border border-rule px-3 py-2 text-sm disabled:opacity-50"
-                          disabled={g.solo_goal}
+                          disabled={g.solo_goal || g.assist_pending}
                           value={g.assist_player_id}
                           onChange={(e) => {
                             const picked = pickPlayer(g.side, e.target.value);
@@ -429,6 +478,7 @@ export function AdminReconcilePanel() {
                               assist_player_id: picked.id,
                               assist_player_name: picked.name,
                               solo_goal: false,
+                              assist_pending: false,
                             });
                           }}
                         >
@@ -448,12 +498,28 @@ export function AdminReconcilePanel() {
                             onChange={(e) =>
                               updateGoal(g.key, {
                                 solo_goal: e.target.checked,
+                                assist_pending: false,
                                 assist_player_id: "",
                                 assist_player_name: "",
                               })
                             }
                           />
                           Solo
+                        </label>
+                        <label className="inline-flex items-center gap-1 text-xs font-semibold">
+                          <input
+                            type="checkbox"
+                            checked={g.assist_pending}
+                            onChange={(e) =>
+                              updateGoal(g.key, {
+                                assist_pending: e.target.checked,
+                                solo_goal: false,
+                                assist_player_id: "",
+                                assist_player_name: "",
+                              })
+                            }
+                          />
+                          Pending
                         </label>
                       </div>
                     </label>

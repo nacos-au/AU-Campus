@@ -12,6 +12,7 @@ import {
   formatPositionsDisplay,
   SPORT_POSITION_DEFS,
 } from "@/lib/roster/positions";
+import { useConfirm } from "@/components/ui/confirm-dialog";
 import { ROSTER_UPDATED_EVENT } from "@/lib/roster/parse-roster";
 import type { Team } from "@/lib/types/database";
 import { SPORT_LABELS, type SportId } from "@/lib/utils/sport";
@@ -20,6 +21,7 @@ import { cn } from "@/lib/utils/cn";
 const inputClass = "mt-1 w-full rounded-lg border border-rule px-3 py-2 text-sm";
 
 export function AdminPlayersPanel() {
+  const { confirm } = useConfirm();
   const [sport, setSport] = useState<SportId>("football");
   const [clubId, setClubId] = useState<string>("all");
   const [teams, setTeams] = useState<Team[]>([]);
@@ -101,6 +103,48 @@ export function AdminPlayersPanel() {
     setPositions([]);
     setJersey("");
     setMatric("");
+  }
+
+  async function handleDeletePlayer(p: RosterPlayerRow) {
+    const ok = await confirm({
+      danger: true,
+      eyebrow: "Remove player",
+      title: `Remove ${p.first_name} ${p.last_name}?`,
+      body: `They leave the ${p.team_name} club pool and any competition squads for that club. Match history is kept if they already appeared in events.`,
+      confirmLabel: "Remove",
+    });
+    if (!ok) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch("/api/roster", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: "player_remove",
+          id: p.id,
+          team_id: p.team_id,
+        }),
+      });
+      const json = (await res.json()) as { error?: string; kept_player_row?: boolean };
+      if (!res.ok) {
+        setError(json.error ?? "Could not remove player");
+        return;
+      }
+      if (editingId === p.id) resetForm();
+      setMessage(
+        json.kept_player_row
+          ? `${p.first_name} ${p.last_name} removed from club (history kept).`
+          : `${p.first_name} ${p.last_name} deleted.`
+      );
+      window.dispatchEvent(new Event(ROSTER_UPDATED_EVENT));
+      await load(sport, clubId);
+    } catch {
+      setError("Could not remove player");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleSavePlayer() {
@@ -324,6 +368,14 @@ export function AdminPlayersPanel() {
                           }}
                         >
                           Edit
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          className="rounded-full border border-red-200 px-3 py-1 text-xs font-bold text-red-700 disabled:opacity-40"
+                          onClick={() => void handleDeletePlayer(p)}
+                        >
+                          Delete
                         </button>
                         <ImageUploadField
                           compact

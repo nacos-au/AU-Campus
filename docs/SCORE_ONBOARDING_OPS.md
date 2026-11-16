@@ -43,11 +43,17 @@ Players (club pool)
 1. Apply SQL once (hosted): `supabase/score_match_reconcile_APPLY_ALL.sql`.
 2. Open **Admin → Matches → Reconcile result**.
 3. Search the match → set final score.
-4. Add each goal: minute, side, scorer, type; for open-play goals pick **assister** or **Solo**.
-5. Pick **starting GK** each side (clean sheets).
-6. Optionally open match stats (SOT, saves, corners, …).
-7. **Save reconcile & complete**.
-8. Still-live example matches you never officiated: same flow — complete them accurately or postpone; do not leave fake “live” forever.
+4. **Past comps with only the scoreline** (e.g. FOSMAS 2–1 LAW): tick **Score only** → save.
+5. When you have scorers: add goal rows — **minute can be blank**, assist can be **Pending** (or Solo / named assister).
+6. Pick **starting GK** each side when logging scorers (clean sheets); not required for score-only.
+7. Optionally open match stats (SOT, saves, corners, …).
+8. **Save reconcile & complete**.
+9. Still-live example matches you never officiated: same flow — complete them or postpone; do not leave fake “live” forever.
+
+## Players
+
+- **Edit** names/matric anytime (history stays linked by player id).
+- **Delete** removes them from that club pool + competition squads; keeps the row if they already have match events.
 
 ## Season awards
 
