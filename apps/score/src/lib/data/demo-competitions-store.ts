@@ -31,6 +31,13 @@ export function getCreatedDemoTournament(id: string): DemoTournamentMeta | null 
   return created.find((t) => t.id === id) ?? null;
 }
 
+export function archiveDemoTournament(id: string): boolean {
+  const idx = created.findIndex((t) => t.id === id);
+  if (idx < 0) return false;
+  created = created.map((t) => (t.id === id ? { ...t, is_draft: true } : t));
+  return true;
+}
+
 export function registerDemoTournament(
   t: Tournament,
   opts?: { config?: Record<string, unknown>; team_ids?: string[] }

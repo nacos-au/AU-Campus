@@ -79,7 +79,9 @@ export async function listCompetitions(sportDbId?: string): Promise<CompetitionL
     for (const t of seeded) byId.set(t.id, t);
     for (const t of created) byId.set(t.id, t);
 
-    return [...byId.values()].map((t) => {
+    return [...byId.values()]
+      .filter((t) => !t.is_draft)
+      .map((t) => {
       const meta = getCreatedDemoTournament(t.id);
       const config = meta?.config ?? {};
       const teamCount = meta?.team_ids.length ?? 0;
@@ -103,6 +105,7 @@ export async function listCompetitions(sportDbId?: string): Promise<CompetitionL
   let q = supabase
     .from("tournaments")
     .select("id, name, sport_id, season, competition_type, config")
+    .eq("is_draft", false)
     .order("created_at", { ascending: false });
   if (sportDbId) {
     const sportUuid = await resolveSportUuid(supabase, sportDbId);

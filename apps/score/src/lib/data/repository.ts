@@ -26,6 +26,7 @@ import {
 } from "@/lib/data/demo-competition";
 import { buildNextMatchMapFromFixtures } from "@/lib/standings/next-match";
 import {
+  archiveDemoTournament,
   getCreatedDemoTournament,
   nextMatchday,
   registerDemoTournament,
@@ -738,7 +739,7 @@ async function recomputeMatchScoreFromEvents(matchId: string): Promise<void> {
 /** Public fixture list for Matches home + Live page. */
 export async function fetchPublicMatches(opts?: {
   sportDbId?: string;
-  status?: Array<"scheduled" | "live" | "paused" | "completed">;
+  status?: Array<"scheduled" | "live" | "paused" | "completed" | "postponed">;
   limit?: number;
 }): Promise<Match[]> {
   if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
@@ -746,7 +747,13 @@ export async function fetchPublicMatches(opts?: {
       .filter((m) => !m.deleted_at)
       .filter((m) => !m.tournament?.is_draft);
     if (opts?.sportDbId) rows = rows.filter((m) => m.sport_id === opts.sportDbId);
-    if (opts?.status?.length) rows = rows.filter((m) => opts.status!.includes(m.status as "scheduled" | "live" | "paused" | "completed"));
+    if (opts?.status?.length) {
+      rows = rows.filter((m) =>
+        opts.status!.includes(
+          m.status as "scheduled" | "live" | "paused" | "completed" | "postponed"
+        )
+      );
+    }
     return rows.slice(0, opts?.limit ?? 100);
   }
 
@@ -1100,6 +1107,53 @@ export async function softDeleteMatch(matchId: string): Promise<{ ok: true } | {
 
   if (error) return { error: error.message };
   return { ok: true };
+}
+
+/** Soft-hide a competition (`is_draft`) and soft-delete all of its matches. */
+export async function archiveCompetition(
+  tournamentId: string
+): Promise<{ ok: true; matches_deleted: number } | { error: string }> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    const archived = archiveDemoTournament(tournamentId);
+    let matches_deleted = 0;
+    for (const m of listAllDemoMatches()) {
+      if (m.tournament_id === tournamentId && !m.deleted_at) {
+        if (softDeleteDemoMatch(m.id)) matches_deleted += 1;
+      }
+    }
+    if (!archived && matches_deleted === 0) {
+      return { error: "Competition not found" };
+    }
+    return { ok: true, matches_deleted };
+  }
+
+  const supabase = await createClient();
+  const now = new Date().toISOString();
+
+  const { error: tErr } = await (supabase.from("tournaments") as ReturnType<typeof supabase.from>)
+    .update({ is_draft: true } as Record<string, unknown>)
+    .eq("id", tournamentId) as { error: { message: string } | null };
+  if (tErr) return { error: tErr.message };
+
+  const { data: matchRows, error: listErr } = (await supabase
+    .from("matches")
+    .select("id")
+    .eq("tournament_id", tournamentId)
+    .is("deleted_at", null)) as {
+    data: Array<{ id: string }> | null;
+    error: { message: string } | null;
+  };
+  if (listErr) return { error: listErr.message };
+
+  const ids = (matchRows ?? []).map((r) => r.id);
+  if (ids.length) {
+    const { error: mErr } = await (supabase.from("matches") as ReturnType<typeof supabase.from>)
+      .update({ deleted_at: now, status: "cancelled" } as Record<string, unknown>)
+      .in("id", ids) as { error: { message: string } | null };
+    if (mErr) return { error: mErr.message };
+  }
+
+  return { ok: true, matches_deleted: ids.length };
 }
 
 export async function updateMatchStatus(

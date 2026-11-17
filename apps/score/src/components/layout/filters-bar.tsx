@@ -41,13 +41,19 @@ async function loadCompetitionOptions(sport: SportId) {
   return toCompetitionOptions(tournaments);
 }
 
-/** Matches page — competition + season + matchweek + home/away */
+/** Matches page — competition + season + matchweek + status */
 export async function MatchesFilters({
   sport = "football",
   competitionId,
+  matchweeks = [],
+  activeMw = "all",
+  activeStatus = "all",
 }: {
   sport?: SportId;
   competitionId?: string;
+  matchweeks?: number[];
+  activeMw?: number | "all";
+  activeStatus?: "all" | "live" | "upcoming" | "finished";
 }) {
   const competitions = await loadCompetitionOptions(sport);
   return (
@@ -57,6 +63,9 @@ export async function MatchesFilters({
       competitions={competitions}
       activeCompetitionId={competitionId}
       variant="matches"
+      matchweeks={matchweeks}
+      activeMw={activeMw}
+      activeStatus={activeStatus}
     />
   );
 }

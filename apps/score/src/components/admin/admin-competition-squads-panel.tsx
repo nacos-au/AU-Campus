@@ -15,8 +15,11 @@ const inputClass = "mt-1 w-full rounded-lg border border-rule px-3 py-2 text-sm"
 
 export function AdminCompetitionSquadsPanel({
   focusCompetitionId,
+  canArchive = false,
 }: {
   focusCompetitionId?: string | null;
+  /** Admins only — soft-hide competition and soft-delete its matches */
+  canArchive?: boolean;
 }) {
   const [sport, setSport] = useState<SportId>("football");
   const [competitions, setCompetitions] = useState<CompetitionListItem[]>([]);
@@ -30,6 +33,7 @@ export function AdminCompetitionSquadsPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [archiveBusy, setArchiveBusy] = useState(false);
 
   const loadCompetitions = useCallback(async (forSport: SportId) => {
     try {
@@ -179,6 +183,40 @@ export function AdminCompetitionSquadsPanel({
     }
   }
 
+  async function archiveSelected() {
+    if (!canArchive || !competitionId || !active) return;
+    const ok = window.confirm(
+      `Archive “${active.name}” (${active.season})?\n\nThis soft-hides the competition and soft-deletes all of its matches. Public / keeper lists will stop showing them. You can recreate the competition afterward.`
+    );
+    if (!ok) return;
+    setArchiveBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const res = await fetch(`/api/competitions/${competitionId}`, {
+        method: "DELETE",
+        credentials: "same-origin",
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+      };
+      if (!res.ok) {
+        setError(json.error ?? "Could not archive competition");
+        return;
+      }
+      setMessage(json.message ?? "Competition archived.");
+      setCompetitionId("");
+      setActive(null);
+      setTeams([]);
+      await loadCompetitions(sport);
+    } catch {
+      setError("Could not archive competition");
+    } finally {
+      setArchiveBusy(false);
+    }
+  }
+
   const teamRow = teams.find((t) => t.team_id === teamId);
 
   return (
@@ -230,13 +268,25 @@ export function AdminCompetitionSquadsPanel({
       </div>
 
       {active && (
-        <p className="mt-3 rounded-lg bg-accent/5 px-3 py-2 text-sm text-accent">
-          <span className="font-display font-bold">{active.name}</span>
-          {" · "}
-          max squad {active.max_squad_size} · max subs {active.max_subs}
-          {" · "}
-          {active.team_count} clubs
-        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg bg-accent/5 px-3 py-2 text-sm text-accent">
+          <p className="min-w-0 flex-1">
+            <span className="font-display font-bold">{active.name}</span>
+            {" · "}
+            max squad {active.max_squad_size} · max subs {active.max_subs}
+            {" · "}
+            {active.team_count} clubs
+          </p>
+          {canArchive && (
+            <button
+              type="button"
+              disabled={archiveBusy}
+              onClick={() => void archiveSelected()}
+              className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+            >
+              {archiveBusy ? "Archiving…" : "Archive competition"}
+            </button>
+          )}
+        </div>
       )}
 
       {teams.length > 0 && (

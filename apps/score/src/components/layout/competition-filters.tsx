@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { ChevronDown, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, RotateCcw } from "lucide-react";
 import type { CompetitionOption } from "@/lib/competition/competition-filter-utils";
+import { competitionInitials } from "@/lib/match/matchweek";
 import { getSportConfig } from "@/lib/utils/sport-config";
 import type { SportId } from "@/lib/utils/sport";
 import { cn } from "@/lib/utils/cn";
@@ -42,8 +43,7 @@ function FilterSelect({
 }
 
 /**
- * Horizontal filter row: competition, season, matchweek.
- * Replaces the nested competition tab picker — one bar, same as the original design.
+ * Horizontal filter row: competition, season, matchweek, status.
  */
 export function CompetitionFilters({
   sport,
@@ -51,12 +51,18 @@ export function CompetitionFilters({
   competitions,
   activeCompetitionId,
   variant = "matches",
+  matchweeks = [],
+  activeMw = "all",
+  activeStatus = "all",
 }: {
   sport: SportId;
   basePath: string;
   competitions: CompetitionOption[];
   activeCompetitionId?: string;
   variant?: FilterVariant;
+  matchweeks?: number[];
+  activeMw?: number | "all";
+  activeStatus?: "all" | "live" | "upcoming" | "finished";
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -64,6 +70,7 @@ export function CompetitionFilters({
 
   const activeId = activeCompetitionId ?? competitions[0]?.id ?? "";
   const active = competitions.find((c) => c.id === activeId) ?? competitions[0];
+  const badge = competitionInitials(active?.name ?? config.label);
 
   function navigate(updates: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString());
@@ -88,24 +95,34 @@ export function CompetitionFilters({
     { value: active?.season ?? config.season, label: active?.season ?? config.season },
   ];
 
-  const matchweekOptions = [{ value: "all", label: config.roundFilter }];
+  const matchweekOptions = [
+    { value: "all", label: "All Matchweeks" },
+    ...matchweeks.map((w) => ({ value: String(w), label: `Matchweek ${w}` })),
+  ];
+
+  const statusOptions = [
+    { value: "all", label: "All" },
+    { value: "live", label: "Live" },
+    { value: "upcoming", label: "Upcoming" },
+    { value: "finished", label: "Finished" },
+  ] as const;
 
   return (
     <div className="filters-bar border-b border-rule bg-wrapper">
       <div className="mx-auto flex max-w-[1200px] items-center gap-2 overflow-x-auto px-4 py-3 sm:flex-wrap sm:px-6">
-        <button
-          type="button"
-          className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg border border-[#d0d0d0] bg-white text-accent"
-          aria-label="Filters"
+        <div
+          className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg border border-[#d0d0d0] bg-accent font-display text-[11px] font-extrabold tracking-tight text-white"
+          title={active?.name ?? "Competition"}
+          aria-label={active?.name ? `Competition: ${active.name}` : "Competition"}
         >
-          <SlidersHorizontal className="h-4 w-4" />
-        </button>
+          {badge}
+        </div>
 
         {competitions.length > 0 && (
           <FilterSelect
             aria-label="Competition"
             value={activeId}
-            onChange={(id) => navigate({ competition: id })}
+            onChange={(id) => navigate({ competition: id, mw: null })}
             options={competitions.map((c) => ({ value: c.id, label: c.name }))}
             className="min-w-[180px] flex-1 sm:max-w-[280px]"
           />
@@ -119,12 +136,32 @@ export function CompetitionFilters({
         />
 
         {variant === "matches" && (
-          <FilterSelect
-            aria-label="Matchweek"
-            value="all"
-            onChange={() => {}}
-            options={matchweekOptions}
-          />
+          <>
+            <FilterSelect
+              aria-label="Matchweek"
+              value={activeMw === "all" ? "all" : String(activeMw)}
+              onChange={(v) => navigate({ mw: v === "all" ? null : v })}
+              options={matchweekOptions}
+            />
+            <div className="flex h-[42px] shrink-0 items-center gap-1 rounded-lg border border-[#d0d0d0] bg-white p-1">
+              {statusOptions.map((o) => {
+                const on = activeStatus === o.value;
+                return (
+                  <button
+                    key={o.value}
+                    type="button"
+                    onClick={() => navigate({ status: o.value === "all" ? null : o.value })}
+                    className={cn(
+                      "rounded-md px-2.5 py-1.5 font-display text-xs font-bold transition",
+                      on ? "bg-accent text-white" : "text-accent/60 hover:text-accent"
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                );
+              })}
+            </div>
+          </>
         )}
 
         <button

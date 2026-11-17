@@ -49,11 +49,17 @@ export function buildGoalkeeperStints(
   if (gkIds.size === 0) return [];
 
   const stints: GoalkeeperStint[] = [];
-  const startingGk = lineup.players.find(
+  // All named starting GKs get a full-match stint. If the team conceded 0, every
+  // one earns a CS; if they conceded, none do unless stints are narrowed by subs.
+  const startingGks = lineup.players.filter(
     (p) => p.is_starting && gkIds.has(p.player_id)
   );
-  if (startingGk) {
-    stints.push({ player_id: startingGk.player_id, from_minute: 0, to_minute: matchLengthMinutes });
+  for (const startingGk of startingGks) {
+    stints.push({
+      player_id: startingGk.player_id,
+      from_minute: 0,
+      to_minute: matchLengthMinutes,
+    });
   }
 
   for (const sub of substitutions) {

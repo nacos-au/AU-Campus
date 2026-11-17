@@ -47,8 +47,8 @@ export function AdminReconcilePanel() {
   const [goals, setGoals] = useState<GoalDraft[]>([]);
   const [homePlayers, setHomePlayers] = useState<RosterPlayerRow[]>([]);
   const [awayPlayers, setAwayPlayers] = useState<RosterPlayerRow[]>([]);
-  const [homeGkId, setHomeGkId] = useState("");
-  const [awayGkId, setAwayGkId] = useState("");
+  const [homeGkIds, setHomeGkIds] = useState<string[]>([]);
+  const [awayGkIds, setAwayGkIds] = useState<string[]>([]);
   const [statsOpen, setStatsOpen] = useState(false);
   const [homeStats, setHomeStats] = useState({
     shots_on_target: 0,
@@ -129,8 +129,8 @@ export function AdminReconcilePanel() {
     setAwayScore(selected.away_score);
     setGoals([]);
     setScoreOnly(false);
-    setHomeGkId("");
-    setAwayGkId("");
+    setHomeGkIds([]);
+    setAwayGkIds([]);
     setMessage("");
     setError("");
 
@@ -222,26 +222,30 @@ export function AdminReconcilePanel() {
         }
       }
 
-      const homeGk = homePlayers.find((p) => p.id === homeGkId);
-      const awayGk = awayPlayers.find((p) => p.id === awayGkId);
+      const homeKeepers = homePlayers
+        .filter((p) => homeGkIds.includes(p.id))
+        .map((p) => ({
+          player_id: p.id,
+          player_name: `${p.first_name} ${p.last_name}`,
+        }));
+      const awayKeepers = awayPlayers
+        .filter((p) => awayGkIds.includes(p.id))
+        .map((p) => ({
+          player_id: p.id,
+          player_name: `${p.first_name} ${p.last_name}`,
+        }));
       const goalkeepers =
-        homeGk && awayGk
+        homeKeepers.length && awayKeepers.length
           ? [
-              {
-                team_id: selected.home_team_id,
-                starter_player_id: homeGk.id,
-                starter_player_name: `${homeGk.first_name} ${homeGk.last_name}`,
-              },
-              {
-                team_id: selected.away_team_id,
-                starter_player_id: awayGk.id,
-                starter_player_name: `${awayGk.first_name} ${awayGk.last_name}`,
-              },
+              { team_id: selected.home_team_id, keepers: homeKeepers },
+              { team_id: selected.away_team_id, keepers: awayKeepers },
             ]
           : undefined;
 
-      if (!useScoreOnly && (!homeGk || !awayGk)) {
-        setError("Pick a starting GK for each side when logging scorers (clean sheets), or use score-only.");
+      if (!useScoreOnly && (!homeKeepers.length || !awayKeepers.length)) {
+        setError(
+          "Pick at least one GK per side when logging scorers (all get CS if the side conceded 0), or use score-only."
+        );
         setBusy(false);
         return;
       }
@@ -356,36 +360,72 @@ export function AdminReconcilePanel() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-sm">
-              <span className="font-semibold">{selected.home_team_name} GK</span>
-              <select
-                className={inputClass}
-                value={homeGkId}
-                onChange={(e) => setHomeGkId(e.target.value)}
-              >
-                <option value="">Select GK…</option>
-                {homePlayers.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.first_name} {p.last_name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="block text-sm">
-              <span className="font-semibold">{selected.away_team_name} GK</span>
-              <select
-                className={inputClass}
-                value={awayGkId}
-                onChange={(e) => setAwayGkId(e.target.value)}
-              >
-                <option value="">Select GK…</option>
-                {awayPlayers.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.first_name} {p.last_name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <fieldset className="text-sm">
+              <legend className="font-semibold">
+                {selected.home_team_name} GK(s)
+              </legend>
+              <p className="mt-0.5 text-xs text-accent/60">
+                Tick every keeper who played — all get a CS if this side conceded 0.
+              </p>
+              <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-rule px-3 py-2">
+                {homePlayers.length === 0 ? (
+                  <p className="text-xs text-accent/50">No club pool players loaded.</p>
+                ) : (
+                  homePlayers.map((p) => {
+                    const checked = homeGkIds.includes(p.id);
+                    return (
+                      <label key={p.id} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() =>
+                            setHomeGkIds((prev) =>
+                              checked ? prev.filter((id) => id !== p.id) : [...prev, p.id]
+                            )
+                          }
+                        />
+                        <span>
+                          {p.first_name} {p.last_name}
+                        </span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+            </fieldset>
+            <fieldset className="text-sm">
+              <legend className="font-semibold">
+                {selected.away_team_name} GK(s)
+              </legend>
+              <p className="mt-0.5 text-xs text-accent/60">
+                Tick every keeper who played — all get a CS if this side conceded 0.
+              </p>
+              <div className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-lg border border-rule px-3 py-2">
+                {awayPlayers.length === 0 ? (
+                  <p className="text-xs text-accent/50">No club pool players loaded.</p>
+                ) : (
+                  awayPlayers.map((p) => {
+                    const checked = awayGkIds.includes(p.id);
+                    return (
+                      <label key={p.id} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() =>
+                            setAwayGkIds((prev) =>
+                              checked ? prev.filter((id) => id !== p.id) : [...prev, p.id]
+                            )
+                          }
+                        />
+                        <span>
+                          {p.first_name} {p.last_name}
+                        </span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+            </fieldset>
           </div>
 
           <label className="flex items-center gap-2 text-sm font-semibold">

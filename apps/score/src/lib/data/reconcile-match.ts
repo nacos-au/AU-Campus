@@ -38,8 +38,11 @@ export type ReconcileTeamStatsInput = {
 
 export type ReconcileGkInput = {
   team_id: string;
-  starter_player_id: string;
-  starter_player_name: string;
+  /** One or more GKs — all earn CS if this side conceded 0 */
+  keepers: Array<{ player_id: string; player_name: string }>;
+  /** @deprecated use keepers */
+  starter_player_id?: string;
+  starter_player_name?: string;
   subs?: Array<{
     minute: number;
     out_player_id: string;
@@ -182,13 +185,25 @@ export async function reconcileMatchResult(
 
       const prev = Array.isArray(existingLineup?.players) ? existingLineup!.players! : [];
       const withoutGk = prev.filter((p) => String(p.role ?? "").toUpperCase() !== "GK");
+      const keepers =
+        gk.keepers?.length
+          ? gk.keepers
+          : gk.starter_player_id
+            ? [
+                {
+                  player_id: gk.starter_player_id,
+                  player_name: gk.starter_player_name ?? "GK",
+                },
+              ]
+            : [];
+      if (!keepers.length) continue;
       const players = [
-        {
-          player_id: gk.starter_player_id,
-          player_name: gk.starter_player_name,
+        ...keepers.map((k) => ({
+          player_id: k.player_id,
+          player_name: k.player_name,
           is_starting: true,
           role: "GK",
-        },
+        })),
         ...withoutGk,
       ];
 

@@ -32,7 +32,7 @@ export function AdminCompetitionsDesk({ isAdmin }: { isAdmin: boolean }) {
           <AdminVenueManager />
         </>
       )}
-      <AdminCompetitionSquadsPanel focusCompetitionId={focusId} />
+      <AdminCompetitionSquadsPanel focusCompetitionId={focusId} canArchive={isAdmin} />
       <p className="text-sm text-accent/60">
         After fixtures exist, open a match from Keeper or Matches to submit the starting XI (and
         bench) from each competition squad. Live scoring runs in the keeper console.

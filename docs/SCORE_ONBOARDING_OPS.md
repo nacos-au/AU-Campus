@@ -45,10 +45,20 @@ Players (club pool)
 3. Search the match → set final score.
 4. **Past comps with only the scoreline** (e.g. FOSMAS 2–1 LAW): tick **Score only** → save.
 5. When you have scorers: add goal rows — **minute can be blank**, assist can be **Pending** (or Solo / named assister).
-6. Pick **starting GK** each side when logging scorers (clean sheets); not required for score-only.
+6. Pick **one or more GKs** each side when logging scorers — every named keeper gets a clean sheet if that side conceded 0. Not required for score-only.
 7. Optionally open match stats (SOT, saves, corners, …).
 8. **Save reconcile & complete**.
 9. Still-live example matches you never officiated: same flow — complete them or postpone; do not leave fake “live” forever.
+
+## Wipe & recreate: Inter-Faculty Pre-Season 2026/27
+
+Target only this messy preseason (duplicate Nursing / Nursing FC, wrong dates) — not a generic wipe, and **not** the AUSA Interfaculty Football League seed SQL.
+
+1. **Admin → Competitions** → select **Inter-Faculty Pre-Season** (season **2026/27**) → **Archive competition** (soft-hides the tournament + soft-deletes its matches).
+2. Soft-delete any leftover one-off test matches outside that comp via **Admin → Matches** if needed.
+3. Recreate **Inter-Faculty Pre-Season 2026/27** with **correct fixture dates**, one canonical club per faculty (**Nursing** only — not Nursing FC).
+4. Fill competition squads from club pools (Players → nominate).
+5. **Admin → Matches → Reconcile** → tick **Score only** for known finals, e.g. FOSMAS 2–1 LAW, MLS 1–1 FONAS, Nursing 3–1 Engineering, FBMS 1–2 MBBS. Add scorers/GKs later when known.
 
 ## Players
 
