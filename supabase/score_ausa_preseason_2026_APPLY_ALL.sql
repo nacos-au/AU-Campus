@@ -2,11 +2,14 @@
 -- AUSA Inter-Faculty Football Preseason (2026/27) — recreate + score-only results
 -- Idempotent: safe to re-run. Paste into Supabase SQL editor.
 --
--- Results (score only — no scorers/assists yet):
---   FOSMAS 2–1 LAW
---   MLS 1–1 FONAS
---   Nursing 3–1 Engineering
---   FBMS 1–2 Medicine (MBBS)
+-- Results (score only — no scorers, assists, or XI required):
+--   FOSMAS 2–1 LAW          Sun 8 Nov 2026 16:30 WAT
+--   MLS 1–1 FONAS           Mon 9 Nov 2026 16:30 WAT
+--   Nursing 3–1 Engineering Thu 12 Nov 2026 16:30 WAT
+--   FBMS 1–2 Medicine/MBBS  Sat 14 Nov 2026 15:00 WAT
+--
+-- Past scorelines do not need competition squads or match XI.
+-- Fill squads later for live/upcoming fixtures; add scorers via Reconcile when known.
 --
 -- Does NOT touch the AUSA Interfaculty Football League seed.
 -- =============================================================================
@@ -97,7 +100,7 @@ BEGIN
       '2026/27',
       '{"extra_time": false, "penalty_shootout": false}'::jsonb,
       'friendly',
-      '[{"id": "preseason", "label": "Preseason", "starts": "2026-10-25", "ends": "2026-10-28"}]'::jsonb,
+      '[{"id": "preseason", "label": "Preseason", "starts": "2026-11-08", "ends": "2026-11-14"}]'::jsonb,
       'event',
       '{"max_squad_size": 25, "max_subs": 5, "authority": "AUSA Sports Committee"}'::jsonb,
       false
@@ -110,7 +113,7 @@ BEGIN
       competition_type = 'event',
       format = 'friendly',
       rules = '{"extra_time": false, "penalty_shootout": false}'::jsonb,
-      phases = '[{"id": "preseason", "label": "Preseason", "starts": "2026-10-25", "ends": "2026-10-28"}]'::jsonb,
+      phases = '[{"id": "preseason", "label": "Preseason", "starts": "2026-11-08", "ends": "2026-11-14"}]'::jsonb,
       config = '{"max_squad_size": 25, "max_subs": 5, "authority": "AUSA Sports Committee"}'::jsonb
     WHERE id = v_tourn;
   END IF;
@@ -141,10 +144,10 @@ BEGIN
     x.kickoff, 'official', x.phase,
     false, false, v_venue
   FROM (VALUES
-    ('FOSMAS', 'LAW', 2, 1, timestamptz '2026-10-25 16:00:00+01', 'preseason_1'),
-    ('MLS', 'FONAS', 1, 1, timestamptz '2026-10-26 16:00:00+01', 'preseason_2'),
-    ('NURSING', 'ENG', 3, 1, timestamptz '2026-10-27 16:00:00+01', 'preseason_3'),
-    ('FBMS', 'MEDICINE', 1, 2, timestamptz '2026-10-28 16:00:00+01', 'preseason_4')
+    ('FOSMAS', 'LAW', 2, 1, timestamptz '2026-11-08 16:30:00+01', 'preseason_1'),
+    ('MLS', 'FONAS', 1, 1, timestamptz '2026-11-09 16:30:00+01', 'preseason_2'),
+    ('NURSING', 'ENG', 3, 1, timestamptz '2026-11-12 16:30:00+01', 'preseason_3'),
+    ('FBMS', 'MEDICINE', 1, 2, timestamptz '2026-11-14 15:00:00+01', 'preseason_4')
   ) AS x(home_code, away_code, home_score, away_score, kickoff, phase)
   JOIN public.departments hd ON hd.short_code = x.home_code
   JOIN public.departments ad ON ad.short_code = x.away_code

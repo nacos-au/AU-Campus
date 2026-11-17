@@ -57,14 +57,12 @@ Target only this messy preseason (duplicate Nursing / Nursing FC, wrong dates) �
 1. **Admin → Competitions** → archive the broken preseason (soft-hides + soft-deletes its matches). Soft-delete any leftover one-off test matches via **Admin → Matches** if needed.
 2. Apply once in Supabase SQL editor: [`supabase/score_ausa_preseason_2026_APPLY_ALL.sql`](../supabase/score_ausa_preseason_2026_APPLY_ALL.sql).
    - Creates **AUSA Inter-Faculty Football Preseason** (`2026/27`) with the eight faculty clubs (**Nursing** only — not Nursing FC; MBBS = **Medicine**).
-   - Posts completed score-only results:
-     - FOSMAS **2–1** LAW
-     - MLS **1–1** FONAS
-     - Nursing **3–1** Engineering
-     - FBMS **1–2** Medicine (MBBS)
-   - Kick-offs default to 25–28 Oct 2026 16:00 WAT — edit `scheduled_at` in the SQL if the real dates differ, then re-run.
-3. Fill competition squads from club pools (Admin → Competitions).
-4. When scorers are known: **Admin → Matches → Reconcile** (add goals / GKs; do not wipe the scorelines).
+   - Posts completed **score-only** results (no scorers / XI needed):
+     - FOSMAS **2–1** LAW — Sun 8 Nov 16:30
+     - MLS **1–1** FONAS — Mon 9 Nov 16:30
+     - Nursing **3–1** Engineering — Thu 12 Nov 16:30
+     - FBMS **1–2** Medicine (MBBS) — Sat 14 Nov 15:00
+3. **You do not need correct squads for these past matches.** Scorelines stand alone. Leave competition squads empty until you have real player lists; then nominate for **upcoming/live** fixtures only. When scorers are known later: **Admin → Matches → Reconcile** (add goals / GKs; do not wipe the scorelines).
 
 ## Players
 
