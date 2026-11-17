@@ -50,15 +50,21 @@ Players (club pool)
 8. **Save reconcile & complete**.
 9. Still-live example matches you never officiated: same flow — complete them or postpone; do not leave fake “live” forever.
 
-## Wipe & recreate: Inter-Faculty Pre-Season 2026/27
+## Wipe & recreate: AUSA Inter-Faculty Football Preseason 2026/27
 
 Target only this messy preseason (duplicate Nursing / Nursing FC, wrong dates) — not a generic wipe, and **not** the AUSA Interfaculty Football League seed SQL.
 
-1. **Admin → Competitions** → select **Inter-Faculty Pre-Season** (season **2026/27**) → **Archive competition** (soft-hides the tournament + soft-deletes its matches).
-2. Soft-delete any leftover one-off test matches outside that comp via **Admin → Matches** if needed.
-3. Recreate **Inter-Faculty Pre-Season 2026/27** with **correct fixture dates**, one canonical club per faculty (**Nursing** only — not Nursing FC).
-4. Fill competition squads from club pools (Players → nominate).
-5. **Admin → Matches → Reconcile** → tick **Score only** for known finals, e.g. FOSMAS 2–1 LAW, MLS 1–1 FONAS, Nursing 3–1 Engineering, FBMS 1–2 MBBS. Add scorers/GKs later when known.
+1. **Admin → Competitions** → archive the broken preseason (soft-hides + soft-deletes its matches). Soft-delete any leftover one-off test matches via **Admin → Matches** if needed.
+2. Apply once in Supabase SQL editor: [`supabase/score_ausa_preseason_2026_APPLY_ALL.sql`](../supabase/score_ausa_preseason_2026_APPLY_ALL.sql).
+   - Creates **AUSA Inter-Faculty Football Preseason** (`2026/27`) with the eight faculty clubs (**Nursing** only — not Nursing FC; MBBS = **Medicine**).
+   - Posts completed score-only results:
+     - FOSMAS **2–1** LAW
+     - MLS **1–1** FONAS
+     - Nursing **3–1** Engineering
+     - FBMS **1–2** Medicine (MBBS)
+   - Kick-offs default to 25–28 Oct 2026 16:00 WAT — edit `scheduled_at` in the SQL if the real dates differ, then re-run.
+3. Fill competition squads from club pools (Admin → Competitions).
+4. When scorers are known: **Admin → Matches → Reconcile** (add goals / GKs; do not wipe the scorelines).
 
 ## Players
 
