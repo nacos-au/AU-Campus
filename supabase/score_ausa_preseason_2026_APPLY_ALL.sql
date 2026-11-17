@@ -96,12 +96,12 @@ BEGIN
     ) VALUES (
       'AUSA Inter-Faculty Football Preseason',
       v_sport,
-      'event',
+      'friendly',  -- enum: league | knockout_cup | friendly
       '2026/27',
       '{"extra_time": false, "penalty_shootout": false}'::jsonb,
-      'friendly',
+      'league',
       '[{"id": "preseason", "label": "Preseason", "starts": "2026-11-08", "ends": "2026-11-14"}]'::jsonb,
-      'event',
+      'event',     -- app competition_type (varchar), not the category enum
       '{"max_squad_size": 25, "max_subs": 5, "authority": "AUSA Sports Committee"}'::jsonb,
       false
     )
@@ -109,9 +109,9 @@ BEGIN
   ELSE
     UPDATE public.tournaments SET
       is_draft = false,
-      category = 'event',
+      category = 'friendly',
       competition_type = 'event',
-      format = 'friendly',
+      format = 'league',
       rules = '{"extra_time": false, "penalty_shootout": false}'::jsonb,
       phases = '[{"id": "preseason", "label": "Preseason", "starts": "2026-11-08", "ends": "2026-11-14"}]'::jsonb,
       config = '{"max_squad_size": 25, "max_subs": 5, "authority": "AUSA Sports Committee"}'::jsonb
