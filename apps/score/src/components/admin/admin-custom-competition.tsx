@@ -71,6 +71,8 @@ export function AdminCustomCompetition({
   const [penaltyShootout, setPenaltyShootout] = useState(true);
   const [defaultExtraTime, setDefaultExtraTime] = useState(false);
   const [isDraft, setIsDraft] = useState(false);
+  /** Score-only events (e.g. preseason) — Stats Centre shows not available */
+  const [omitStats, setOmitStats] = useState(true);
   const [defaultVenueId, setDefaultVenueId] = useState("");
 
   const [slots, setSlots] = useState<FixtureSlot[]>(() => makeSlots(4, [], ""));
@@ -266,6 +268,7 @@ export function AdminCustomCompetition({
             penalty_shootout: penaltyShootout,
             extra_time: defaultExtraTime,
             roster_preset: rosterPreset,
+            omit_stats: omitStats,
           },
           is_draft: isDraft,
           teams: [...teamMap.values()],
@@ -410,9 +413,11 @@ export function AdminCustomCompetition({
               if (v === "preseason") {
                 setMaxSquadSize(25);
                 setMaxSubs(9);
+                setOmitStats(true);
               } else if (v === "normal") {
                 setMaxSquadSize(22);
                 setMaxSubs(9);
+                setOmitStats(false);
               }
             }}
           >
@@ -462,6 +467,16 @@ export function AdminCustomCompetition({
             </label>
           </>
         )}
+        <label className="flex items-center gap-2 text-sm sm:col-span-2">
+          <input
+            type="checkbox"
+            checked={omitStats}
+            onChange={(e) => setOmitStats(e.target.checked)}
+          />
+          <span className="font-semibold">
+            Omit player stats (Stats Centre shows “not available” — for score-only events)
+          </span>
+        </label>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"

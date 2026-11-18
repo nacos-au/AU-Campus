@@ -61,6 +61,7 @@ import {
 import type { SeasonAward } from "@/lib/data/demo-awards";
 import { getAwardsForSport } from "@/lib/data/demo-awards";
 import { getSquadForTeam } from "@/lib/data/demo-squads";
+import { tournamentOmitsStats } from "@/lib/competition/stats-availability";
 import { createClient } from "@/lib/supabase/server";
 import { sportToDbId, type SportId } from "@/lib/utils/sport";
 
@@ -153,10 +154,13 @@ export async function fetchTournamentsForSport(sportDbId: string): Promise<Tourn
     .select("*")
     .eq("sport_id", sportUuid)
     .eq("is_draft", false)
-    .neq("category", "friendly")
+    // Hide the generic Friendlies bucket; keep named event comps (incl. preseason).
+    .or("category.neq.friendly,competition_type.eq.event")
     .order("created_at", { ascending: false })) as { data: TournamentRow[] | null };
 
-  return (data ?? []).map(mapTournamentRow);
+  return (data ?? [])
+    .map(mapTournamentRow)
+    .filter((t) => !(t.category === "friendly" && t.name === "Friendlies"));
 }
 
 /** All published competitions across sports (Competitions hub). */
@@ -178,10 +182,12 @@ export async function fetchPublicCompetitions(): Promise<Tournament[]> {
     .from("tournaments")
     .select("*")
     .eq("is_draft", false)
-    .neq("category", "friendly")
+    .or("category.neq.friendly,competition_type.eq.event")
     .order("created_at", { ascending: false })) as { data: TournamentRow[] | null };
 
-  return (data ?? []).map(mapTournamentRow);
+  return (data ?? [])
+    .map(mapTournamentRow)
+    .filter((t) => !(t.category === "friendly" && t.name === "Friendlies"));
 }
 
 export async function fetchTournamentForSport(
@@ -194,7 +200,13 @@ export async function fetchTournamentForSport(
 
   const all = await fetchTournamentsForSport(sportDbId);
   if (tournamentId) return all.find((t) => t.id === tournamentId) ?? null;
-  return all[0] ?? null;
+  // Prefer a stats-tracked competition (usually the league) over score-only events.
+  return (
+    all.find((t) => t.competition_type === "league" && !tournamentOmitsStats(t)) ??
+    all.find((t) => !tournamentOmitsStats(t)) ??
+    all[0] ??
+    null
+  );
 }
 
 export async function fetchGroupStandings(
@@ -816,17 +828,29 @@ function mapSeasonAwardRow(row: SeasonAwardRow): SeasonAward {
   };
 }
 
-export async function fetchSeasonAwards(sportDbId: string, season = "2025/26"): Promise<SeasonAward[]> {
-  if (!hasSupabaseConfig() || (await getScoreDemoMode())) return getAwardsForSport(sportDbId);
+export async function fetchSeasonAwards(
+  sportDbId: string,
+  season = "2025/26",
+  opts?: { tournamentId?: string | null }
+): Promise<SeasonAward[]> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) {
+    return getAwardsForSport(sportDbId, undefined, opts?.tournamentId ?? undefined);
+  }
 
   const supabase = await createClient();
-  const { data } = await supabase
+  let query = supabase
     .from("season_awards")
     .select("*")
     .eq("sport_id", sportDbId)
     .eq("season", season)
     .eq("published", true)
-    .order("award_type") as { data: SeasonAwardRow[] | null };
+    .order("award_type");
+
+  if (opts?.tournamentId) {
+    query = query.eq("tournament_id", opts.tournamentId);
+  }
+
+  const { data } = (await query) as { data: SeasonAwardRow[] | null };
 
   if (!data?.length) return [];
   return data.map(mapSeasonAwardRow);

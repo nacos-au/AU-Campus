@@ -102,7 +102,8 @@ BEGIN
       'league',
       '[{"id": "preseason", "label": "Preseason", "starts": "2026-11-08", "ends": "2026-11-14"}]'::jsonb,
       'event',     -- app competition_type (varchar), not the category enum
-      '{"max_squad_size": 25, "max_subs": 5, "authority": "AUSA Sports Committee"}'::jsonb,
+      -- omit_stats: Stats Centre shows "not available" (score-only, no scorers planned)
+      '{"max_squad_size": 25, "max_subs": 5, "authority": "AUSA Sports Committee", "omit_stats": true}'::jsonb,
       false
     )
     RETURNING id INTO v_tourn;
@@ -114,7 +115,7 @@ BEGIN
       format = 'league',
       rules = '{"extra_time": false, "penalty_shootout": false}'::jsonb,
       phases = '[{"id": "preseason", "label": "Preseason", "starts": "2026-11-08", "ends": "2026-11-14"}]'::jsonb,
-      config = '{"max_squad_size": 25, "max_subs": 5, "authority": "AUSA Sports Committee"}'::jsonb
+      config = '{"max_squad_size": 25, "max_subs": 5, "authority": "AUSA Sports Committee", "omit_stats": true}'::jsonb
     WHERE id = v_tourn;
   END IF;
 

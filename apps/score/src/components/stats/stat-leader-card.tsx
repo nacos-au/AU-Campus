@@ -36,6 +36,9 @@ export function StatLeaderCard({
         )}
       </div>
       <ul>
+        {leaders.length === 0 && (
+          <li className="px-4 py-6 text-sm text-accent/60">No stats logged yet</li>
+        )}
         {leaders.map((leader, index) => (
           <li
             key={leader.player.id}

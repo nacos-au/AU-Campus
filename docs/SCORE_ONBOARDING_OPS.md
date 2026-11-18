@@ -62,7 +62,14 @@ Target only this messy preseason (duplicate Nursing / Nursing FC, wrong dates) �
      - MLS **1–1** FONAS — Mon 9 Nov 16:30
      - Nursing **3–1** Engineering — Thu 12 Nov 16:30
      - FBMS **1–2** Medicine (MBBS) — Sat 14 Nov 15:00
-3. **You do not need correct squads for these past matches.** Scorelines stand alone. Leave competition squads empty until you have real player lists; then nominate for **upcoming/live** fixtures only. When scorers are known later: **Admin → Matches → Reconcile** (add goals / GKs; do not wipe the scorelines).
+   - Sets `config.omit_stats: true` so Stats Centre shows **Stats not available** (no scorers planned).
+3. **You do not need squads for these past matches.** Scorelines stand alone on Matches.
+
+## Stats Centre
+
+- Hosted Score aggregates **Goals / Assists / Clean Sheets** from live match events + GK lineups for the selected competition (never demo/test clubs).
+- Hide Stats for a score-only event with tournament `config.omit_stats: true` (or `stats_available: false`). Preseason seed sets this. Custom comps can tick **Omit player stats** when creating.
+- Empty boards mean no scorers logged yet — use **Reconcile** unless the competition omits stats.
 
 ## Players
 
