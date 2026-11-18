@@ -1,16 +1,9 @@
-/** Cookie override: `on` = fixtures, `off` = live Supabase (when keys exist). */
+/** Legacy cookie name — kept so old cookies clear cleanly; demo mode is retired. */
 export const DEMO_MODE_COOKIE = "au_demo_mode";
 
 /**
- * Demo mode serves fixture content with no database.
- *
- * Priority (when Supabase keys are configured):
- * 1. Cookie `au_demo_mode=on|off` — runtime toggle on the site
- * 2. DEMO_MODE=true env → demo
- * 3. DEMO_MODE=false env → live
- * 4. Default → live
- *
- * Without valid keys → always demo (deploy-safe).
+ * Live Supabase only. Fixture/demo mode has been removed from the public app.
+ * Without valid keys the site cannot load content (empty / error states).
  */
 export function hasSupabaseConfig(): boolean {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
@@ -21,24 +14,13 @@ export function hasSupabaseConfig(): boolean {
   return true;
 }
 
-function parseDemoCookie(value?: string | null): boolean | null {
-  if (value === "on") return true;
-  if (value === "off") return false;
-  return null;
-}
-
+/** @deprecated Demo toggle removed — always false. */
 export function canToggleDemoMode(): boolean {
-  return hasSupabaseConfig();
+  return false;
 }
 
-export function isDemoMode(cookieValue?: string | null): boolean {
-  if (!hasSupabaseConfig()) return true;
-
-  const override = parseDemoCookie(cookieValue);
-  if (override !== null) return override;
-
-  if (process.env.DEMO_MODE === "true") return true;
-  if (process.env.DEMO_MODE === "false") return false;
+/** @deprecated Always live when configured; never serve fixtures. */
+export function isDemoMode(_cookieValue?: string | null): boolean {
   return false;
 }
 

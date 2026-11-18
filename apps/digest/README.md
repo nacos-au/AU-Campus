@@ -1,22 +1,21 @@
-# AU Digest — White-Label University Newspaper Platform
+# AUSA Digest — Student Association Newspaper Platform
 
 > **Monorepo:** This app lives at `apps/digest`. Dev server: **http://localhost:3001**  
 > Run from repo root: `npm run dev:digest` or `npm run dev` (all apps).
 
-A digital newspaper platform for universities: a classic NYT-style editorial front page, a newsroom CMS with a writer → editor publishing workflow, paid digital replica editions unlocked through Paystack, and a hardened on-screen reader that watermarks every page with the buyer's identity.
+A digital newspaper for the Achievers University Students' Association: a classic editorial front page, a newsroom CMS with a writer → editor publishing workflow, paid digital replica editions unlocked through Paystack, and a hardened on-screen reader that watermarks every page with the buyer's identity.
 
 Built with **Next.js (App Router) · TypeScript · Tailwind CSS · Supabase (Postgres + Auth + Storage, RLS everywhere) · Paystack · TanStack Query · Tiptap · pdf.js · next-intl**.
 
 ---
 
-## Instant preview (no database)
+## Seed sample content
 
-Want to see the paper populated before setting anything up? Enable demo mode:
+Populate sections, published articles, and breaking flags in Supabase:
 
 ```bash
-npm install
-cp .env.example .env.local   # then set DEMO_MODE=true in .env.local
-npm run dev
+# Paste supabase/digest_seed_content_APPLY_ALL.sql into the Supabase SQL editor
+# (requires at least one profile row — sign up once first)
 ```
 
 The public site (front page, sections, articles, editions store, ads) renders from built-in fixture content. Auth, the newsroom CMS and payments need a real Supabase connection — set `DEMO_MODE=false` and follow the quick start below when you're ready.

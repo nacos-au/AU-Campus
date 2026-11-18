@@ -64,7 +64,7 @@
   },
   "footer": {
     "rights": "Echedoro ikike niile.",
-    "tagline": "Akwụkwọ akụkọ ụmụ akwụkwọ nọọrọ onwe nke {university}.",
+    "tagline": "Akwụkwọ akụkọ ụmụ akwụkwọ nọọrọ onwe nke Association ụmụ akwụkwọ mahadum.",
     "sections": "Ngalaba",
     "newsroom": "Ụlọ ọrụ akụkọ",
     "talent": "Talent",
@@ -86,6 +86,9 @@
     "yourLibrary": "Ọbá akwụkwọ gị",
     "privacy": "Amụma nzuzo",
     "terms": "Usoro ojiji",
-    "sitemap": "Maapụ saịtị"
+    "sitemap": "Maapụ saịtị",
+    "partnership": "Mmekọrịta",
+    "partnershipLine": "Ọrụ e wuru site na mmekọrịta n'etiti",
+    "collaboration": "Mmekọrịta"
   }
 }

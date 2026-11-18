@@ -1,5 +1,5 @@
 /**
- * Soft feature gates for the live Digest demo.
+ * Soft feature gates for Digest.
  * Paused surfaces stay in the codebase but are hidden from nav / public UI.
  */
 export const digestFeatures = {
@@ -9,12 +9,18 @@ export const digestFeatures = {
   publicLikes: false,
   adsenseFallback: false,
   weekly: true,
-  manualAds: true,
+  /** Ads paused for now — AdSlots and advertise links stay gated off. */
+  manualAds: false,
   breakingNews: true,
 } as const;
 
 /** Desks shown on the public site and homepage section blocks. */
-export const PUBLIC_SECTION_SLUGS = ["news", "campus", "sports"] as const;
+export const PUBLIC_SECTION_SLUGS = [
+  "news",
+  "campus",
+  "sports",
+  "technology",
+] as const;
 
 export type PublicSectionSlug = (typeof PUBLIC_SECTION_SLUGS)[number];
 

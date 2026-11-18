@@ -33,7 +33,7 @@ export default function HelpCenterPage() {
         <section>
           <h2 className="font-serif text-xl font-bold">Account &amp; sign-in</h2>
           <p className="mt-2 text-ink-soft">
-            One campus login works for AU Digest and AU Score. Update your display name under{" "}
+            One campus login works for AUSA Digest and AU Score. Update your display name under{" "}
             <Link href="/account/settings" className="underline underline-offset-2 hover:text-ink">
               Account settings
             </Link>

@@ -68,7 +68,7 @@
   },
   "footer": {
     "rights": "Tous droits réservés.",
-    "tagline": "Le journal étudiant indépendant de {university}.",
+    "tagline": "Le journal étudiant indépendant de l'Association des étudiants de l'université.",
     "sections": "Rubriques",
     "newsroom": "La Rédaction",
     "talent": "Talents",
@@ -90,6 +90,9 @@
     "yourLibrary": "Votre bibliothèque",
     "privacy": "Politique de confidentialité",
     "terms": "Conditions d'utilisation",
-    "sitemap": "Plan du site"
+    "sitemap": "Plan du site",
+    "partnership": "Partenariat",
+    "partnershipLine": "Un projet mené en partenariat entre",
+    "collaboration": "Partenariat"
   }
 }

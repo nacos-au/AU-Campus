@@ -1,13 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { getDemoModeCookie } from "@/app/actions/demo-mode";
 import { createClient } from "@/lib/supabase/server";
-import { canToggleDemoMode, isDemoMode } from "@/lib/demo-mode";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
 import { site } from "@/lib/site";
 import type { Section } from "@/lib/types";
-import { DemoModeToggle } from "./DemoModeToggle";
 import {
   IconFacebook,
   IconInstagram,
@@ -64,18 +61,28 @@ function FooterLink({
   );
 }
 
+function PartnershipMark({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <span
+      className="font-masthead text-xl font-bold text-white/55 sm:text-2xl"
+      aria-hidden
+    >
+      {children}
+    </span>
+  );
+}
+
 export async function SiteFooter() {
-  const [t, demoCookie] = await Promise.all([
-    getTranslations("footer"),
-    getDemoModeCookie(),
-  ]);
+  const t = await getTranslations("footer");
   const supabase = await createClient();
   const { data } = await supabase.from("sections").select("*").order("position");
   const sections = ((data ?? []) as Section[]).filter((s) =>
     isPublicSectionSlug(s.slug)
   );
-  const showDemoToggle = canToggleDemoMode();
-  const demoActive = isDemoMode(demoCookie);
 
   return (
     <footer className="mt-16">
@@ -147,37 +154,48 @@ export async function SiteFooter() {
             <FooterLink href="/account">{t("yourLibrary")}</FooterLink>
           </Column>
         </nav>
+      </div>
 
-        {/* Collaboration — AUSA × NACOS AU */}
-        <div className="mt-10 border-t border-rule pt-8">
-          <p className="text-center text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">
-            {t("collaboration")}
+      {/* Partnership band */}
+      <div className="bg-[#0a0a0a] text-white">
+        <div className="mx-auto max-w-7xl px-4 py-12 sm:py-14">
+          <p className="text-center text-[11px] font-bold uppercase tracking-[0.22em] text-white/55">
+            {t("partnership")}
           </p>
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-5 sm:gap-8">
+          <p className="mt-3 text-center font-display text-sm font-semibold text-white/80 sm:text-base">
+            {t("partnershipLine")}
+          </p>
+
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4 sm:gap-7">
             <Image
-              src="/ausa-press.png"
-              alt="AUSA Press"
-              width={160}
-              height={64}
-              className="h-12 w-auto object-contain sm:h-14"
-            />
-            <span
-              className="font-masthead text-2xl font-bold text-ink-soft sm:text-3xl"
-              aria-hidden
-            >
-              ×
-            </span>
-            <Image
-              src="/nacos-au.png"
-              alt="NACOS Achievers University"
+              src="/AUSA.png"
+              alt="Achievers University Students' Association"
               width={160}
               height={160}
               className="h-14 w-auto object-contain sm:h-16"
             />
+            <PartnershipMark>×</PartnershipMark>
+            <Image
+              src="/nacos-au.png"
+              alt="NACOS AU"
+              width={160}
+              height={160}
+              className="h-10 w-auto object-contain brightness-0 invert sm:h-12"
+            />
+            <PartnershipMark>×</PartnershipMark>
+            <Image
+              src="/ausa-press.png"
+              alt="AUSA Press"
+              width={320}
+              height={128}
+              className="h-20 w-auto object-contain sm:h-24"
+            />
           </div>
         </div>
+      </div>
 
-        <div className="mt-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-t border-rule pt-4 text-xs text-ink-soft">
+      <div className="mx-auto max-w-7xl px-4 py-6">
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-xs text-ink-soft">
           <p>
             © {new Date().getFullYear()} {site.name}, {site.university}.{" "}
             {t("rights")}
@@ -194,12 +212,6 @@ export async function SiteFooter() {
             </a>
           </div>
         </div>
-
-        {(showDemoToggle || demoActive) && (
-          <div className="mt-4 flex items-center gap-2 border-t border-rule/60 pt-3 text-[10px] text-ink-soft/80">
-            <DemoModeToggle active={demoActive} canToggle={showDemoToggle} />
-          </div>
-        )}
       </div>
     </footer>
   );

@@ -1,5 +1,6 @@
 import { requireRole, hasRole } from "@/lib/auth";
 import { site } from "@/lib/site";
+import { digestFeatures } from "@/lib/features";
 import { AdminNav, type AdminNavItem } from "@/components/AdminNav";
 import { Providers } from "@/components/Providers";
 import { exitAdminModeAction } from "@/app/actions/admin-mode";
@@ -20,7 +21,9 @@ export default async function AdminLayout({
       ? ([
           { href: "/admin/sections", label: "Sections", icon: "sections" },
           { href: "/admin/weekly", label: "Weekly", icon: "editions" },
-          { href: "/admin/ads", label: "Advertising", icon: "ads" },
+          ...(digestFeatures.manualAds
+            ? ([{ href: "/admin/ads", label: "Advertising", icon: "ads" }] as AdminNavItem[])
+            : []),
         ] as AdminNavItem[])
       : []),
     ...(isAdmin ? ([{ href: "/admin/team", label: "Team", icon: "team" }] as AdminNavItem[]) : []),

@@ -1,14 +1,13 @@
 /**
- * Per-university deployment config.
- * To white-label this platform for another institution, change these values
- * (and the accent color variables in `src/app/globals.css`).
+ * Per-deployment branding for AUSA Digest.
  */
 export const site = {
   /** Short name used in the UI and metadata. */
-  name: "AU Digest",
+  name: "AUSA Digest",
   /** Full masthead line rendered in the masthead font on the front page. */
-  masthead: "The AU Digest",
-  university: "Achievers University",
+  masthead: "The AUSA Digest",
+  /** Organization — Students' Association (not the university crest). */
+  university: "Achievers University Students' Association",
   tagline: "All the campus news that's fit to publish.",
   address: "KM 1 Idasen/Uteh Road, Owo 341104, Ondo, Nigeria",
   /** ISO currency for Paystack (NGN only on most Paystack accounts). */

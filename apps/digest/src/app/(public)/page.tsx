@@ -10,12 +10,7 @@ import {
 } from "@/components/stories";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
 import type { ArticleWithMeta, Section } from "@/lib/types";
-import { isDemoMode } from "@/lib/demo-mode";
-import { getDemoModeCookie } from "@/app/actions/demo-mode";
-
 export default async function HomePage() {
-  const demoCookie = await getDemoModeCookie();
-  const demoActive = isDemoMode(demoCookie);
   const supabase = await createClient();
   const t = await getTranslations("home");
 
@@ -43,19 +38,17 @@ export default async function HomePage() {
       <div className="py-24 text-center text-ink-soft">
         <p className="font-serif text-2xl">No stories published yet.</p>
         <p className="mt-2 text-sm max-w-md mx-auto">
-          {demoActive
-            ? "Demo fixtures failed to load — try refreshing. If this persists, report a bug."
-            : "Your Supabase database is connected but empty. Run the SQL migrations and seed in the Supabase SQL editor, or use Demo/Live in the page footer for sample stories."}
+          Your Supabase database is connected but empty. Run{" "}
+          <code className="text-xs">supabase/digest_seed_content_APPLY_ALL.sql</code>{" "}
+          in the SQL editor, then publish from the newsroom.
         </p>
-        {!demoActive && (
-          <p className="mt-4 text-xs">
-            Newsroom:{" "}
-            <a href="/admin" className="font-semibold text-ink underline underline-offset-2">
-              sign in and publish
-            </a>{" "}
-            after creating an account.
-          </p>
-        )}
+        <p className="mt-4 text-xs">
+          Newsroom:{" "}
+          <a href="/admin" className="font-semibold text-ink underline underline-offset-2">
+            sign in and publish
+          </a>{" "}
+          after creating an account.
+        </p>
       </div>
     );
   }

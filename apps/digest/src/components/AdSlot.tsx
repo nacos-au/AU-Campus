@@ -22,6 +22,7 @@ export async function AdSlot({
   slot: Slot;
   className?: string;
 }) {
+  if (!digestFeatures.manualAds && !digestFeatures.adsenseFallback) return null;
   if (await isAdminModeActive()) return null;
 
   const [supabase, t, cookieStore] = await Promise.all([

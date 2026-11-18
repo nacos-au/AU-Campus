@@ -64,7 +64,7 @@
   },
   "footer": {
     "rights": "Todos los derechos reservados.",
-    "tagline": "El periódico estudiantil independiente de {university}.",
+    "tagline": "El periódico estudiantil independiente de la Asociación de Estudiantes de la Universidad.",
     "sections": "Secciones",
     "newsroom": "La redacción",
     "talent": "Talento",
@@ -86,6 +86,9 @@
     "yourLibrary": "Tu biblioteca",
     "privacy": "Política de privacidad",
     "terms": "Términos de uso",
-    "sitemap": "Mapa del sitio"
+    "sitemap": "Mapa del sitio",
+    "partnership": "Asociación",
+    "partnershipLine": "Un proyecto construido en asociación entre",
+    "collaboration": "Asociación"
   }
 }

@@ -27,7 +27,7 @@ export default async function NewslettersPage() {
       <div className="mt-10 border border-rule-dark px-6 py-10 text-center">
         <p className="font-serif text-xl font-bold text-ink">No newsletters yet</p>
         <p className="mx-auto mt-3 max-w-md text-sm text-ink-soft">
-          When AU Digest launches email editions, you will manage subscriptions here.
+          When AUSA Digest launches email editions, you will manage subscriptions here.
           Your account is ready — check back after we announce the first list.
         </p>
         <Link

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createAuthClient } from "@/lib/supabase/auth-client";
 import { getSessionProfile, hasRole } from "@/lib/auth";
+import { digestFeatures } from "@/lib/features";
 import { formatNaira } from "@/lib/site";
 import { Card, Empty, Pill, Stat, btn } from "@/components/admin/ui";
 
@@ -50,7 +51,7 @@ export default async function AdminDashboard() {
       .eq("status", "published"),
     supabase.from("editions").select("id", { count: "exact", head: true }),
     isAdmin ? supabase.from("purchases").select("amount_kobo") : Promise.resolve({ data: null }),
-    staff
+    staff && digestFeatures.manualAds
       ? supabase.from("ads").select("id", { count: "exact", head: true }).eq("status", "pending_review")
       : Promise.resolve({ count: 0 }),
   ]);

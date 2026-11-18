@@ -14,7 +14,7 @@ export default function AuthLayout({
       <header className="border-b border-rule py-5 text-center">
         <Link href="/" className="inline-flex items-center justify-center gap-3">
           <Image
-            src="/au-logo.webp"
+            src="/AUSA.png"
             alt={site.university}
             width={40}
             height={40}
