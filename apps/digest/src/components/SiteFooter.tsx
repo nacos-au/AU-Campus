@@ -68,7 +68,7 @@ function PartnershipMark({
 }) {
   return (
     <span
-      className="font-masthead text-xl font-bold text-white/55 sm:text-2xl"
+      className="font-masthead text-xl font-bold text-ink-soft sm:text-2xl"
       aria-hidden
     >
       {children}
@@ -156,17 +156,14 @@ export async function SiteFooter() {
         </nav>
       </div>
 
-      {/* Partnership band */}
-      <div className="bg-[#0a0a0a] text-white">
-        <div className="mx-auto max-w-7xl px-4 py-12 sm:py-14">
-          <p className="text-center text-[11px] font-bold uppercase tracking-[0.22em] text-white/55">
-            {t("partnership")}
-          </p>
-          <p className="mt-3 text-center font-display text-sm font-semibold text-white/80 sm:text-base">
+      {/* Partnership */}
+      <div className="border-t border-rule bg-white">
+        <div className="mx-auto max-w-7xl px-4 py-10 sm:py-12">
+          <p className="text-center font-display text-sm font-semibold text-ink-soft sm:text-base">
             {t("partnershipLine")}
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-4 sm:gap-7">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-4 sm:gap-7">
             <Image
               src="/AUSA.png"
               alt="Achievers University Students' Association"
@@ -180,7 +177,7 @@ export async function SiteFooter() {
               alt="NACOS AU"
               width={160}
               height={160}
-              className="h-10 w-auto object-contain brightness-0 invert sm:h-12"
+              className="h-10 w-auto object-contain sm:h-12"
             />
             <PartnershipMark>×</PartnershipMark>
             <Image
