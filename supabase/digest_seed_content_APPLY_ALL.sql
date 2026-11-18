@@ -110,7 +110,7 @@ BEGIN
     v_author,
     'en',
     'published',
-    false,
+    true,
     false,
     now() - interval '9 hours',
     now() - interval '9 hours',
@@ -142,7 +142,7 @@ BEGIN
     v_author,
     'en',
     'published',
-    false,
+    true,
     false,
     now() - interval '14 hours',
     now() - interval '14 hours',
@@ -174,7 +174,7 @@ BEGIN
     v_author,
     'en',
     'published',
-    false,
+    true,
     false,
     now() - interval '20 hours',
     now() - interval '20 hours',
@@ -839,5 +839,9 @@ SELECT 'sections' AS what, count(*)::text FROM public.sections WHERE slug IN ('n
 UNION ALL
 SELECT 'published', count(*)::text FROM public.articles WHERE status = 'published'
 UNION ALL
-SELECT 'breaking', count(*)::text FROM public.articles WHERE breaking = true AND status = 'published';
+SELECT 'breaking', count(*)::text FROM public.articles WHERE breaking = true AND status = 'published'
+UNION ALL
+SELECT 'featured_top_news', count(*)::text
+FROM public.articles
+WHERE featured = true AND breaking = false AND status = 'published';
 
