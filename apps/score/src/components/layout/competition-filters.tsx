@@ -146,10 +146,9 @@ export function CompetitionFilters({
                     type="button"
                     onClick={() => navigate({ status: o.value === "all" ? null : o.value })}
                     className={cn(
-                      "rounded-md px-2.5 py-1.5 font-display text-xs font-bold transition",
-                      on
-                        ? "bg-accent text-white"
-                        : "text-accent/60 hover:bg-accent hover:text-white"
+                      /* btn-filled / status-pill beat .page-content button { color: accent } */
+                      "status-pill rounded-md px-2.5 py-1.5 font-display text-xs font-bold transition",
+                      on ? "btn-filled" : "hover:bg-accent"
                     )}
                   >
                     {o.label}

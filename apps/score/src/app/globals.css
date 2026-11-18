@@ -60,6 +60,12 @@ body {
   color: var(--accent);
 }
 
+/* Matches status pills — red fill needs white labels (hover + active) */
+.page-content button.status-pill:hover,
+.page-content button.status-pill.btn-filled {
+  color: #ffffff !important;
+}
+
 /* Filter bar — PL-style exceptions */
 .page-content .filters-bar-reset-label {
   color: #888888;
