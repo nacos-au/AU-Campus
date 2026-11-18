@@ -2,8 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { getDemoModeCookie } from "@/app/actions/demo-mode";
 import { DemoModeToggle } from "@/components/layout/demo-mode-toggle";
-import { PhantomIcon } from "@/components/phantom/phantom-icon";
-import { PHANTOM_BRAND } from "@/lib/phantom/types";
 import { canToggleDemoMode, isDemoMode } from "@/lib/demo-mode";
 import { SPORT_IDS, SPORT_LABELS } from "@/lib/utils/sport";
 
@@ -97,17 +95,6 @@ export async function SiteFooter() {
             </p>
           </div>
 
-          <Link
-            href={PHANTOM_BRAND.path}
-            className="interactive-btn inline-flex w-fit shrink-0 items-center gap-2 rounded-full border border-accent/25 bg-white px-4 py-2 font-display text-sm font-extrabold"
-            title={PHANTOM_BRAND.tagline}
-          >
-            <PhantomIcon size={16} />
-            {PHANTOM_BRAND.name}
-            <span className="hidden font-sans text-xs font-medium text-accent/60 sm:inline">
-              · {PHANTOM_BRAND.tagline}
-            </span>
-          </Link>
         </div>
 
         <nav className="mt-8 grid grid-cols-2 gap-x-6 gap-y-8 border-t border-rule pt-8 sm:grid-cols-4">
@@ -128,7 +115,6 @@ export async function SiteFooter() {
           </Column>
 
           <Column heading="Tools">
-            <FooterLink href={PHANTOM_BRAND.path}>{PHANTOM_BRAND.name}</FooterLink>
             <FooterLink href="/keeper?sport=football">Record Keeper</FooterLink>
             <FooterLink href="/?auth=signin">Sign in</FooterLink>
             <FooterLink href="/account/settings">Account settings</FooterLink>

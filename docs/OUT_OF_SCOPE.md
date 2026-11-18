@@ -102,7 +102,26 @@ Revisit timed release only if the newsroom needs exact-minute go-live without a 
 
 ---
 
-## 6. Implementation Priority
+## 6. Score — Phantom (casual match clock)
+
+**Built but hidden for current deploy.** Casual / off-platform scoring (local + optional cloud sessions under `/phantom`).
+
+### Why parked
+
+- Not part of the official competition / record-keeper product surface this phase
+- Nav, header, and footer entry points removed so it is out of the public chrome
+- Code and routes retained (`apps/score/src/app/phantom`, APIs, docs/PHANTOM_PERSISTENCE.md) for a later revive — do not delete
+
+### Out of scope (this deploy)
+
+- Advertising Phantom in header, hamburger Tools, or footer
+- Treating Phantom as the primary scoring path for AUSA / Inter-Faculty fixtures
+
+Revisit when casual or pickup-game scoring is a product priority.
+
+---
+
+## 7. Implementation Priority
 
 | Feature | Priority | Depends On |
 |---------|----------|------------|
@@ -111,5 +130,6 @@ Revisit timed release only if the newsroom needs exact-minute go-live without a 
 | Add Fixtures to Calendar | Phase 2 | Matches in database |
 | Digest correction notes | Later | Digest live + editorial policy |
 | Digest timed release / cron | Later | Need exact-time go-live without a click |
+| Score Phantom (un-hide) | Later | Product priority for casual scoring |
 
 These will be built after the core platform (live scoring, standings, profiles, auth) is complete and connected to Supabase.

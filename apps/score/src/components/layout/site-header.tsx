@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Search } from "lucide-react";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { isAdminModeActive } from "@/app/actions/admin-mode";
@@ -11,8 +10,6 @@ import { AdminModeBanner } from "@/components/layout/admin-mode-banner";
 import { ProfileMenu } from "@/components/layout/profile-menu";
 import { AuthEntryButton } from "@/components/auth/auth-entry";
 import { SportNav } from "@/components/layout/sport-nav";
-import { PhantomIcon } from "@/components/phantom/phantom-icon";
-import { PHANTOM_BRAND } from "@/lib/phantom/types";
 import { hasSupabaseConfig } from "@/lib/demo-mode";
 import { getSessionStaff } from "@/lib/auth/roles";
 import { signOut } from "@/app/auth/actions";
@@ -95,24 +92,7 @@ export async function SiteHeader() {
         </Link>
 
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
-          <Link
-            href={PHANTOM_BRAND.path}
-            className="interactive-btn inline-flex items-center gap-1.5 rounded-full border border-accent/25 bg-accent/[0.06] px-3 py-1.5 font-display text-xs font-extrabold text-accent sm:px-3.5 sm:text-sm"
-            aria-label={`${PHANTOM_BRAND.name} — ${PHANTOM_BRAND.tagline}`}
-            title={PHANTOM_BRAND.name}
-          >
-            <PhantomIcon size={16} />
-            <span className="hidden sm:inline">{PHANTOM_BRAND.name}</span>
-          </Link>
-
           <AdminModeToggle canUse={canAdmin} active={adminMode && canAdmin} />
-          <button
-            type="button"
-            aria-label="Search"
-            className="hidden h-9 w-9 items-center justify-center rounded-full text-accent transition-colors hover:bg-surface sm:inline-flex"
-          >
-            <Search className="h-5 w-5" />
-          </button>
           {signedIn ? (
             <ProfileMenu
               email={signedIn.email}

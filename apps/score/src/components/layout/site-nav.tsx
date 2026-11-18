@@ -7,8 +7,6 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { ChevronRight, LogIn, Menu, X } from "lucide-react";
 import { SPORTS } from "@/components/layout/branded-section";
 import { SportIcon } from "@/components/ui/sport-icon";
-import { PhantomIcon } from "@/components/phantom/phantom-icon";
-import { PHANTOM_BRAND } from "@/lib/phantom/types";
 import { parseSportParam } from "@/lib/utils/sport";
 import { cn } from "@/lib/utils/cn";
 
@@ -25,9 +23,8 @@ const sportSectionItems: Array<{ href: string; label: string }> = [
   { href: "/teams", label: "Clubs" },
 ];
 
-/** Standalone tools — not nested under sports. */
-const standaloneItems: Array<{ href: string; label: string; featured?: boolean }> = [
-  { href: PHANTOM_BRAND.path, label: PHANTOM_BRAND.name, featured: true },
+/** Standalone tools — not nested under sports. Phantom parked (OUT_OF_SCOPE). */
+const standaloneItems: Array<{ href: string; label: string }> = [
   { href: "/keeper", label: "Record Keeper" },
   { href: "/demo", label: "Demo Links" },
 ];
@@ -61,7 +58,6 @@ export function SiteNav({
       href === "/admin" ||
       href === "/demo" ||
       href === "/competitions" ||
-      href === PHANTOM_BRAND.path ||
       href.startsWith("/?auth=")
     ) {
       return href;
@@ -130,14 +126,6 @@ export function SiteNav({
               Sign in
             </Link>
           )}
-          <Link
-            href={PHANTOM_BRAND.path}
-            onClick={() => setOpen(false)}
-            className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2 font-display text-sm font-bold text-white"
-          >
-            <PhantomIcon size={16} className="text-white" />
-            {PHANTOM_BRAND.name}
-          </Link>
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 pb-8">
@@ -185,21 +173,17 @@ export function SiteNav({
           <p className="px-3 pb-2 pt-6 font-display text-xs font-bold uppercase tracking-wide text-accent/50">
             Tools
           </p>
-          {toolItems.map(({ href, label, featured }) => (
+          {toolItems.map(({ href, label }) => (
             <Link
               key={href}
               href={hrefWithSport(href)}
               onClick={() => setOpen(false)}
               className={cn(
                 "flex items-center justify-between rounded-xl px-3 py-3.5 font-display text-lg font-bold text-accent hover:bg-surface",
-                featured && "bg-surface",
                 pathname.startsWith(href) && href !== "/" && "bg-surface"
               )}
             >
-              <span className="flex items-center gap-2">
-                {featured && <PhantomIcon size={18} />}
-                {label}
-              </span>
+              {label}
               <ChevronRight className="h-5 w-5 text-accent/30" />
             </Link>
           ))}
