@@ -45,14 +45,14 @@ async function loadCompetitionOptions(sport: SportId) {
 export async function MatchesFilters({
   sport = "football",
   competitionId,
-  matchweeks = [],
+  calendarWeeks = [],
   activeMw = "all",
   activeStatus = "all",
 }: {
   sport?: SportId;
   competitionId?: string;
-  matchweeks?: number[];
-  activeMw?: number | "all";
+  calendarWeeks?: import("@/lib/match/matchweek").CalendarWeek[];
+  activeMw?: string | "all";
   activeStatus?: "all" | "live" | "upcoming" | "finished";
 }) {
   const competitions = await loadCompetitionOptions(sport);
@@ -63,7 +63,7 @@ export async function MatchesFilters({
       competitions={competitions}
       activeCompetitionId={competitionId}
       variant="matches"
-      matchweeks={matchweeks}
+      calendarWeeks={calendarWeeks}
       activeMw={activeMw}
       activeStatus={activeStatus}
     />

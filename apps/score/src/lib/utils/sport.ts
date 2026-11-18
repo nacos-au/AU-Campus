@@ -41,3 +41,10 @@ export const SPORT_LABELS: Record<SportId, string> = {
   track: "Track & Field",
   volleyball: "Volleyball",
 };
+
+/** Public hub sports with real competitions/clubs. Flip when a sport goes live. */
+export const ONBOARDED_PUBLIC_SPORTS: readonly SportId[] = ["football"];
+
+export function isPublicSportOnboarded(sport: SportId): boolean {
+  return ONBOARDED_PUBLIC_SPORTS.includes(sport);
+}

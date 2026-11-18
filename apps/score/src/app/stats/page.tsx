@@ -4,6 +4,7 @@ import { StatsAwardsSection } from "@/components/stats/stats-awards-section";
 import { BrandedSection } from "@/components/layout/branded-section";
 import { PageContent } from "@/components/layout/page-content";
 import { SectionTitle } from "@/components/layout/section-title";
+import { SportComingSoon } from "@/components/layout/sport-coming-soon";
 import { StatsFilters } from "@/components/layout/filters-bar";
 import { tournamentOmitsStats } from "@/lib/competition/stats-availability";
 import { getAwardsForSport } from "@/lib/data/demo-awards";
@@ -12,7 +13,12 @@ import { formatStatValue } from "@/lib/data/get-by-sport";
 import { fetchStatCards } from "@/lib/data/stat-leaders";
 import { fetchSeasonAwards, fetchTournamentForSport } from "@/lib/data/repository";
 import { hasSupabaseConfig } from "@/lib/demo-mode";
-import { parseSportParam, sportToDbId, SPORT_LABELS } from "@/lib/utils/sport";
+import {
+  isPublicSportOnboarded,
+  parseSportParam,
+  sportToDbId,
+  SPORT_LABELS,
+} from "@/lib/utils/sport";
 import { cn } from "@/lib/utils/cn";
 
 export const metadata = { title: "Stats Centre" };
@@ -32,6 +38,16 @@ export default async function StatsPage({
 }) {
   const { sport, competition, view } = await searchParams;
   const activeSport = parseSportParam(sport);
+  if (!isPublicSportOnboarded(activeSport)) {
+    return (
+      <>
+        <BrandedSection title="Stats Centre" activeSport={activeSport} />
+        <PageContent>
+          <SportComingSoon sport={activeSport} />
+        </PageContent>
+      </>
+    );
+  }
   const sportDbId = sportToDbId(activeSport);
   const mode = activeSport === "basketball" && view === "advanced" ? "advanced" : "default";
   const live = hasSupabaseConfig();

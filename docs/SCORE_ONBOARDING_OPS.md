@@ -71,6 +71,14 @@ Target only this messy preseason (duplicate Nursing / Nursing FC, wrong dates) �
 - Hide Stats for a score-only event with tournament `config.omit_stats: true` (or `stats_available: false`). Preseason seed sets this. Custom comps can tick **Omit player stats** when creating.
 - Empty boards mean no scorers logged yet — use **Reconcile** unless the competition omits stats.
 
+## Match Notepad (record keepers)
+
+1. Apply once: [`supabase/score_match_stat_logs_APPLY_ALL.sql`](../supabase/score_match_stat_logs_APPLY_ALL.sql).
+2. **Admin → Matches → Match Notepad** (keepers included): pick competition → **New match log**.
+3. Capture on the pitch (mobile): final score, starting GKs, goals (type + assist/Solo + minute), bookings + minutes. Tick **Nil** when a section has nothing.
+4. Logs stay separate from public Stats — compare against digital reconcile later for accuracy.
+5. Non-football sports are **Coming soon** on public pages; Notepad still works for all sports when you need it.
+
 ## Players
 
 - **Edit** names/matric anytime (history stays linked by player id).

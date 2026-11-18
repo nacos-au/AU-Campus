@@ -273,6 +273,8 @@ async function loadLiveLeaders(opts: {
     string,
     { player: Player; teamName: string; teamCode: string; value: number }
   >();
+  /** At most one CS credit per player per match (stints can otherwise double-count). */
+  const csCredited = new Set<string>();
 
   const eventsByMatch = new Map<string, EventRow[]>();
   for (const e of eventRows) {
@@ -405,6 +407,9 @@ async function loadLiveLeaders(opts: {
     const meta = teamMeta.get(row.team_id) ?? { name: "Unknown", code: "???" };
     for (const r of results) {
       if (!r.clean_sheet) continue;
+      const creditKey = `${r.player_id}:${row.match_id}`;
+      if (csCredited.has(creditKey)) continue;
+      csCredited.add(creditKey);
       const player = gkById.get(r.player_id) ?? stubPlayer(r.player_id, "GK");
       bump(csMap, r.player_id, player, meta.name, meta.code);
       gkTeamMeta.set(r.player_id, { teamName: meta.name, teamCode: meta.code });

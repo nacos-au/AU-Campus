@@ -1,14 +1,20 @@
 import { BrandedSection } from "@/components/layout/branded-section";
 import { PageContent } from "@/components/layout/page-content";
 import { PlayerAvatar } from "@/components/ui/team-crest";
-import { DEMO_PLAYERS, DEMO_TEAMS } from "@/lib/data/demo";
+import { DEMO_PLAYERS } from "@/lib/data/demo";
 import { getSportConfig } from "@/lib/data/get-by-sport";
-import { parseSportParam, sportToDbId } from "@/lib/utils/sport";
+import { fetchPlayerById, fetchPlayerClubForSport } from "@/lib/data/roster";
+import { hasSupabaseConfig } from "@/lib/demo-mode";
+import { parseSportParam } from "@/lib/utils/sport";
 import { notFound } from "next/navigation";
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const player = DEMO_PLAYERS.find((p) => p.id === id);
+  const player = hasSupabaseConfig()
+    ? await fetchPlayerById(id)
+    : DEMO_PLAYERS.find((p) => p.id === id) ?? null;
   return { title: player ? `${player.first_name} ${player.last_name}` : "Player" };
 }
 
@@ -23,12 +29,14 @@ export default async function PlayerPage({
   const { sport } = await searchParams;
   const activeSport = parseSportParam(sport);
   const config = getSportConfig(activeSport);
-  const player = DEMO_PLAYERS.find((p) => p.id === id);
+
+  const player = hasSupabaseConfig()
+    ? await fetchPlayerById(id)
+    : DEMO_PLAYERS.find((p) => p.id === id) ?? (await fetchPlayerById(id));
+
   if (!player) notFound();
 
-  const team = DEMO_TEAMS.find(
-    (t) => t.department_id === player.department_id && t.sport_id === sportToDbId(activeSport)
-  );
+  const club = await fetchPlayerClubForSport(player.id, activeSport);
 
   const stats = config.playerStats.map((s) => {
     const raw = s.value(player.position ?? "");
@@ -55,7 +63,9 @@ export default async function PlayerPage({
               size="md"
             />
             <p className="text-sm opacity-70">
-              {player.position} · {team?.name ?? config.label} · {player.matric_number}
+              {[player.position, club?.team_name ?? config.label, player.matric_number]
+                .filter(Boolean)
+                .join(" · ")}
             </p>
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

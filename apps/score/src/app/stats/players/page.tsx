@@ -2,13 +2,19 @@ import { PlayerStatRow } from "@/components/stats/stat-leader-card";
 import { BrandedSection } from "@/components/layout/branded-section";
 import { PlayerStatsFilters } from "@/components/layout/filters-bar";
 import { PageContent } from "@/components/layout/page-content";
+import { SportComingSoon } from "@/components/layout/sport-coming-soon";
 import { tournamentOmitsStats } from "@/lib/competition/stats-availability";
 import { getTournamentForSport } from "@/lib/data/demo-competition";
 import { getStatLabelsBySport, formatStatValue } from "@/lib/data/get-by-sport";
 import { fetchStatLeaders } from "@/lib/data/stat-leaders";
 import { fetchTournamentForSport } from "@/lib/data/repository";
 import { hasSupabaseConfig } from "@/lib/demo-mode";
-import { parseSportParam, sportToDbId, SPORT_LABELS } from "@/lib/utils/sport";
+import {
+  isPublicSportOnboarded,
+  parseSportParam,
+  sportToDbId,
+  SPORT_LABELS,
+} from "@/lib/utils/sport";
 
 export const metadata = { title: "Player Stats" };
 export const dynamic = "force-dynamic";
@@ -20,6 +26,19 @@ export default async function PlayerStatsPage({
 }) {
   const { sport, competition } = await searchParams;
   const activeSport = parseSportParam(sport);
+  if (!isPublicSportOnboarded(activeSport)) {
+    return (
+      <>
+        <BrandedSection
+          title={`${SPORT_LABELS[activeSport]} Player Stats`}
+          activeSport={activeSport}
+        />
+        <PageContent>
+          <SportComingSoon sport={activeSport} />
+        </PageContent>
+      </>
+    );
+  }
   const sportDbId = sportToDbId(activeSport);
   const live = hasSupabaseConfig();
 

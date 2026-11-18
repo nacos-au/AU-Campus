@@ -4,6 +4,7 @@ import { GroupTables } from "@/components/competition/competition-views";
 import { TableFilters } from "@/components/layout/filters-bar";
 import { BrandedSection } from "@/components/layout/branded-section";
 import { PageContent } from "@/components/layout/page-content";
+import { SportComingSoon } from "@/components/layout/sport-coming-soon";
 import { getStandingsBySport } from "@/lib/data/get-by-sport";
 import { sportSupportsNextMatch } from "@/lib/standings/next-match";
 import {
@@ -12,7 +13,12 @@ import {
 } from "@/lib/data/demo-competition";
 import { getScoreDemoMode } from "@/lib/data/mode";
 import { fetchGroupStandings, fetchLeagueStandings, fetchTournamentForSport } from "@/lib/data/repository";
-import { parseSportParam, sportToDbId, SPORT_LABELS } from "@/lib/utils/sport";
+import {
+  isPublicSportOnboarded,
+  parseSportParam,
+  sportToDbId,
+  SPORT_LABELS,
+} from "@/lib/utils/sport";
 
 export const metadata = { title: "Table" };
 export const dynamic = "force-dynamic";
@@ -24,6 +30,16 @@ export default async function StandingsPage({
 }) {
   const { sport, competition } = await searchParams;
   const activeSport = parseSportParam(sport);
+  if (!isPublicSportOnboarded(activeSport)) {
+    return (
+      <>
+        <BrandedSection title="Table" activeSport={activeSport} />
+        <PageContent>
+          <SportComingSoon sport={activeSport} />
+        </PageContent>
+      </>
+    );
+  }
   const sportDbId = sportToDbId(activeSport);
   const demo = await getScoreDemoMode();
   const tournament = demo

@@ -313,6 +313,110 @@ export async function fetchPlayersForSport(
     .sort((a, b) => a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name));
 }
 
+/** Public player profile — live row or null. */
+export async function fetchPlayerById(playerId: string): Promise<Player | null> {
+  if (!playerId) return null;
+  if (await inDemo()) {
+    const { DEMO_PLAYERS } = await import("@/lib/data/demo");
+    return DEMO_PLAYERS.find((p) => p.id === playerId) ?? null;
+  }
+
+  const supabase = await createClient();
+  const { data } = (await supabase
+    .from("players")
+    .select("*")
+    .eq("id", playerId)
+    .maybeSingle()) as { data: Player | null };
+  return data;
+}
+
+/** Club + department short code for profile pages. */
+export async function fetchTeamById(
+  teamId: string
+): Promise<(Team & { short_code?: string | null }) | null> {
+  if (!teamId) return null;
+  if (await inDemo()) {
+    const { DEMO_TEAMS, DEMO_DEPARTMENTS } = await import("@/lib/data/demo");
+    const team = DEMO_TEAMS.find((t) => t.id === teamId);
+    if (!team) return null;
+    const dept = DEMO_DEPARTMENTS.find((d) => d.id === team.department_id);
+    return { ...team, short_code: dept?.short_code ?? null };
+  }
+
+  const supabase = await createClient();
+  const { data } = (await supabase
+    .from("teams")
+    .select("*, department:departments(short_code)")
+    .eq("id", teamId)
+    .is("deleted_at", null)
+    .maybeSingle()) as {
+    data:
+      | (Team & {
+          department: { short_code: string | null } | { short_code: string | null }[] | null;
+        })
+      | null;
+  };
+  if (!data) return null;
+  const dept = Array.isArray(data.department) ? data.department[0] : data.department;
+  const { department: _d, ...rest } = data;
+  return { ...rest, short_code: dept?.short_code ?? null };
+}
+
+/** Resolve a player's active club for a sport (registry). */
+export async function fetchPlayerClubForSport(
+  playerId: string,
+  sport: SportId
+): Promise<{ team_id: string; team_name: string; short_code: string | null } | null> {
+  if (await inDemo()) {
+    const { DEMO_PLAYERS, DEMO_TEAMS, DEMO_DEPARTMENTS } = await import("@/lib/data/demo");
+    const player = DEMO_PLAYERS.find((p) => p.id === playerId);
+    if (!player) return null;
+    const team = DEMO_TEAMS.find(
+      (t) => t.department_id === player.department_id && t.sport_id === sportToDbId(sport)
+    );
+    if (!team) return null;
+    const dept = DEMO_DEPARTMENTS.find((d) => d.id === team.department_id);
+    return { team_id: team.id, team_name: team.name, short_code: dept?.short_code ?? null };
+  }
+
+  const supabase = await createClient();
+  const sportUuid = await resolveSportUuid(supabase, sportToDbId(sport));
+  if (typeof sportUuid !== "string") return null;
+
+  const { data } = (await supabase
+    .from("player_sport_registry")
+    .select("team_id, team:teams(id, name, department:departments(short_code))")
+    .eq("player_id", playerId)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle()) as {
+    data: {
+      team_id: string;
+      team:
+        | {
+            id: string;
+            name: string;
+            department: { short_code: string | null } | { short_code: string | null }[] | null;
+          }
+        | {
+            id: string;
+            name: string;
+            department: { short_code: string | null } | { short_code: string | null }[] | null;
+          }[]
+        | null;
+    } | null;
+  };
+  if (!data) return null;
+  const team = Array.isArray(data.team) ? data.team[0] : data.team;
+  if (!team) return null;
+  const dept = Array.isArray(team.department) ? team.department[0] : team.department;
+  return {
+    team_id: data.team_id,
+    team_name: team.name,
+    short_code: dept?.short_code ?? null,
+  };
+}
+
 export async function updateTeamLogo(
   teamId: string,
   logoUrl: string

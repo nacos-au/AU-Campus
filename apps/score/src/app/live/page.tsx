@@ -10,7 +10,8 @@ import { fetchSportNameMap, sportRefToSportId } from "@/lib/data/sport-ids";
 import { getScoreDemoMode } from "@/lib/data/mode";
 import { hasSupabaseConfig } from "@/lib/demo-mode";
 import { createClient } from "@/lib/supabase/server";
-import { parseSportParam, sportToDbId } from "@/lib/utils/sport";
+import { SportComingSoon } from "@/components/layout/sport-coming-soon";
+import { isPublicSportOnboarded, parseSportParam, sportToDbId } from "@/lib/utils/sport";
 import { getSportConfig } from "@/lib/utils/sport-config";
 
 export const metadata = { title: "Live · AU Score" };
@@ -24,6 +25,16 @@ export default async function LiveEventsPage({
 }) {
   const { sport } = await searchParams;
   const activeSport = parseSportParam(sport);
+  if (!isPublicSportOnboarded(activeSport)) {
+    return (
+      <>
+        <BrandedSection title="Live · AU Score" activeSport={activeSport} />
+        <PageContent>
+          <SportComingSoon sport={activeSport} />
+        </PageContent>
+      </>
+    );
+  }
   const demo = !hasSupabaseConfig() || (await getScoreDemoMode());
   const sportNames =
     demo ? new Map<string, string>() : await fetchSportNameMap(await createClient());

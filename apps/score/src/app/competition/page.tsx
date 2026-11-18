@@ -9,6 +9,7 @@ import {
 import { WorldCupBracket } from "@/components/competition/world-cup-bracket";
 import { TitleHolderBanner } from "@/components/competition/title-holder-banner";
 import { CompetitionPageFilters } from "@/components/layout/filters-bar";
+import { SportComingSoon } from "@/components/layout/sport-coming-soon";
 import { StandingsTable } from "@/components/standings/standings-table";
 import { ShareControls } from "@/components/share/share-controls";
 import {
@@ -28,7 +29,12 @@ import {
   fetchMeetEvents,
   fetchTournamentForSport,
 } from "@/lib/data/repository";
-import { parseSportParam, sportToDbId, SPORT_LABELS } from "@/lib/utils/sport";
+import {
+  isPublicSportOnboarded,
+  parseSportParam,
+  sportToDbId,
+  SPORT_LABELS,
+} from "@/lib/utils/sport";
 import { ChevronDown } from "lucide-react";
 import type { Tournament } from "@/lib/types/database";
 import { formatDescription, formatLabel } from "@/lib/competition/format-labels";
@@ -146,6 +152,16 @@ export default async function CompetitionPage({
 }) {
   const { sport, competition } = await searchParams;
   const activeSport = parseSportParam(sport);
+  if (!isPublicSportOnboarded(activeSport)) {
+    return (
+      <>
+        <BrandedSection title="Competition" activeSport={activeSport} />
+        <PageContent>
+          <SportComingSoon sport={activeSport} />
+        </PageContent>
+      </>
+    );
+  }
   const sportDbId = sportToDbId(activeSport);
   const demo = await getScoreDemoMode();
   const shareQs = new URLSearchParams({ sport: activeSport });

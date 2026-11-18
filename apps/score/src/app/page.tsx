@@ -3,19 +3,20 @@ import { MatchDateGroup, MatchweekNav } from "@/components/match/match-row";
 import { BrandedSection } from "@/components/layout/branded-section";
 import { MatchesFilters } from "@/components/layout/filters-bar";
 import { PageContent } from "@/components/layout/page-content";
+import { SportComingSoon } from "@/components/layout/sport-coming-soon";
 import { getTournamentForSport } from "@/lib/data/demo-competition";
 import { getMatchesBySport, getSportConfig } from "@/lib/data/get-by-sport";
 import { fetchPublicMatches, fetchTournamentForSport } from "@/lib/data/repository";
 import { getScoreDemoMode } from "@/lib/data/mode";
 import {
-  collectMatchweeks,
-  filterByMatchweek,
+  collectCalendarWeeks,
+  filterByCalendarWeek,
   filterByStatusBucket,
   matchweekNavMeta,
   parseMwParam,
   parseStatusParam,
 } from "@/lib/match/matchweek";
-import { parseSportParam, sportToDbId } from "@/lib/utils/sport";
+import { isPublicSportOnboarded, parseSportParam, sportToDbId } from "@/lib/utils/sport";
 import type { Match } from "@/lib/types/database";
 import Link from "next/link";
 
@@ -40,7 +41,7 @@ function groupMatchesByDate(matches: Match[]): Map<string, Match[]> {
 function buildMatchesHref(opts: {
   sport: string;
   competition?: string;
-  mw?: number | "all";
+  mw?: string | "all";
   status?: string;
 }): string {
   const params = new URLSearchParams();
@@ -61,6 +62,18 @@ export default async function MatchesPage({
   const { sport, competition, mw: mwRaw, status: statusRaw } = await searchParams;
   const activeSport = parseSportParam(sport);
   const config = getSportConfig(activeSport);
+
+  if (!isPublicSportOnboarded(activeSport)) {
+    return (
+      <>
+        <BrandedSection title={config.matchesTitle} activeSport={activeSport} />
+        <PageContent>
+          <SportComingSoon sport={activeSport} />
+        </PageContent>
+      </>
+    );
+  }
+
   const sportDbId = sportToDbId(activeSport);
   const demo = await getScoreDemoMode();
   const tournament = demo
@@ -85,24 +98,32 @@ export default async function MatchesPage({
           return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime();
         });
 
-  const weeks = collectMatchweeks(allMatches);
+  const weeks = collectCalendarWeeks(allMatches);
   const selectedMw = parseMwParam(mwRaw, weeks);
   const selectedStatus = parseStatusParam(statusRaw);
 
-  const byWeek = filterByMatchweek(allMatches, selectedMw);
+  const byWeek = filterByCalendarWeek(allMatches, selectedMw);
   const matches = filterByStatusBucket(byWeek, selectedStatus);
   const navMeta = matchweekNavMeta(
-    selectedMw === "all" ? allMatches : filterByMatchweek(allMatches, selectedMw),
+    selectedMw === "all" ? allMatches : filterByCalendarWeek(allMatches, selectedMw),
     selectedMw
   );
 
-  const weekIndex = typeof selectedMw === "number" ? weeks.indexOf(selectedMw) : -1;
-  const prevMw = weekIndex > 0 ? weeks[weekIndex - 1] : selectedMw === "all" && weeks.length ? weeks[weeks.length - 1] : null;
+  const weekIndex =
+    typeof selectedMw === "string" && selectedMw !== "all"
+      ? weeks.findIndex((w) => w.key === selectedMw)
+      : -1;
+  const prevMw =
+    weekIndex > 0
+      ? weeks[weekIndex - 1].key
+      : selectedMw === "all" && weeks.length
+        ? weeks[weeks.length - 1].key
+        : null;
   const nextMw =
     weekIndex >= 0 && weekIndex < weeks.length - 1
-      ? weeks[weekIndex + 1]
+      ? weeks[weekIndex + 1].key
       : selectedMw === "all" && weeks.length
-        ? weeks[0]
+        ? weeks[0].key
         : null;
 
   const liveCount = allMatches.filter((m) => m.status === "live" || m.status === "paused").length;
@@ -115,7 +136,7 @@ export default async function MatchesPage({
         <MatchesFilters
           sport={activeSport}
           competitionId={tournament?.id}
-          matchweeks={weeks}
+          calendarWeeks={weeks}
           activeMw={selectedMw}
           activeStatus={selectedStatus}
         />
@@ -165,7 +186,7 @@ export default async function MatchesPage({
               {demo
                 ? `No ${config.label.toLowerCase()} fixtures scheduled yet.`
                 : selectedMw !== "all"
-                  ? `No fixtures in Matchweek ${selectedMw} for this filter.`
+                  ? `No fixtures in this week for the current filter.`
                   : "No fixtures yet. Publish a competition or open Live once a keeper starts a match."}
             </div>
           ) : (

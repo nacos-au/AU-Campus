@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronDown, RotateCcw } from "lucide-react";
 import type { CompetitionOption } from "@/lib/competition/competition-filter-utils";
-import { competitionInitials } from "@/lib/match/matchweek";
+import type { CalendarWeek } from "@/lib/match/matchweek";
 import { getSportConfig } from "@/lib/utils/sport-config";
 import type { SportId } from "@/lib/utils/sport";
 import { cn } from "@/lib/utils/cn";
@@ -51,7 +51,7 @@ export function CompetitionFilters({
   competitions,
   activeCompetitionId,
   variant = "matches",
-  matchweeks = [],
+  calendarWeeks = [],
   activeMw = "all",
   activeStatus = "all",
 }: {
@@ -60,8 +60,8 @@ export function CompetitionFilters({
   competitions: CompetitionOption[];
   activeCompetitionId?: string;
   variant?: FilterVariant;
-  matchweeks?: number[];
-  activeMw?: number | "all";
+  calendarWeeks?: CalendarWeek[];
+  activeMw?: string | "all";
   activeStatus?: "all" | "live" | "upcoming" | "finished";
 }) {
   const router = useRouter();
@@ -70,7 +70,6 @@ export function CompetitionFilters({
 
   const activeId = activeCompetitionId ?? competitions[0]?.id ?? "";
   const active = competitions.find((c) => c.id === activeId) ?? competitions[0];
-  const badge = competitionInitials(active?.name ?? config.label);
 
   function navigate(updates: Record<string, string | null>) {
     const params = new URLSearchParams(searchParams.toString());
@@ -96,8 +95,11 @@ export function CompetitionFilters({
   ];
 
   const matchweekOptions = [
-    { value: "all", label: "All Matchweeks" },
-    ...matchweeks.map((w) => ({ value: String(w), label: `Matchweek ${w}` })),
+    { value: "all", label: "All weeks" },
+    ...calendarWeeks.map((w) => ({
+      value: w.key,
+      label: `Matchweek · ${w.label}`,
+    })),
   ];
 
   const statusOptions = [
@@ -110,14 +112,6 @@ export function CompetitionFilters({
   return (
     <div className="filters-bar border-b border-rule bg-wrapper">
       <div className="mx-auto flex max-w-[1200px] items-center gap-2 overflow-x-auto px-4 py-3 sm:flex-wrap sm:px-6">
-        <div
-          className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-lg border border-[#d0d0d0] bg-accent font-display text-[11px] font-extrabold tracking-tight text-white"
-          title={active?.name ?? "Competition"}
-          aria-label={active?.name ? `Competition: ${active.name}` : "Competition"}
-        >
-          {badge}
-        </div>
-
         {competitions.length > 0 && (
           <FilterSelect
             aria-label="Competition"
@@ -140,7 +134,7 @@ export function CompetitionFilters({
             <FilterSelect
               aria-label="Matchweek"
               value={activeMw === "all" ? "all" : String(activeMw)}
-              onChange={(v) => navigate({ mw: v === "all" ? null : v })}
+              onChange={(v) => navigate({ mw: v === "all" ? "all" : v })}
               options={matchweekOptions}
             />
             <div className="flex h-[42px] shrink-0 items-center gap-1 rounded-lg border border-[#d0d0d0] bg-white p-1">
@@ -153,7 +147,9 @@ export function CompetitionFilters({
                     onClick={() => navigate({ status: o.value === "all" ? null : o.value })}
                     className={cn(
                       "rounded-md px-2.5 py-1.5 font-display text-xs font-bold transition",
-                      on ? "bg-accent text-white" : "text-accent/60 hover:text-accent"
+                      on
+                        ? "bg-accent text-white"
+                        : "text-accent/60 hover:bg-accent hover:text-white"
                     )}
                   >
                     {o.label}

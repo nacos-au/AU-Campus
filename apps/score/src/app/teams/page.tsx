@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BrandedSection } from "@/components/layout/branded-section";
 import { PageContent } from "@/components/layout/page-content";
 import { ClubsFilters } from "@/components/layout/filters-bar";
+import { SportComingSoon } from "@/components/layout/sport-coming-soon";
 import { PlayerAvatar, TeamCrest } from "@/components/ui/team-crest";
 import { DEMO_DEPARTMENTS, DEMO_PLAYERS, DEMO_TEAMS } from "@/lib/data/demo";
 import {
@@ -11,7 +12,12 @@ import {
 import { getSportConfig } from "@/lib/data/get-by-sport";
 import { getScoreDemoMode } from "@/lib/data/mode";
 import { fetchTournamentForSport } from "@/lib/data/repository";
-import { parseSportParam, sportToDbId, SPORT_LABELS } from "@/lib/utils/sport";
+import {
+  isPublicSportOnboarded,
+  parseSportParam,
+  sportToDbId,
+  SPORT_LABELS,
+} from "@/lib/utils/sport";
 
 export const metadata = { title: "Clubs" };
 export const dynamic = "force-dynamic";
@@ -23,8 +29,21 @@ export default async function TeamsPage({
 }) {
   const { sport, competition } = await searchParams;
   const activeSport = parseSportParam(sport);
-  const sportDbId = sportToDbId(activeSport);
   const config = getSportConfig(activeSport);
+  if (!isPublicSportOnboarded(activeSport)) {
+    return (
+      <>
+        <BrandedSection
+          title={`${SPORT_LABELS[activeSport]} ${config.clubsLabel}`}
+          activeSport={activeSport}
+        />
+        <PageContent>
+          <SportComingSoon sport={activeSport} />
+        </PageContent>
+      </>
+    );
+  }
+  const sportDbId = sportToDbId(activeSport);
   const demo = await getScoreDemoMode();
   const tournament = demo
     ? getTournamentForSport(sportDbId, competition)
