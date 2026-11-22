@@ -142,25 +142,46 @@ export function parseStatusParam(raw: string | undefined | null): MatchListStatu
   return "all";
 }
 
+/**
+ * Nav copy like the PL strip: "Matchweek 11" + "Sat 21 Nov - Mon 23 Nov"
+ * from fixtures in the selected calendar week. `weekNumber` is 1-based index
+ * in the competition’s week list.
+ */
 export function matchweekNavMeta(
   matches: Match[],
-  mw: string | "all"
+  mw: string | "all",
+  weekNumber?: number | null
 ): { label: string; range: string } {
-  if (mw === "all") {
-    if (matches.length === 0) return { label: "All weeks", range: "No fixtures" };
-    const times = matches
-      .map((m) => new Date(m.scheduled_at).getTime())
-      .filter((t) => !Number.isNaN(t))
-      .sort((a, b) => a - b);
-    if (!times.length) return { label: "All weeks", range: "" };
-    const from = format(new Date(times[0]), "EEE d MMM");
-    const to = format(new Date(times[times.length - 1]), "EEE d MMM");
-    return { label: "All weeks", range: from === to ? from : `${from} – ${to}` };
+  const times = matches
+    .map((m) => new Date(m.scheduled_at).getTime())
+    .filter((t) => !Number.isNaN(t))
+    .sort((a, b) => a - b);
+
+  function rangeFromTimes(ts: number[]): string {
+    if (!ts.length) return "";
+    const from = format(new Date(ts[0]), "EEE d MMM");
+    const to = format(new Date(ts[ts.length - 1]), "EEE d MMM");
+    return from === to ? from : `${from} - ${to}`;
   }
 
+  if (mw === "all") {
+    if (!times.length) return { label: "All weeks", range: "No fixtures" };
+    return { label: "All weeks", range: rangeFromTimes(times) };
+  }
+
+  const label =
+    weekNumber != null && weekNumber > 0 ? `Matchweek ${weekNumber}` : "Matchweek";
+
+  if (times.length) {
+    return { label, range: rangeFromTimes(times) };
+  }
+
+  // Empty week — fall back to Sun–Sat calendar bounds
   const week = calendarWeekFromKey(mw);
-  if (!week) return { label: "Matchweek", range: "" };
-  return { label: `Matchweek · ${week.label}`, range: "Sun – Sat" };
+  if (!week) return { label, range: "" };
+  const from = format(new Date(week.startMs + WAT_OFFSET_MS), "EEE d MMM");
+  const to = format(new Date(week.endMs), "EEE d MMM");
+  return { label, range: from === to ? from : `${from} - ${to}` };
 }
 
 export function competitionInitials(name: string): string {

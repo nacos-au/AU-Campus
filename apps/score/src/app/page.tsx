@@ -104,15 +104,16 @@ export default async function MatchesPage({
 
   const byWeek = filterByCalendarWeek(allMatches, selectedMw);
   const matches = filterByStatusBucket(byWeek, selectedStatus);
-  const navMeta = matchweekNavMeta(
-    selectedMw === "all" ? allMatches : filterByCalendarWeek(allMatches, selectedMw),
-    selectedMw
-  );
-
   const weekIndex =
     typeof selectedMw === "string" && selectedMw !== "all"
       ? weeks.findIndex((w) => w.key === selectedMw)
       : -1;
+  const weekNumber = weekIndex >= 0 ? weekIndex + 1 : null;
+  const navMeta = matchweekNavMeta(
+    selectedMw === "all" ? allMatches : filterByCalendarWeek(allMatches, selectedMw),
+    selectedMw,
+    weekNumber
+  );
   const prevMw =
     weekIndex > 0
       ? weeks[weekIndex - 1].key

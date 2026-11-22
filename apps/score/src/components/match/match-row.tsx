@@ -151,32 +151,35 @@ export function MatchweekNav({
   prevHref?: string | null;
   nextHref?: string | null;
 }) {
-  const prevClass =
-    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-rule bg-white hover:bg-wrapper disabled:opacity-30";
-  const nextClass = prevClass;
+  const btnClass =
+    "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent/[0.08] text-accent transition-colors hover:bg-accent/[0.14]";
 
   return (
-    <div className="flex items-center justify-center gap-3 border-b border-rule bg-wrapper px-4 py-4 sm:gap-4 sm:py-5">
+    <div className="flex items-center justify-center gap-5 bg-wrapper px-4 py-6 sm:gap-8">
       {prevHref ? (
-        <Link href={prevHref} className={prevClass} aria-label="Previous matchweek">
-          <ChevronLeft className="h-5 w-5" />
+        <Link href={prevHref} className={btnClass} aria-label="Previous matchweek">
+          <ChevronLeft className="h-5 w-5" strokeWidth={2} />
         </Link>
       ) : (
-        <span className={cn(prevClass, "pointer-events-none opacity-30")} aria-hidden>
-          <ChevronLeft className="h-5 w-5" />
+        <span className={cn(btnClass, "pointer-events-none opacity-30")} aria-hidden>
+          <ChevronLeft className="h-5 w-5" strokeWidth={2} />
         </span>
       )}
       <div className="min-w-0 text-center">
-        <p className="font-display text-sm font-extrabold">{label}</p>
-        <p className="truncate text-xs opacity-60">{range}</p>
+        <p className="font-display text-base font-extrabold tracking-tight text-accent sm:text-lg">
+          {label}
+        </p>
+        {range ? (
+          <p className="mt-0.5 truncate font-sans text-sm font-medium text-accent/55">{range}</p>
+        ) : null}
       </div>
       {nextHref ? (
-        <Link href={nextHref} className={nextClass} aria-label="Next matchweek">
-          <ChevronRight className="h-5 w-5" />
+        <Link href={nextHref} className={btnClass} aria-label="Next matchweek">
+          <ChevronRight className="h-5 w-5" strokeWidth={2} />
         </Link>
       ) : (
-        <span className={cn(nextClass, "pointer-events-none opacity-30")} aria-hidden>
-          <ChevronRight className="h-5 w-5" />
+        <span className={cn(btnClass, "pointer-events-none opacity-30")} aria-hidden>
+          <ChevronRight className="h-5 w-5" strokeWidth={2} />
         </span>
       )}
     </div>
