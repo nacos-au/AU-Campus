@@ -75,10 +75,24 @@ export default async function AuthorPage({
   });
 
   const seriesMap = new Map<string, Pick<ArticleSeries, "id" | "slug" | "title">>();
-  for (const row of seriesRows ?? []) {
-    const nested = (row as { article_series?: Pick<ArticleSeries, "id" | "slug" | "title"> | null })
-      .article_series;
-    if (nested?.id) seriesMap.set(nested.id, nested);
+  const addSeries = (
+    raw: Pick<ArticleSeries, "id" | "slug" | "title"> | Pick<ArticleSeries, "id" | "slug" | "title">[] | null | undefined
+  ) => {
+    const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+    for (const s of list) {
+      if (s?.id) seriesMap.set(s.id, s);
+    }
+  };
+  for (const row of (seriesRows ?? []) as unknown as Array<{
+    article_series?:
+      | Pick<ArticleSeries, "id" | "slug" | "title">
+      | Pick<ArticleSeries, "id" | "slug" | "title">[]
+      | null;
+  }>) {
+    addSeries(row.article_series);
+  }
+  for (const a of articles) {
+    addSeries(a.article_series);
   }
   const seriesList = [...seriesMap.values()].sort((a, b) =>
     a.title.localeCompare(b.title)
