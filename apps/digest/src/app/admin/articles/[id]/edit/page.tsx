@@ -56,6 +56,7 @@ export default async function EditArticlePage({
       revision={article.status === "published" ? (rev?.payload ?? null) : null}
       userId={profile.id}
       isStaff={isStaff}
+      isAdmin={hasRole(profile, "admin")}
       isSuperAdmin={!!profile.is_super_admin}
       locked={locked}
     />

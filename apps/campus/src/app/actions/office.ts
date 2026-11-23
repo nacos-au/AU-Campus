@@ -110,9 +110,15 @@ export async function listStaffRoster(): Promise<DirectoryUser[]> {
     .select("id, email, display_name, username, is_super_admin, verification_level, role, created_at")
     .eq("is_super_admin", true);
 
+  const { data: newsroom } = await supabase
+    .from("profiles")
+    .select("id, email, display_name, username, is_super_admin, verification_level, role, created_at")
+    .in("role", ["writer", "editor", "admin"]);
+
   const ids = new Set<string>([
     ...roleRows.map((r) => r.user_id),
     ...((supers ?? []) as Array<{ id: string }>).map((s) => s.id),
+    ...((newsroom ?? []) as Array<{ id: string }>).map((s) => s.id),
   ]);
   if (ids.size === 0) return [];
 
@@ -280,6 +286,32 @@ export async function setMemberVerification(input: {
       p_matric: input.matric ?? null,
     });
     if (error) return { error: error.message };
+    revalidatePath("/office");
+    return { ok: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Update failed." };
+  }
+}
+
+export async function setNewsroomRole(input: {
+  userId: string;
+  role: "reader" | "writer" | "editor" | "admin";
+}): Promise<OfficeActionState> {
+  const gate = await requireElevatedSuperAdmin();
+  if ("error" in gate) return { error: gate.error };
+  if (!input.userId) return { error: "Missing user." };
+  if (input.userId === gate.staff.userId) {
+    return { error: "You cannot change your own newsroom role here." };
+  }
+
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("profiles")
+      .update({ role: input.role })
+      .eq("id", input.userId);
+    if (error) return { error: error.message };
+
     revalidatePath("/office");
     return { ok: true };
   } catch (err) {

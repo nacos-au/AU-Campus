@@ -73,6 +73,7 @@ export function ArticleComposer({
   revision,
   userId,
   isStaff = false,
+  isAdmin = false,
   isSuperAdmin = false,
   locked = false,
 }: {
@@ -80,9 +81,11 @@ export function ArticleComposer({
   revision?: RevisionPayload | null;
   userId: string;
   isStaff?: boolean;
+  isAdmin?: boolean;
   isSuperAdmin?: boolean;
   locked?: boolean;
 }) {
+  const canManualAssign = isAdmin || isSuperAdmin;
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -103,7 +106,7 @@ export function ArticleComposer({
   const [language, setLanguage] = useState(initial?.language ?? "en");
   const [coverUrl, setCoverUrl] = useState(initial?.cover_url ?? "");
   const [overrideEditorId, setOverrideEditorId] = useState(
-    isSuperAdmin ? (article?.assigned_editor_id ?? "") : ""
+    canManualAssign ? (article?.assigned_editor_id ?? "") : ""
   );
   const [showSettings, setShowSettings] = useState(false);
   const [preview, setPreview] = useState(false);
@@ -338,7 +341,7 @@ export function ArticleComposer({
       const args: { p_article_id: string; p_editor?: string } = {
         p_article_id: id,
       };
-      if (isSuperAdmin && overrideEditorId) {
+      if (canManualAssign && overrideEditorId) {
         args.p_editor = overrideEditorId;
       }
       const { error } = await supabase.rpc("submit_article", args);
@@ -814,17 +817,25 @@ export function ArticleComposer({
                 </div>
               </div>
 
-              {!soleEditor && (
+              {soleEditor ? (
+                <p className="border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                  You are the only editor on the desk. Sending this piece will assign
+                  it to you for review. You can still publish or park directly below if
+                  you do not need a separate review pass.
+                </p>
+              ) : (
                 <p className="border border-rule bg-gray-50 px-3 py-2 text-sm text-ink-soft">
                   An editor is assigned automatically when you send — workload is
                   balanced across the desk
-                  {isSuperAdmin ? ". As super admin you can override below." : "."}
+                  {canManualAssign
+                    ? ". As admin you can override below."
+                    : "."}
                 </p>
               )}
 
-              {isSuperAdmin && !soleEditor && (
+              {canManualAssign && !soleEditor && (
                 <label className="block text-xs font-semibold uppercase tracking-wide text-ink-soft">
-                  Override editor (super admin)
+                  Override editor (admin)
                   <select
                     value={overrideEditorId}
                     onChange={(e) => setOverrideEditorId(e.target.value)}
@@ -849,12 +860,23 @@ export function ArticleComposer({
             )}
 
             <div className="mt-6 flex flex-col gap-2 sm:flex-row-reverse">
-              {soleEditor ? (
+              <button
+                onClick={() => send.mutate("submit")}
+                disabled={busy}
+                className="bg-accent px-5 py-3 text-xs font-semibold uppercase tracking-wider text-white hover:bg-accent-hover disabled:opacity-50"
+              >
+                {isLive
+                  ? "Submit edit for review"
+                  : soleEditor
+                    ? "Send to myself for review"
+                    : "Send to editor"}
+              </button>
+              {soleEditor && (
                 <>
                   <button
                     onClick={() => send.mutate("publish")}
-                    disabled={busy}
-                    className="bg-accent px-5 py-3 text-xs font-semibold uppercase tracking-wider text-white hover:bg-accent-hover disabled:opacity-50"
+                    disabled={busy || isLive}
+                    className="border border-ink px-5 py-3 text-xs font-semibold uppercase tracking-wider hover:bg-ink hover:text-paper disabled:opacity-50"
                   >
                     {isLive ? "Update live article" : "Publish now"}
                   </button>
@@ -868,14 +890,6 @@ export function ArticleComposer({
                     </button>
                   )}
                 </>
-              ) : (
-                <button
-                  onClick={() => send.mutate("submit")}
-                  disabled={busy}
-                  className="bg-accent px-5 py-3 text-xs font-semibold uppercase tracking-wider text-white hover:bg-accent-hover disabled:opacity-50"
-                >
-                  {isLive ? "Submit edit for review" : "Send to editor"}
-                </button>
               )}
               <button
                 onClick={() =>

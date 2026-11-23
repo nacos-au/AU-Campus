@@ -98,12 +98,28 @@ begin
   end if;
 
   if p_editor is not null then
-    if not private.is_super_admin(actor) then
-      raise exception 'Only a super admin can choose a specific editor';
+    if not (
+      private.is_super_admin(actor)
+      or exists (
+        select 1 from public.profiles p
+        where p.id = actor and p.role = 'admin'
+      )
+      or exists (
+        select 1 from public.app_roles ar
+        where ar.user_id = actor and ar.app = 'digest' and ar.role = 'admin'
+      )
+    ) then
+      raise exception 'Only an admin can choose a specific editor';
     end if;
     editor_id := p_editor;
   else
     editor_id := private.pick_least_busy_editor(actor);
+  end if;
+
+  if editor_id is null then
+    if private.is_sole_digest_editor(actor) then
+      editor_id := actor;
+    end if;
   end if;
 
   if editor_id is null then
@@ -153,21 +169,9 @@ begin
 end;
 $$;
 
+-- Drop the 1-arg overload if present — it collides with (uuid, uuid default null)
+-- when PostgREST sends only p_article_id.
+drop function if exists public.submit_article(uuid);
+
 revoke all on function public.submit_article(uuid, uuid) from public;
 grant execute on function public.submit_article(uuid, uuid) to authenticated;
-
--- Also allow calling with one argument (editor auto-picked)
--- PostgREST resolves by argument count; create a thin overload:
-create or replace function public.submit_article(p_article_id uuid)
-returns void
-language plpgsql
-security definer
-set search_path = ''
-as $$
-begin
-  perform public.submit_article(p_article_id, null);
-end;
-$$;
-
-revoke all on function public.submit_article(uuid) from public;
-grant execute on function public.submit_article(uuid) to authenticated;

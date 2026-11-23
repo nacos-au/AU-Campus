@@ -6,10 +6,13 @@ import {
   searchDirectory,
   setAppRole,
   setMemberVerification,
+  setNewsroomRole,
   setSuperAdminFlag,
 } from "@/app/actions/office";
 import type { DirectoryUser } from "@/lib/platform-roles";
 import type { AppId, AppRoleName } from "@/lib/platform-roles";
+
+type NewsroomRole = "reader" | "writer" | "editor" | "admin";
 
 function RoleChip({
   active,
@@ -44,8 +47,14 @@ function RoleChip({
       type="button"
       disabled={pending}
       onClick={onClick}
-      className={`rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide transition disabled:opacity-50 ${tones[tone]}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide transition disabled:opacity-50 ${tones[tone]}`}
     >
+      {pending && (
+        <span
+          className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-current border-r-transparent"
+          aria-hidden
+        />
+      )}
       {label}
     </button>
   );
@@ -59,8 +68,30 @@ function UserRow({
   selfId: string;
 }) {
   const router = useRouter();
-  const [pending, start] = useTransition();
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const [, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  function run(key: string, work: () => Promise<{ ok?: boolean; error?: string } | null>) {
+    start(async () => {
+      setPendingKey(key);
+      setError(null);
+      setSuccess(null);
+      try {
+        const res = await work();
+        if (res?.error) {
+          setError(res.error);
+        } else {
+          setSuccess("Saved");
+          router.refresh();
+          window.setTimeout(() => setSuccess(null), 2000);
+        }
+      } finally {
+        setPendingKey(null);
+      }
+    });
+  }
 
   function toggle(app: AppId, role: AppRoleName) {
     const current = user.apps[app];
@@ -71,40 +102,46 @@ function UserRow({
         : `Grant ${app} / ${role} to @${user.username || user.email}?`;
     if (!window.confirm(msg)) return;
 
-    start(async () => {
-      setError(null);
-      const res = await setAppRole({ userId: user.id, app, role: next });
-      if (res?.error) setError(res.error);
-      else router.refresh();
-    });
+    run(`${app}:${role}`, () => setAppRole({ userId: user.id, app, role: next }));
+  }
+
+  function setNewsroom(role: NewsroomRole) {
+    if (user.id === selfId) {
+      setError("You cannot change your own newsroom role here.");
+      return;
+    }
+    const next = user.role === role ? "reader" : role;
+    const msg =
+      next === "reader"
+        ? `Demote @${user.username || user.email} to reader?`
+        : `Set newsroom role to ${role} for @${user.username || user.email}?`;
+    if (!window.confirm(msg)) return;
+
+    run(`newsroom:${role}`, () =>
+      setNewsroomRole({ userId: user.id, role: next })
+    );
   }
 
   function verifyMember() {
     if (user.verification_level === "verified") {
       const ok = window.confirm(`Revoke verification for ${user.email || user.display_name}?`);
       if (!ok) return;
-      start(async () => {
-        setError(null);
-        const res = await setMemberVerification({ userId: user.id, verified: false });
-        if (res?.error) setError(res.error);
-        else router.refresh();
-      });
+      run("verify", () =>
+        setMemberVerification({ userId: user.id, verified: false })
+      );
       return;
     }
     const matric = window.prompt(
       "Member ID to link this account (checked in person). At least 3 characters."
     );
     if (!matric || matric.trim().length < 3) return;
-    start(async () => {
-      setError(null);
-      const res = await setMemberVerification({
+    run("verify", () =>
+      setMemberVerification({
         userId: user.id,
         verified: true,
         matric: matric.trim(),
-      });
-      if (res?.error) setError(res.error);
-      else router.refresh();
-    });
+      })
+    );
   }
 
   function toggleSuper() {
@@ -118,13 +155,10 @@ function UserRow({
       const ok = window.confirm(`Remove super admin from ${user.email}?`);
       if (!ok) return;
     }
-    start(async () => {
-      setError(null);
-      const res = await setSuperAdminFlag({ userId: user.id, enabled });
-      if (res?.error) setError(res.error);
-      else router.refresh();
-    });
+    run("super", () => setSuperAdminFlag({ userId: user.id, enabled }));
   }
+
+  const busy = pendingKey !== null;
 
   return (
     <div className="border-b border-rule px-4 py-3 last:border-b-0">
@@ -146,51 +180,88 @@ function UserRow({
             {user.role}
           </p>
         </div>
-        <div className="flex flex-wrap gap-1.5">
-          <RoleChip
-            active={user.apps.campus === "admin"}
-            label="Campus"
-            tone="ink"
-            pending={pending}
-            onClick={() => toggle("campus", "admin")}
-          />
-          <RoleChip
-            active={user.apps.digest === "admin"}
-            label="Digest"
-            tone="accent"
-            pending={pending}
-            onClick={() => toggle("digest", "admin")}
-          />
-          <RoleChip
-            active={user.apps.score === "admin"}
-            label="Score"
-            tone="green"
-            pending={pending}
-            onClick={() => toggle("score", "admin")}
-          />
-          <RoleChip
-            active={user.apps.score === "record_keeper"}
-            label="Keeper"
-            tone="green"
-            pending={pending}
-            onClick={() => toggle("score", "record_keeper")}
-          />
-          <RoleChip
-            active={user.verification_level === "verified"}
-            label={user.verification_level === "verified" ? "Verified" : "Verify"}
-            tone="ink"
-            pending={pending}
-            onClick={verifyMember}
-          />
-          <RoleChip
-            active={user.is_super_admin}
-            label="Super"
-            tone="warn"
-            pending={pending}
-            onClick={toggleSuper}
-          />
+        <div className="flex min-w-0 flex-col items-end gap-2">
+          <div className="flex flex-wrap justify-end gap-1.5">
+            <span className="self-center text-[10px] font-bold uppercase tracking-wide text-ink-soft">
+              Digest
+            </span>
+            <RoleChip
+              active={user.role === "writer"}
+              label="Writer"
+              tone="accent"
+              pending={pendingKey === "newsroom:writer"}
+              onClick={() => setNewsroom("writer")}
+            />
+            <RoleChip
+              active={user.role === "editor"}
+              label="Editor"
+              tone="accent"
+              pending={pendingKey === "newsroom:editor"}
+              onClick={() => setNewsroom("editor")}
+            />
+            <RoleChip
+              active={user.role === "admin"}
+              label="Admin"
+              tone="accent"
+              pending={pendingKey === "newsroom:admin"}
+              onClick={() => setNewsroom("admin")}
+            />
+          </div>
+          <div className="flex flex-wrap justify-end gap-1.5">
+            <span className="self-center text-[10px] font-bold uppercase tracking-wide text-ink-soft">
+              Apps
+            </span>
+            <RoleChip
+              active={user.apps.campus === "admin"}
+              label="Campus"
+              tone="ink"
+              pending={pendingKey === "campus:admin"}
+              onClick={() => toggle("campus", "admin")}
+            />
+            <RoleChip
+              active={user.apps.digest === "admin"}
+              label="Digest ops"
+              tone="accent"
+              pending={pendingKey === "digest:admin"}
+              onClick={() => toggle("digest", "admin")}
+            />
+            <RoleChip
+              active={user.apps.score === "admin"}
+              label="Score"
+              tone="green"
+              pending={pendingKey === "score:admin"}
+              onClick={() => toggle("score", "admin")}
+            />
+            <RoleChip
+              active={user.apps.score === "record_keeper"}
+              label="Keeper"
+              tone="green"
+              pending={pendingKey === "score:record_keeper"}
+              onClick={() => toggle("score", "record_keeper")}
+            />
+            <RoleChip
+              active={user.verification_level === "verified"}
+              label={user.verification_level === "verified" ? "Verified" : "Verify"}
+              tone="ink"
+              pending={pendingKey === "verify"}
+              onClick={verifyMember}
+            />
+            <RoleChip
+              active={user.is_super_admin}
+              label="Super"
+              tone="warn"
+              pending={pendingKey === "super"}
+              onClick={toggleSuper}
+            />
+          </div>
         </div>
       </div>
+      {busy && !error && !success && (
+        <p className="mt-2 text-xs font-semibold text-ink-soft">Saving role…</p>
+      )}
+      {success && (
+        <p className="mt-2 text-xs font-semibold text-green">Assigned successfully</p>
+      )}
       {error && <p className="mt-2 text-xs font-semibold text-accent">{error}</p>}
     </div>
   );
@@ -232,7 +303,9 @@ export function OfficeDirectory({
       <section className="overflow-hidden rounded-2xl border border-rule bg-white/90 shadow-sm">
         <div className="border-b border-rule px-4 py-3">
           <h2 className="font-display text-sm font-extrabold text-ink">Staff roster</h2>
-          <p className="text-xs text-ink-soft">Everyone with any app role or super admin.</p>
+          <p className="text-xs text-ink-soft">
+            Newsroom Writer / Editor / Admin, Score Admin / Keeper, and app ops.
+          </p>
         </div>
         {initialStaff.length === 0 ? (
           <p className="px-4 py-6 text-sm text-ink-soft">No staff roles yet — grant from search below.</p>
@@ -245,7 +318,8 @@ export function OfficeDirectory({
         <div className="border-b border-rule px-4 py-3">
           <h2 className="font-display text-sm font-extrabold text-ink">Find & grant</h2>
           <p className="text-xs text-ink-soft">
-            Search email, name, or @username — tap a chip to grant or revoke (confirm).
+            Search email, name, or @username — tap a chip to grant or revoke (confirm). Spinner
+            shows while saving.
           </p>
           <input
             value={q}

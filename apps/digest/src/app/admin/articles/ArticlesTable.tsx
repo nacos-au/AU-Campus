@@ -164,6 +164,15 @@ export function ArticlesTable({
     onSettled: refresh,
   });
 
+  const removeDraft = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("articles").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onError: (e: Error) => setError(e.message),
+    onSettled: refresh,
+  });
+
   const reassign = useMutation({
     mutationFn: async (vars: { id: string; editorId: string }) => {
       const { error } = await supabase
@@ -443,8 +452,27 @@ export function ArticlesTable({
                     </button>
                   )}
 
+                  {mine && a.status === "draft" && !isStaff && (
+                    <button
+                      onClick={async () => {
+                        if (
+                          await confirm({
+                            title: `Delete “${a.title}”?`,
+                            body: "This permanently removes the draft. It cannot be restored.",
+                            confirmLabel: "Delete draft",
+                            danger: true,
+                          })
+                        )
+                          removeDraft.mutate(a.id);
+                      }}
+                      className="text-red-700 underline hover:text-red-900"
+                    >
+                      Delete
+                    </button>
+                  )}
+
                   {a.status !== "archived" &&
-                    (isStaff || (mine && a.status === "draft")) && (
+                    isStaff && (
                       <button
                         onClick={async () => {
                           if (
@@ -462,6 +490,25 @@ export function ArticlesTable({
                         Archive
                       </button>
                     )}
+
+                  {mine && a.status === "draft" && isStaff && (
+                    <button
+                      onClick={async () => {
+                        if (
+                          await confirm({
+                            title: `Delete “${a.title}”?`,
+                            body: "This permanently removes the draft. Prefer Archive if you might restore it.",
+                            confirmLabel: "Delete draft",
+                            danger: true,
+                          })
+                        )
+                          removeDraft.mutate(a.id);
+                      }}
+                      className="text-ink-soft underline hover:text-red-900"
+                    >
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
             );

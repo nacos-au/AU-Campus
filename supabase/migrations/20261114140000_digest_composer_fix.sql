@@ -140,19 +140,7 @@ begin
 end;
 $$;
 
+-- Do not create a 1-arg overload — it collides with (uuid, uuid default null)
+-- under PostgREST. Auto-assign uses p_editor default null.
 revoke all on function public.submit_article(uuid, uuid) from public;
 grant execute on function public.submit_article(uuid, uuid) to authenticated;
-
-create or replace function public.submit_article(p_article_id uuid)
-returns void
-language plpgsql
-security definer
-set search_path = ''
-as $$
-begin
-  perform public.submit_article(p_article_id, null);
-end;
-$$;
-
-revoke all on function public.submit_article(uuid) from public;
-grant execute on function public.submit_article(uuid) to authenticated;
