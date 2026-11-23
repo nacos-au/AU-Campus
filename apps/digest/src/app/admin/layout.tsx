@@ -1,4 +1,4 @@
-import { requireRole, hasRole } from "@/lib/auth";
+import { requireRole, hasRole, canUseAdminMode } from "@/lib/auth";
 import { site } from "@/lib/site";
 import { digestFeatures } from "@/lib/features";
 import { AdminNav, type AdminNavItem } from "@/components/AdminNav";
@@ -13,6 +13,7 @@ export default async function AdminLayout({
   const { profile } = await requireRole("writer");
   const staff = hasRole(profile, "editor");
   const isAdmin = hasRole(profile, "admin");
+  const canElevate = canUseAdminMode(profile);
   const deskRole = profile.elevated
     ? `${profile.role} · elevated`
     : (profile.base_role ?? profile.role);
@@ -41,6 +42,8 @@ export default async function AdminLayout({
         displayName={profile.display_name}
         role={deskRole}
         exitAction={leaveNewsroomAction}
+        canElevate={canElevate}
+        elevated={Boolean(profile.elevated)}
       >
         {children}
       </AdminNav>

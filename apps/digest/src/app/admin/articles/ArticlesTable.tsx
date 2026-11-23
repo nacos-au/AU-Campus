@@ -39,7 +39,7 @@ const STATUS_LABELS: Record<ArticleStatus, string> = {
 type Filter = "all" | "review" | ArticleStatus;
 
 const ARTICLE_SELECT =
-  "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username), assignee:profiles!articles_assigned_editor_id_fkey(display_name), article_revisions(state, assigned_editor_id)";
+  "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username), assignee:profiles!articles_assigned_editor_id_fkey(display_name), article_revisions(state, assigned_editor_id), article_collaborators(user_id, credit_order, profiles(display_name, username))";
 
 function revisionOf(a: Row) {
   const r = a.article_revisions;
@@ -245,8 +245,11 @@ export function ArticlesTable({
     }
     if (filter === "review") return awaitingMe(a) && a.status !== "archived";
     if (filter === "draft") {
-      // Drafts are personal — never list someone else's unfinished work.
-      return a.status === "draft" && a.author_id === userId;
+      // Own drafts + shared collaborative drafts.
+      const party =
+        a.author_id === userId ||
+        (a.article_collaborators ?? []).some((c) => c.user_id === userId);
+      return a.status === "draft" && party;
     }
     return effective(a).status === filter || a.status === filter;
   });
@@ -314,7 +317,12 @@ export function ArticlesTable({
           {visible.map((a) => {
             const eff = effective(a);
             const mine = a.author_id === userId;
-            const canEdit = isStaff || (mine && eff.status !== "awaiting_editor");
+            const collab = (a.article_collaborators ?? []).some(
+              (c) => c.user_id === userId
+            );
+            const party = mine || collab;
+            const canEdit =
+              isStaff || (party && eff.status !== "awaiting_editor");
             const review = awaitingMe(a);
             return (
               <div key={a.id} className="py-4">
@@ -330,7 +338,18 @@ export function ArticlesTable({
                     </p>
                     <p className="mt-0.5 text-xs text-ink-soft">
                       {a.sections?.name} ·{" "}
-                      {a.byline || a.profiles?.display_name}
+                      {a.byline_mode === "alias"
+                        ? a.byline || a.profiles?.display_name
+                        : [
+                            a.profiles?.display_name,
+                            ...(a.article_collaborators ?? [])
+                              .slice()
+                              .sort((x, y) => x.credit_order - y.credit_order)
+                              .map((c) => c.profiles?.display_name),
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                      {collab && !mine ? " · co-author" : ""}
                       {a.assignee?.display_name
                         ? ` · editor ${a.assignee.display_name}`
                         : ""}

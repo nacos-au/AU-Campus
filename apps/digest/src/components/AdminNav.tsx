@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { AdminModeToggle } from "./AdminModeToggle";
 import { NotificationBell } from "./NotificationBell";
 
 export interface AdminNavItem {
@@ -44,6 +45,8 @@ export function AdminNav({
   displayName,
   role,
   exitAction,
+  canElevate = false,
+  elevated = false,
   children,
 }: {
   items: AdminNavItem[];
@@ -51,6 +54,8 @@ export function AdminNav({
   displayName: string;
   role: string;
   exitAction: () => Promise<void>;
+  canElevate?: boolean;
+  elevated?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -92,24 +97,31 @@ export function AdminNav({
   );
 
   const userBlock = (
-    <div className="flex items-center gap-3">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-[11px] font-bold text-paper">
-        {initials || "·"}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-semibold">{displayName}</p>
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-soft">{role}</p>
+    <div className="space-y-3">
+      {canElevate && (
+        <div className="flex justify-start">
+          <AdminModeToggle canUse={canElevate} active={elevated} />
+        </div>
+      )}
+      <div className="flex items-center gap-3">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-[11px] font-bold text-paper">
+          {initials || "·"}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-semibold">{displayName}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-soft">{role}</p>
+        </div>
+        <form action={exitAction}>
+          <button
+            type="submit"
+            title="Exit newsroom"
+            aria-label="Exit newsroom"
+            className="flex h-8 w-8 items-center justify-center rounded-sm text-ink-soft hover:bg-gray-100 hover:text-accent"
+          >
+            <ExitIcon />
+          </button>
+        </form>
       </div>
-      <form action={exitAction}>
-        <button
-          type="submit"
-          title="Exit newsroom"
-          aria-label="Exit newsroom"
-          className="flex h-8 w-8 items-center justify-center rounded-sm text-ink-soft hover:bg-gray-100 hover:text-accent"
-        >
-          <ExitIcon />
-        </button>
-      </form>
     </div>
   );
 

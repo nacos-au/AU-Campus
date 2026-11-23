@@ -1,11 +1,54 @@
 import Image from "next/image";
 import Link from "next/link";
 import { readingMinutes } from "@/lib/articles";
-import { displayByline, seriesHref } from "@/lib/byline";
+import { creditPeople, displayByline, seriesHref } from "@/lib/byline";
 import type { ArticleWithMeta } from "@/lib/types";
 
 function href(a: ArticleWithMeta) {
   return `/article/${a.slug}`;
+}
+
+function CreditNames({ article }: { article: ArticleWithMeta }) {
+  const alias = article.byline_mode === "alias";
+  if (alias) {
+    const name = displayByline(article);
+    if (!name) return null;
+    return <span className="font-semibold text-ink">{name}</span>;
+  }
+  const people = creditPeople(article);
+  if (people.length === 0) return null;
+
+  return (
+    <>
+      {people.map((p, i) => {
+        const sep =
+          i === 0
+            ? null
+            : i === people.length - 1
+              ? " and "
+              : ", ";
+        const node = p.username ? (
+          <Link
+            key={`${p.username}-${i}`}
+            href={`/author/${p.username}`}
+            className="font-semibold text-ink hover:text-accent"
+          >
+            {p.display_name}
+          </Link>
+        ) : (
+          <span key={`${p.display_name}-${i}`} className="font-semibold text-ink">
+            {p.display_name}
+          </span>
+        );
+        return (
+          <span key={`credit-${i}`}>
+            {sep}
+            {node}
+          </span>
+        );
+      })}
+    </>
+  );
 }
 
 export function Byline({
@@ -23,7 +66,7 @@ export function Byline({
     <p className={`text-[11px] uppercase tracking-wide text-ink-soft ${className}`}>
       {name && (
         <>
-          By <span className="font-semibold text-ink">{name}</span>
+          By <CreditNames article={article} />
         </>
       )}
       {name && series && seriesLink && " · "}

@@ -31,22 +31,48 @@ export default async function AuthorPage({
 
   if (!profile) notFound();
 
-  const [{ data }, { data: seriesRows }] = await Promise.all([
-    supabase
+  const [{ data: owned }, { data: collabIds }, { data: seriesRows }] =
+    await Promise.all([
+      supabase
+        .from("articles")
+        .select(ARTICLE_PUBLIC_SELECT)
+        .eq("author_id", profile.id)
+        .eq("status", "published")
+        .order("published_at", { ascending: false }),
+      supabase
+        .from("article_collaborators")
+        .select("article_id")
+        .eq("user_id", profile.id),
+      supabase
+        .from("articles")
+        .select("series_id, article_series(id, slug, title)")
+        .eq("author_id", profile.id)
+        .eq("status", "published")
+        .not("series_id", "is", null),
+    ]);
+
+  const byId = new Map<string, ArticleWithMeta>();
+  for (const a of (owned ?? []) as unknown as ArticleWithMeta[]) {
+    byId.set(a.id, a);
+  }
+  const missingIds = (collabIds ?? [])
+    .map((r) => (r as { article_id: string }).article_id)
+    .filter((id) => !byId.has(id));
+  if (missingIds.length > 0) {
+    const { data: collabArticles } = await supabase
       .from("articles")
       .select(ARTICLE_PUBLIC_SELECT)
-      .eq("author_id", profile.id)
-      .eq("status", "published")
-      .order("published_at", { ascending: false }),
-    supabase
-      .from("articles")
-      .select("series_id, article_series(id, slug, title)")
-      .eq("author_id", profile.id)
-      .eq("status", "published")
-      .not("series_id", "is", null),
-  ]);
-
-  const articles = (data ?? []) as unknown as ArticleWithMeta[];
+      .in("id", missingIds)
+      .eq("status", "published");
+    for (const a of (collabArticles ?? []) as unknown as ArticleWithMeta[]) {
+      byId.set(a.id, a);
+    }
+  }
+  const articles = [...byId.values()].sort((a, b) => {
+    const ta = a.published_at ? new Date(a.published_at).getTime() : 0;
+    const tb = b.published_at ? new Date(b.published_at).getTime() : 0;
+    return tb - ta;
+  });
 
   const seriesMap = new Map<string, Pick<ArticleSeries, "id" | "slug" | "title">>();
   for (const row of seriesRows ?? []) {

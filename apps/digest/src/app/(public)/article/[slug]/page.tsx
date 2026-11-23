@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AdSlot } from "@/components/AdSlot";
 import { RichText } from "@/components/RichText";
 import { LikeShare } from "@/components/LikeShare";
-import { displayByline, seriesHref } from "@/lib/byline";
+import { creditPeople, displayByline, seriesHref } from "@/lib/byline";
 import { CompactStory } from "@/components/stories";
 import { ARTICLE_PUBLIC_SELECT, readingMinutes } from "@/lib/articles";
 import { digestFeatures } from "@/lib/features";
@@ -74,10 +74,10 @@ export default async function ArticlePage({
     : "";
 
   const credit = displayByline(article);
+  const people = creditPeople(article);
   const series = article.article_series;
   const seriesLink = seriesHref(series);
-  const personalCredit =
-    !article.byline_mode || article.byline_mode === "personal";
+  const aliasCredit = article.byline_mode === "alias";
 
   return (
     <div className="py-8">
@@ -107,15 +107,30 @@ export default async function ArticlePage({
               {credit && (
                 <>
                   By{" "}
-                  {personalCredit && article.profiles?.username ? (
-                    <Link
-                      href={`/author/${article.profiles.username}`}
-                      className="font-semibold text-ink hover:text-accent"
-                    >
-                      {credit}
-                    </Link>
-                  ) : (
+                  {aliasCredit ? (
                     <span className="font-semibold text-ink">{credit}</span>
+                  ) : (
+                    people.map((p, i) => {
+                      const sep =
+                        i === 0 ? null : i === people.length - 1 ? " and " : ", ";
+                      return (
+                        <span key={`${p.display_name}-${i}`}>
+                          {sep}
+                          {p.username ? (
+                            <Link
+                              href={`/author/${p.username}`}
+                              className="font-semibold text-ink hover:text-accent"
+                            >
+                              {p.display_name}
+                            </Link>
+                          ) : (
+                            <span className="font-semibold text-ink">
+                              {p.display_name}
+                            </span>
+                          )}
+                        </span>
+                      );
+                    })
                   )}
                 </>
               )}

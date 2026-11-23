@@ -115,9 +115,19 @@ export function ArticleComposer({
     (initial as Article | null)?.series_id ?? ""
   );
   const [seriesTitle, setSeriesTitle] = useState("");
+  const [collaborators, setCollaborators] = useState<
+    {
+      user_id: string;
+      credit_order: number;
+      display_name: string;
+      username: string | null;
+    }[]
+  >([]);
+  const [collabQuery, setCollabQuery] = useState("");
   const [sectionId, setSectionId] = useState<number | "">(
     initial?.section_id ?? ""
   );
+  const isOwner = !article || article.author_id === userId;
   const [language, setLanguage] = useState(initial?.language ?? "en");
   const [coverUrl, setCoverUrl] = useState(initial?.cover_url ?? "");
   const [overrideEditorId, setOverrideEditorId] = useState(
@@ -159,6 +169,52 @@ export function ArticleComposer({
       return (data ?? []) as Pick<ArticleSeries, "id" | "slug" | "title">[];
     },
   });
+
+  const { data: deskPeople = [] } = useQuery({
+    queryKey: ["newsroom-credit-people"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, display_name, username, role")
+        .in("role", ["writer", "editor", "admin"])
+        .order("display_name");
+      if (error) throw error;
+      return (data ?? []) as Pick<
+        Profile,
+        "id" | "display_name" | "username" | "role"
+      >[];
+    },
+  });
+
+  const collabsQuery = useQuery({
+    queryKey: ["article-collaborators", article?.id],
+    enabled: Boolean(article?.id),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("article_collaborators")
+        .select("user_id, credit_order, profiles(display_name, username)")
+        .eq("article_id", article!.id)
+        .order("credit_order");
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        user_id: string;
+        credit_order: number;
+        profiles: { display_name: string; username: string | null } | null;
+      }>;
+    },
+  });
+
+  useEffect(() => {
+    if (!collabsQuery.data) return;
+    setCollaborators(
+      collabsQuery.data.map((c) => ({
+        user_id: c.user_id,
+        credit_order: c.credit_order,
+        display_name: c.profiles?.display_name ?? "Writer",
+        username: c.profiles?.username ?? null,
+      }))
+    );
+  }, [collabsQuery.data]);
 
   const editorsQuery = useQuery({
     queryKey: ["newsroom-editors"],
@@ -251,6 +307,24 @@ export function ArticleComposer({
     };
   }
 
+  async function syncCollaborators(articleId: string) {
+    if (!isOwner) return;
+    const { error: delErr } = await supabase
+      .from("article_collaborators")
+      .delete()
+      .eq("article_id", articleId);
+    if (delErr) throw delErr;
+    if (collaborators.length === 0) return;
+    const { error: insErr } = await supabase.from("article_collaborators").insert(
+      collaborators.map((c, i) => ({
+        article_id: articleId,
+        user_id: c.user_id,
+        credit_order: i + 1,
+      }))
+    );
+    if (insErr) throw insErr;
+  }
+
   const persist = useCallback(
     async (opts?: { requireHeadline?: boolean }): Promise<string> => {
       const requireHeadline = opts?.requireHeadline ?? false;
@@ -269,6 +343,7 @@ export function ArticleComposer({
           p_payload: { ...p, title: title.trim() || p.title },
         });
         if (error) throw error;
+        await syncCollaborators(article.id);
         dirtyRef.current = false;
         return article.id;
       }
@@ -292,6 +367,7 @@ export function ArticleComposer({
           .update(row)
           .eq("id", articleIdRef.current);
         if (error) throw error;
+        await syncCollaborators(articleIdRef.current);
         dirtyRef.current = false;
         return articleIdRef.current;
       }
@@ -304,6 +380,7 @@ export function ArticleComposer({
         .single();
       if (error) throw error;
       articleIdRef.current = data.id;
+      await syncCollaborators(data.id as string);
       dirtyRef.current = false;
       return data.id as string;
     },
@@ -314,6 +391,8 @@ export function ArticleComposer({
       bylineMode,
       seriesId,
       seriesTitle,
+      collaborators,
+      isOwner,
       coverUrl,
       isLive,
       language,
@@ -665,7 +744,15 @@ export function ArticleComposer({
             <p className="mt-4 text-sm text-ink-soft">
               By{" "}
               <span className="font-semibold text-ink">
-                {bylineMode === "personal" ? "You" : byline || "…"}
+                {(() => {
+                  const names =
+                    bylineMode === "personal"
+                      ? ["You", ...collaborators.map((c) => c.display_name)]
+                      : [byline.trim() || "…"];
+                  if (names.length <= 1) return names[0];
+                  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+                  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+                })()}
               </span>
               {(seriesId || seriesTitle.trim()) && (
                 <>
@@ -771,6 +858,107 @@ export function ArticleComposer({
                     className="mt-1 block w-full border border-rule-dark px-3 py-2 text-sm text-ink"
                   />
                 </label>
+              )}
+              {bylineMode === "personal" && (
+                <div className="sm:col-span-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+                    Co-authors
+                  </p>
+                  {collaborators.length > 0 && (
+                    <ul className="mt-2 space-y-1">
+                      {collaborators.map((c) => (
+                        <li
+                          key={c.user_id}
+                          className="flex items-center justify-between gap-2 border border-rule px-3 py-1.5 text-sm"
+                        >
+                          <span>
+                            {c.display_name}
+                            {c.username ? (
+                              <span className="text-ink-soft"> @{c.username}</span>
+                            ) : null}
+                          </span>
+                          {isOwner && !locked && (
+                            <button
+                              type="button"
+                              className="text-xs font-semibold uppercase tracking-wider text-accent"
+                              onClick={() => {
+                                setCollaborators((prev) =>
+                                  prev.filter((x) => x.user_id !== c.user_id)
+                                );
+                                markDirty();
+                              }}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {isOwner && !locked && (
+                    <div className="mt-2">
+                      <input
+                        value={collabQuery}
+                        onChange={(e) => setCollabQuery(e.target.value)}
+                        placeholder="Search writers & editors…"
+                        className="block w-full border border-rule-dark px-3 py-2 text-sm text-ink"
+                      />
+                      {collabQuery.trim() && (
+                        <ul className="mt-1 max-h-40 overflow-y-auto border border-rule bg-paper">
+                          {deskPeople
+                            .filter((p) => {
+                              if (p.id === userId) return false;
+                              if (collaborators.some((c) => c.user_id === p.id))
+                                return false;
+                              const q = collabQuery.trim().toLowerCase();
+                              return (
+                                p.display_name.toLowerCase().includes(q) ||
+                                (p.username ?? "").toLowerCase().includes(q)
+                              );
+                            })
+                            .slice(0, 8)
+                            .map((p) => (
+                              <li key={p.id}>
+                                <button
+                                  type="button"
+                                  className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-accent-soft"
+                                  onClick={() => {
+                                    setCollaborators((prev) => [
+                                      ...prev,
+                                      {
+                                        user_id: p.id,
+                                        credit_order: prev.length + 1,
+                                        display_name: p.display_name,
+                                        username: p.username ?? null,
+                                      },
+                                    ]);
+                                    setCollabQuery("");
+                                    markDirty();
+                                  }}
+                                >
+                                  <span>
+                                    {p.display_name}
+                                    {p.username ? (
+                                      <span className="text-ink-soft">
+                                        {" "}
+                                        @{p.username}
+                                      </span>
+                                    ) : null}
+                                  </span>
+                                  <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">
+                                    {p.role}
+                                  </span>
+                                </button>
+                              </li>
+                            ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                  {!isOwner && collaborators.length === 0 && (
+                    <p className="mt-1 text-xs text-ink-soft">No co-authors.</p>
+                  )}
+                </div>
               )}
             </div>
 

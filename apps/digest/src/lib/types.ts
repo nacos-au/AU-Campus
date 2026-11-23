@@ -91,10 +91,17 @@ export interface Article {
   updated_at: string;
 }
 
+export interface ArticleCollaborator {
+  user_id: string;
+  credit_order: number;
+  profiles?: Pick<Profile, "display_name" | "username"> | null;
+}
+
 export interface ArticleWithMeta extends Article {
   sections: Pick<Section, "slug" | "name"> | null;
   profiles: Pick<Profile, "display_name" | "username"> | null;
   article_series?: Pick<ArticleSeries, "id" | "slug" | "title"> | null;
+  article_collaborators?: ArticleCollaborator[] | null;
   assignee?: Pick<Profile, "display_name"> | null;
 }
 
