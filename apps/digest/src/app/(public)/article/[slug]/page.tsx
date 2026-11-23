@@ -179,7 +179,12 @@ export default async function ArticlePage({
                 }).format(new Date(article.content_updated_at))}
               </span>
             )}
-          <span>{readingMinutes(article.body)} min read</span>
+          <span>
+            {readingMinutes(article.body, {
+              extraImages: article.cover_url ? 1 : 0,
+            })}{" "}
+            min read
+          </span>
         </div>
 
         {article.cover_url && (

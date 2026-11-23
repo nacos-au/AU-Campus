@@ -93,7 +93,10 @@ export function ReadTime({
     <p
       className={`text-[11px] uppercase tracking-wide text-ink-soft ${className}`}
     >
-      {readingMinutes(article.body)} min read
+      {readingMinutes(article.body, {
+        extraImages: article.cover_url ? 1 : 0,
+      })}{" "}
+      min read
     </p>
   );
 }
