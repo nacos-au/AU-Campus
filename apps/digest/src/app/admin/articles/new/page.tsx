@@ -7,6 +7,7 @@ export default async function NewArticlePage() {
     <ArticleComposer
       article={null}
       userId={profile.id}
+      displayName={profile.display_name}
       isStaff={hasRole(profile, "editor")}
       isAdmin={hasRole(profile, "admin")}
       isSuperAdmin={!!profile.is_super_admin}

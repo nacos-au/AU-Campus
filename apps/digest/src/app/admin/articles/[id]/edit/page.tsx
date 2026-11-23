@@ -55,6 +55,7 @@ export default async function EditArticlePage({
       article={article}
       revision={article.status === "published" ? (rev?.payload ?? null) : null}
       userId={profile.id}
+      displayName={profile.display_name}
       isStaff={isStaff}
       isAdmin={hasRole(profile, "admin")}
       isSuperAdmin={!!profile.is_super_admin}
