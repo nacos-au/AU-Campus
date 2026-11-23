@@ -215,59 +215,110 @@ export default async function AdminDashboard() {
           )}
         </Card>
 
-        <Card title="Shortcuts">
-          <ul className="space-y-1 text-sm">
-            <li>
-              <Link href="/admin/articles/new" className="block py-1.5 font-semibold hover:text-accent">
-                Write a new article
-              </Link>
-            </li>
-            <li>
-              <Link href="/admin/articles" className="block py-1.5 font-semibold hover:text-accent">
-                My articles
-              </Link>
-            </li>
-            {staff && (
-              <>
-                <li>
-                  <Link href="/admin/weekly" className="block py-1.5 font-semibold hover:text-accent">
-                    Build this week’s issue
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/admin/sections" className="block py-1.5 font-semibold hover:text-accent">
-                    Manage sections
-                  </Link>
-                </li>
-                {digestFeatures.manualAds && (
-                  <li>
-                    <Link href="/admin/ads" className="block py-1.5 font-semibold hover:text-accent">
-                      Advertising &amp; bookings
-                    </Link>
-                  </li>
-                )}
-                <li>
-                  <Link href="/weekly" className="block py-1.5 font-semibold hover:text-accent">
-                    Preview this week’s issue
-                  </Link>
-                </li>
-              </>
-            )}
-            {isAdmin && (
+        <div className="space-y-6">
+          {staff && (
+            <Card title="Audience">
+              {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID?.startsWith("G-") ? (
+                <>
+                  <p className="text-sm text-ink-soft">
+                    Tracking is live ({process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}). Open Analytics for
+                    users, page views, and article traction.
+                  </p>
+                  <ul className="mt-3 space-y-1 text-sm">
+                    <li>
+                      <a
+                        href="https://analytics.google.com/analytics/web/#/realtime"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-accent hover:text-accent-hover"
+                      >
+                        Realtime traffic →
+                      </a>
+                    </li>
+                    <li>
+                      <a
+                        href="https://analytics.google.com/analytics/web/#/reports/pagereturnoninvestment"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-accent hover:text-accent-hover"
+                      >
+                        Engagement reports →
+                      </a>
+                    </li>
+                  </ul>
+                  <p className="mt-3 text-xs text-ink-soft">
+                    In-dashboard charts need the GA Data API later. For now, these links are the
+                    source of truth.
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-ink-soft">
+                  Set <code className="text-xs">NEXT_PUBLIC_GA_MEASUREMENT_ID</code> on Vercel to
+                  enable traffic tracking.
+                </p>
+              )}
+            </Card>
+          )}
+
+          <Card title="Shortcuts">
+            <ul className="space-y-1 text-sm">
               <li>
-                <Link href="/admin/team" className="block py-1.5 font-semibold hover:text-accent">
-                  Team &amp; roles
+                <Link href="/admin/articles/new" className="block py-1.5 font-semibold hover:text-accent">
+                  Write a new article
                 </Link>
               </li>
-            )}
-          </ul>
-          <p className="mt-5 border-t border-rule pt-4 text-xs leading-relaxed text-ink-soft">
-            You’re signed in as <span className="font-semibold text-ink">{profile.role}</span>.{" "}
-            {staff
-              ? "You can review and publish other writers’ work."
-              : "Submit your drafts to an editor to publish."}
-          </p>
-        </Card>
+              <li>
+                <Link href="/admin/articles" className="block py-1.5 font-semibold hover:text-accent">
+                  My articles
+                </Link>
+              </li>
+              {staff && (
+                <>
+                  <li>
+                    <Link href="/admin/front-page" className="block py-1.5 font-semibold hover:text-accent">
+                      Front page desk
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/admin/weekly" className="block py-1.5 font-semibold hover:text-accent">
+                      Build this week’s issue
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/admin/sections" className="block py-1.5 font-semibold hover:text-accent">
+                      Manage sections
+                    </Link>
+                  </li>
+                  {digestFeatures.manualAds && (
+                    <li>
+                      <Link href="/admin/ads" className="block py-1.5 font-semibold hover:text-accent">
+                        Advertising &amp; bookings
+                      </Link>
+                    </li>
+                  )}
+                  <li>
+                    <Link href="/weekly" className="block py-1.5 font-semibold hover:text-accent">
+                      Preview this week’s issue
+                    </Link>
+                  </li>
+                </>
+              )}
+              {isAdmin && (
+                <li>
+                  <Link href="/admin/team" className="block py-1.5 font-semibold hover:text-accent">
+                    Team &amp; roles
+                  </Link>
+                </li>
+              )}
+            </ul>
+            <p className="mt-5 border-t border-rule pt-4 text-xs leading-relaxed text-ink-soft">
+              You’re signed in as <span className="font-semibold text-ink">{profile.role}</span>.{" "}
+              {staff
+                ? "You can review and publish other writers’ work."
+                : "Submit your drafts to an editor to publish."}
+            </p>
+          </Card>
+        </div>
       </div>
     </div>
   );
