@@ -193,7 +193,7 @@ export function ArticleComposer({
         .eq("article_id", article!.id)
         .order("credit_order");
       if (error) throw error;
-      return (data ?? []) as Array<{
+      return (data ?? []) as unknown as Array<{
         user_id: string;
         credit_order: number;
         profiles: { display_name: string; username: string | null } | null;
