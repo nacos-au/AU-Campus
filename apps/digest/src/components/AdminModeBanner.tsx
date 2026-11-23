@@ -1,12 +1,12 @@
 import Link from "next/link";
 
-/** Persistent strip so elevated sessions are never mistaken for a normal account. */
+/** Persistent strip so elevated sessions are never mistaken for a desk role. */
 export function AdminModeBanner() {
   return (
     <div className="border-b border-accent bg-accent text-white">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 py-2">
         <p className="text-[11px] font-bold uppercase tracking-wider">
-          Admin Mode active — newsroom actions are elevated
+          Admin Mode active — elevated as Digest admin
         </p>
         <Link
           href="/admin"

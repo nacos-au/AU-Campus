@@ -1,24 +1,41 @@
 import "server-only";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createAuthClient } from "@/lib/supabase/auth-client";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabaseConfig } from "@/lib/demo-mode";
+import { ADMIN_MODE_COOKIE, parseAdminModeCookie } from "@/lib/admin-mode";
 import type { Profile, Role } from "@/lib/types";
 import { ROLE_RANK, can } from "@/lib/roles";
 
 export { ROLE_RANK, can } from "@/lib/roles";
 
 /**
- * Effective Digest newsroom role.
- * Super admin + digest app_roles.admin elevate to admin without changing Score.
+ * Score-style elevation:
+ * - Admin Mode off → use profiles.role (writer/editor/admin) as-is.
+ * - Admin Mode on + super admin / digest ops → effective admin.
+ * Never force-elevate just because is_super_admin is true.
  */
 function effectiveRole(
-  row: Profile | null,
-  digestAppAdmin: boolean
+  baseRole: Role,
+  opts: { isSuperAdmin: boolean; digestAppAdmin: boolean; adminMode: boolean }
 ): Role {
-  if (!row) return "reader";
-  if (row.is_super_admin || digestAppAdmin) return "admin";
-  return row.role;
+  if (
+    opts.adminMode &&
+    (opts.isSuperAdmin || opts.digestAppAdmin)
+  ) {
+    return "admin";
+  }
+  return baseRole;
+}
+
+async function readAdminMode(): Promise<boolean> {
+  try {
+    const store = await cookies();
+    return parseAdminModeCookie(store.get(ADMIN_MODE_COOKIE)?.value);
+  } catch {
+    return false;
+  }
 }
 
 export async function getSessionProfile(): Promise<{
@@ -33,7 +50,7 @@ export async function getSessionProfile(): Promise<{
   } = await supabase.auth.getUser();
   if (!user) return { user: null, profile: null };
 
-  const [{ data: profile }, { data: digestRole }] = await Promise.all([
+  const [{ data: profile }, { data: digestRole }, adminMode] = await Promise.all([
     supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
     supabase
       .from("app_roles")
@@ -41,34 +58,57 @@ export async function getSessionProfile(): Promise<{
       .eq("user_id", user.id)
       .eq("app", "digest")
       .maybeSingle(),
+    readAdminMode(),
   ]);
 
   const row = (profile as Profile | null) ?? null;
-  const digestAppAdmin = (digestRole as { role?: string } | null)?.role === "admin";
+  const digestAppAdmin =
+    (digestRole as { role?: string } | null)?.role === "admin";
   const metaName =
     typeof user.user_metadata?.display_name === "string"
       ? user.user_metadata.display_name
       : "";
 
   if (!row) {
+    const baseRole: Role = digestAppAdmin ? "admin" : "reader";
+    const canElevate = digestAppAdmin;
     return {
       user: { id: user.id, email: user.email ?? "" },
       profile: {
         id: user.id,
         display_name: metaName || (user.email?.split("@")[0] ?? ""),
-        role: digestAppAdmin ? "admin" : "reader",
+        role: effectiveRole(baseRole, {
+          isSuperAdmin: false,
+          digestAppAdmin,
+          adminMode,
+        }),
+        base_role: baseRole,
         is_super_admin: false,
+        can_elevate: canElevate,
+        elevated: adminMode && canElevate,
         verification_level: "soft",
         created_at: "",
       } satisfies Profile,
     };
   }
 
+  const baseRole = row.role;
+  const isSuperAdmin = Boolean(row.is_super_admin);
+  const canElevate = isSuperAdmin || digestAppAdmin;
+  const elevated = adminMode && canElevate;
+
   return {
     user: { id: user.id, email: user.email ?? "" },
     profile: {
       ...row,
-      role: effectiveRole(row, digestAppAdmin),
+      base_role: baseRole,
+      can_elevate: canElevate,
+      elevated,
+      role: effectiveRole(baseRole, {
+        isSuperAdmin,
+        digestAppAdmin,
+        adminMode,
+      }),
     },
   };
 }
@@ -81,9 +121,12 @@ export async function requireRole(minRole: Role) {
   return { user, profile };
 }
 
+/**
+ * Capability check against the *effective* role.
+ * Super admin no longer bypasses unless Admin Mode elevated them.
+ */
 export function hasRole(profile: Profile | null, minRole: Role): boolean {
   if (!profile) return false;
-  if (profile.is_super_admin) return true;
   return ROLE_RANK[profile.role] >= ROLE_RANK[minRole];
 }
 
@@ -91,6 +134,14 @@ export function profileCan(
   profile: Profile | null,
   capability: Parameters<typeof can>[1]
 ): boolean {
-  if (profile?.is_super_admin) return true;
   return can(profile?.role, capability);
+}
+
+/**
+ * Admin Mode is Score-style elevation for platform owners / Digest ops —
+ * not the newsroom gate. Writers and editors use the newsroom at their base role.
+ */
+export function canUseAdminMode(profile: Profile | null): boolean {
+  if (!profile) return false;
+  return Boolean(profile.is_super_admin || profile.can_elevate);
 }

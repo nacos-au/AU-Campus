@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { pickAd, SLOT_DIMENSIONS } from "@/lib/ads";
 import { DEMO_MODE_COOKIE, isDemoMode } from "@/lib/demo-mode";
-import { isAdminModeActive } from "@/app/actions/admin-mode";
+import { getSessionProfile } from "@/lib/auth";
 import type { Ad, AdSlot as Slot } from "@/lib/types";
 import { digestFeatures } from "@/lib/features";
 import { AdBeacon } from "./AdBeacon";
@@ -12,8 +12,8 @@ import { AdSenseUnit } from "./AdSenseUnit";
 
 /**
  * Server component. One placement = one house ad (weighted, in-flight),
- * else a programmatic unit if configured, else nothing. Never shown to
- * staff in Admin Mode.
+ * else a programmatic unit if configured, else nothing. Hidden while
+ * elevated in Admin Mode (super admin testing).
  */
 export async function AdSlot({
   slot,
@@ -23,7 +23,8 @@ export async function AdSlot({
   className?: string;
 }) {
   if (!digestFeatures.manualAds && !digestFeatures.adsenseFallback) return null;
-  if (await isAdminModeActive()) return null;
+  const { profile } = await getSessionProfile();
+  if (profile?.elevated) return null;
 
   const [supabase, t, cookieStore] = await Promise.all([
     createClient(),

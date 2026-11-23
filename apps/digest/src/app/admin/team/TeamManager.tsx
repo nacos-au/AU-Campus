@@ -210,7 +210,9 @@ export function TeamManager({
                   <div className="relative">
                     <select
                       value={p.role}
-                      disabled={isSelf || setRole.isPending}
+                      disabled={
+                        (isSelf && !isSuperAdmin) || setRole.isPending
+                      }
                       onChange={(e) =>
                         setRole.mutate({
                           id: p.id,
@@ -220,9 +222,11 @@ export function TeamManager({
                       }
                       className="border border-rule-dark px-3 py-1.5 pr-8 text-sm disabled:opacity-50"
                       title={
-                        isSelf
+                        isSelf && !isSuperAdmin
                           ? "You cannot change your own role"
-                          : "Change this person's role"
+                          : isSelf
+                            ? "Set your desk role for testing (Admin Mode elevates to admin)"
+                            : "Change this person's role"
                       }
                     >
                       {ASSIGNABLE.map((r) => (

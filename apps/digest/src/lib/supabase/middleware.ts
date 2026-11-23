@@ -1,7 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { hasSupabaseConfig } from "@/lib/demo-mode";
-import { adminModeCookieOptions } from "@/lib/admin-mode";
 
 const PROTECTED_PREFIXES = ["/admin", "/account", "/read"];
 
@@ -58,17 +57,6 @@ export async function updateSession(request: NextRequest) {
       url.pathname = "/login";
       url.searchParams.set("next", path);
       return NextResponse.redirect(url);
-    }
-
-    // Signed-in staff opening the newsroom are in Admin Mode for the session;
-    // the layout still enforces the role.
-    if (user && path.startsWith("/admin")) {
-      const opts = adminModeCookieOptions(true);
-      supabaseResponse.cookies.set(opts.name, opts.value, {
-        path: opts.path,
-        maxAge: opts.maxAge,
-        sameSite: opts.sameSite,
-      });
     }
   } catch (err) {
     console.error("[middleware] session refresh failed:", err);

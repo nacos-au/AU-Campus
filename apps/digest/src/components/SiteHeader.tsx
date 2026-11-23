@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { getSessionProfile, hasRole } from "@/lib/auth";
+import { canUseAdminMode, getSessionProfile, hasRole } from "@/lib/auth";
 import { signOut } from "@/app/(auth)/actions";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
 import { site } from "@/lib/site";
-import { exitAdminModeAction, isAdminModeActive } from "@/app/actions/admin-mode";
+import { exitAdminModeAction } from "@/app/actions/admin-mode";
 import type { Section } from "@/lib/types";
 import { AdminModeBanner } from "./AdminModeBanner";
 import { AdminModeToggle } from "./AdminModeToggle";
@@ -17,17 +17,16 @@ import { ProfileMenu } from "./ProfileMenu";
 import { IconUser } from "./icons";
 
 export async function SiteHeader() {
-  const [t, locale, { user, profile }, supabase, adminMode] = await Promise.all([
+  const [t, locale, { user, profile }, supabase] = await Promise.all([
     getTranslations("nav"),
     getLocale(),
     getSessionProfile(),
     createClient(),
-    isAdminModeActive(),
   ]);
 
   const isWriter = hasRole(profile, "writer");
-  const canAdminMode = isWriter;
-  const adminModeOn = adminMode && canAdminMode;
+  const canElevate = canUseAdminMode(profile);
+  const elevated = Boolean(profile?.elevated);
   const showAdminRole = hasRole(profile, "admin");
 
   const { data: sectionsData } = await supabase
@@ -61,7 +60,7 @@ export async function SiteHeader() {
 
   return (
     <header>
-      {adminModeOn && <AdminModeBanner />}
+      {elevated && <AdminModeBanner />}
 
       {/* ── Mobile ── */}
       <div className="sticky top-0 z-40 bg-paper md:hidden">
@@ -70,7 +69,7 @@ export async function SiteHeader() {
             sections={sections}
             signedIn={!!user}
             isWriter={isWriter}
-            adminMode={adminModeOn}
+            adminMode={elevated}
             signOutAction={signOut}
           />
 
@@ -87,9 +86,9 @@ export async function SiteHeader() {
               displayName={profile?.display_name ?? ""}
               showAdminRole={showAdminRole}
               signOutAction={signOut}
-              newsroom={canAdminMode}
-              adminMode={adminModeOn}
-              exitAdminAction={exitAdminModeAction}
+              newsroom={isWriter}
+              adminMode={elevated}
+              exitAdminAction={elevated ? exitAdminModeAction : undefined}
             />
           ) : (
             <Link
@@ -141,8 +140,8 @@ export async function SiteHeader() {
           </div>
 
           <div className="flex items-center justify-end gap-2 pt-0.5">
-            <AdminModeToggle canUse={canAdminMode} active={adminModeOn} />
-            {adminModeOn && (
+            <AdminModeToggle canUse={canElevate} active={elevated} />
+            {isWriter && (
               <Link
                 href="/admin"
                 className="text-[11px] font-bold uppercase tracking-wider text-ink-soft hover:text-ink"

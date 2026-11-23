@@ -24,8 +24,14 @@ export interface Profile {
   email?: string | null;
   bio?: string | null;
   role: Role;
-  /** Cross-platform owner — treated as Digest admin everywhere */
+  /** Underlying newsroom ladder before Admin Mode elevation. */
+  base_role?: Role;
+  /** Cross-platform owner — elevated powers only while Admin Mode is on. */
   is_super_admin?: boolean;
+  /** True when Admin Mode is on and this account may elevate. */
+  elevated?: boolean;
+  /** Super admin or digest app_roles admin — may toggle Admin Mode. */
+  can_elevate?: boolean;
   verification_level?: "soft" | "verified";
   forum_karma?: number;
   matric_number?: string | null;

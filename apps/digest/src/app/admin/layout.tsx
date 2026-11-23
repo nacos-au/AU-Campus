@@ -3,7 +3,7 @@ import { site } from "@/lib/site";
 import { digestFeatures } from "@/lib/features";
 import { AdminNav, type AdminNavItem } from "@/components/AdminNav";
 import { Providers } from "@/components/Providers";
-import { exitAdminModeAction } from "@/app/actions/admin-mode";
+import { leaveNewsroomAction } from "@/app/actions/admin-mode";
 
 export default async function AdminLayout({
   children,
@@ -13,6 +13,9 @@ export default async function AdminLayout({
   const { profile } = await requireRole("writer");
   const staff = hasRole(profile, "editor");
   const isAdmin = hasRole(profile, "admin");
+  const deskRole = profile.elevated
+    ? `${profile.role} · elevated`
+    : (profile.base_role ?? profile.role);
 
   const items: AdminNavItem[] = [
     { href: "/admin", label: "Dashboard", icon: "dashboard" },
@@ -36,8 +39,8 @@ export default async function AdminLayout({
         items={items}
         masthead={site.masthead}
         displayName={profile.display_name}
-        role={profile.role}
-        exitAction={exitAdminModeAction}
+        role={deskRole}
+        exitAction={leaveNewsroomAction}
       >
         {children}
       </AdminNav>
