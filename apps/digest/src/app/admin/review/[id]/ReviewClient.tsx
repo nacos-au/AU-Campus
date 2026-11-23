@@ -8,7 +8,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { RichText } from "@/components/RichText";
-import type { ReviewComment, RevisionPayload } from "@/lib/types";
+import type { ReviewComment, RevisionPayload, Section } from "@/lib/types";
 
 const STATE_LABELS: Record<string, string> = {
   draft: "Draft",
@@ -50,6 +50,9 @@ export function ReviewClient({
   isRevision,
   canReview,
   canMakeLive,
+  canMoveDesk,
+  sectionId: initialSectionId,
+  sections,
   isAuthor,
   userId,
   initialComments,
@@ -60,6 +63,9 @@ export function ReviewClient({
   isRevision: boolean;
   canReview: boolean;
   canMakeLive: boolean;
+  canMoveDesk: boolean;
+  sectionId: number;
+  sections: Section[];
   isAuthor: boolean;
   userId: string;
   initialComments: ReviewComment[];
@@ -75,7 +81,13 @@ export function ReviewClient({
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sectionId, setSectionId] = useState(String(initialSectionId));
+  const [deskBusy, setDeskBusy] = useState(false);
   const { confirm } = useConfirm();
+
+  useEffect(() => {
+    setSectionId(String(initialSectionId));
+  }, [initialSectionId]);
 
   const { data: comments = [] } = useQuery({
     queryKey: ["review-comments", articleId],
@@ -165,6 +177,37 @@ export function ReviewClient({
     });
     if (error) setError(error.message);
     else qc.invalidateQueries({ queryKey: ["review-comments", articleId] });
+  }
+
+  async function moveDesk(nextId: string) {
+    if (!canMoveDesk || !nextId || nextId === sectionId) return;
+    const label =
+      sections.find((s) => String(s.id) === nextId)?.name ?? "that desk";
+    const ok = await confirm({
+      title: `Move to ${label}?`,
+      body:
+        state === "published"
+          ? "The live story moves to that section immediately. No rewrite approval needed."
+          : "Updates the desk for this piece before it goes live.",
+      confirmLabel: "Move desk",
+    });
+    if (!ok) {
+      setSectionId(String(initialSectionId));
+      return;
+    }
+    setDeskBusy(true);
+    setError(null);
+    const { error } = await supabase.rpc("move_article_desk", {
+      p_article_id: articleId,
+      p_section_id: Number(nextId),
+    });
+    setDeskBusy(false);
+    if (error) {
+      setSectionId(String(initialSectionId));
+      return setError(error.message);
+    }
+    setSectionId(nextId);
+    router.refresh();
   }
 
   async function act(kind: "changes" | "approve" | "park" | "make_live") {
@@ -261,6 +304,35 @@ export function ReviewClient({
       </article>
 
       <aside className="lg:sticky lg:top-4 lg:self-start">
+        {canMoveDesk && sections.length > 0 && (
+          <div className="mb-5 border border-rule-dark p-3">
+            <label className="block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
+              Section
+            </label>
+            <select
+              value={sectionId}
+              disabled={deskBusy || busy}
+              onChange={(e) => {
+                const next = e.target.value;
+                setSectionId(next);
+                void moveDesk(next);
+              }}
+              className="mt-1.5 w-full border border-rule-dark bg-paper px-2 py-2 text-sm focus:border-ink focus:outline-none disabled:opacity-50"
+            >
+              {sections.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1.5 text-[11px] text-ink-soft">
+              {state === "published"
+                ? "Move desk updates the live story immediately."
+                : "Change desk here — no need to open Edit."}
+            </p>
+          </div>
+        )}
+
         <h2 className="text-xs font-bold uppercase tracking-wider text-ink-soft">
           Review thread
         </h2>

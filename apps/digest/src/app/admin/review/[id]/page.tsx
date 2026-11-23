@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole, hasRole } from "@/lib/auth";
+import { isPublicSectionSlug } from "@/lib/features";
 import { createAuthClient } from "@/lib/supabase/auth-client";
-import type { Article, ReviewComment, RevisionPayload } from "@/lib/types";
+import type { Article, ReviewComment, RevisionPayload, Section } from "@/lib/types";
 import { VersionHistory } from "@/app/admin/articles/VersionHistory";
 import { ReviewClient } from "./ReviewClient";
 
@@ -64,6 +65,19 @@ export default async function ReviewPage({
     !isRevision &&
     article.status === "scheduled" &&
     hasRole(profile, "editor");
+  const canMoveDesk = hasRole(profile, "editor");
+
+  const { data: sectionRows } = await supabase
+    .from("sections")
+    .select("id, slug, name, position")
+    .order("position");
+  const sections = ((sectionRows ?? []) as Section[]).filter((s) =>
+    isPublicSectionSlug(s.slug)
+  );
+  const sectionId =
+    typeof content.section_id === "number" && content.section_id
+      ? content.section_id
+      : article.section_id;
 
   return (
     <div>
@@ -77,6 +91,9 @@ export default async function ReviewPage({
         isRevision={isRevision}
         canReview={canReview}
         canMakeLive={canMakeLive}
+        canMoveDesk={canMoveDesk}
+        sectionId={sectionId}
+        sections={sections}
         isAuthor={isAuthor}
         userId={profile.id}
         initialComments={(comments ?? []) as unknown as ReviewComment[]}

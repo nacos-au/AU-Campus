@@ -7,7 +7,8 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import type { ArticleStatus, ArticleWithMeta } from "@/lib/types";
+import { isPublicSectionSlug } from "@/lib/features";
+import type { ArticleStatus, ArticleWithMeta, Section } from "@/lib/types";
 
 interface Row extends ArticleWithMeta {
   article_revisions:
@@ -86,6 +87,20 @@ export function ArticlesTable({
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return data as unknown as Row[];
+    },
+  });
+
+  const { data: sections = [] } = useQuery({
+    queryKey: ["sections-public-desks"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sections")
+        .select("*")
+        .order("position");
+      if (error) throw error;
+      return ((data ?? []) as Section[]).filter((s) =>
+        isPublicSectionSlug(s.slug)
+      );
     },
   });
 
@@ -194,6 +209,18 @@ export function ArticlesTable({
         .from("articles")
         .update({ assigned_editor_id: vars.editorId })
         .eq("id", vars.id);
+      if (error) throw error;
+    },
+    onError: (e: Error) => setError(e.message),
+    onSettled: refresh,
+  });
+
+  const moveDesk = useMutation({
+    mutationFn: async (vars: { id: string; sectionId: number }) => {
+      const { error } = await supabase.rpc("move_article_desk", {
+        p_article_id: vars.id,
+        p_section_id: vars.sectionId,
+      });
       if (error) throw error;
     },
     onError: (e: Error) => setError(e.message),
@@ -437,6 +464,45 @@ export function ArticlesTable({
                               {p.display_name}
                             </option>
                           ))}
+                      </select>
+                    )}
+
+                  {isStaff &&
+                    sections.length > 0 &&
+                    a.status !== "withdrawn" &&
+                    a.status !== "archived" && (
+                      <select
+                        value={a.section_id}
+                        disabled={moveDesk.isPending}
+                        aria-label="Move desk"
+                        onChange={async (e) => {
+                          const next = Number(e.target.value);
+                          if (!next || next === a.section_id) return;
+                          const name =
+                            sections.find((s) => s.id === next)?.name ??
+                            "that desk";
+                          if (
+                            !(await confirm({
+                              title: `Move to ${name}?`,
+                              body:
+                                a.status === "published"
+                                  ? "The live story moves to that section immediately."
+                                  : "Updates the desk for this piece.",
+                              confirmLabel: "Move desk",
+                            }))
+                          ) {
+                            e.target.value = String(a.section_id);
+                            return;
+                          }
+                          moveDesk.mutate({ id: a.id, sectionId: next });
+                        }}
+                        className="border border-rule-dark px-2 py-1 text-xs"
+                      >
+                        {sections.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            Desk: {s.name}
+                          </option>
+                        ))}
                       </select>
                     )}
 
