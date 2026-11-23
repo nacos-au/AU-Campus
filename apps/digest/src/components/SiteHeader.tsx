@@ -141,48 +141,42 @@ export async function SiteHeader() {
             </Link>
           </div>
 
-          <div className="flex flex-col items-end gap-1.5 pt-0.5">
-            <div className="flex items-center justify-end gap-2">
-              <AdminModeToggle canUse={canElevate} active={elevated} />
-              {isWriter && (
-                <Link
-                  href="/admin"
-                  className="text-[11px] font-bold uppercase tracking-wider text-ink-soft hover:text-ink"
-                >
-                  {t("admin")}
-                </Link>
-              )}
-              {digestFeatures.weekly && (
-                <Link
-                  href="/weekly"
-                  className="bg-accent px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-accent-hover transition-colors"
-                >
-                  {t("weeklyIssue")}
-                </Link>
-              )}
-              {user ? (
-                <ProfileMenu
-                  compact
-                  email={user.email}
-                  displayName={profile?.display_name ?? ""}
-                  showAdminRole={showAdminRole}
-                  signOutAction={signOut}
-                />
-              ) : (
-                <Link
-                  href="/login"
-                  aria-label={t("signIn")}
-                  title={t("signIn")}
-                  className="flex h-10 w-10 items-center justify-center text-ink hover:text-accent"
-                >
-                  <IconUser className="h-6 w-6" />
-                </Link>
-              )}
-            </div>
-            {/* Under the Weekly Issue CTA; offset past the avatar */}
-            <div className="mr-11">
-              <WeatherBadge size="lg" />
-            </div>
+          <div className="flex items-center justify-end gap-2 pt-0.5">
+            <AdminModeToggle canUse={canElevate} active={elevated} />
+            {isWriter && (
+              <Link
+                href="/admin"
+                className="text-[11px] font-bold uppercase tracking-wider text-ink-soft hover:text-ink"
+              >
+                {t("admin")}
+              </Link>
+            )}
+            {digestFeatures.weekly && (
+              <Link
+                href="/weekly"
+                className="bg-accent px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-accent-hover transition-colors"
+              >
+                {t("weeklyIssue")}
+              </Link>
+            )}
+            {user ? (
+              <ProfileMenu
+                compact
+                email={user.email}
+                displayName={profile?.display_name ?? ""}
+                showAdminRole={showAdminRole}
+                signOutAction={signOut}
+              />
+            ) : (
+              <Link
+                href="/login"
+                aria-label={t("signIn")}
+                title={t("signIn")}
+                className="flex h-10 w-10 items-center justify-center text-ink hover:text-accent"
+              >
+                <IconUser className="h-6 w-6" />
+              </Link>
+            )}
           </div>
         </div>
 

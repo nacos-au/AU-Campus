@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { AdSlot } from "@/components/AdSlot";
 import { FunFactCloud } from "@/components/FunFactCloud";
+import { WeatherPanel } from "@/components/WeatherPanel";
 import { WordOfTheDay } from "@/components/WordOfTheDay";
 import {
   CompactStory,
@@ -13,6 +14,7 @@ import {
 import { ARTICLE_PUBLIC_SELECT } from "@/lib/articles";
 import { todaysFact, todaysWord } from "@/lib/campus-lore";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
+import { fetchOwoWeather } from "@/lib/weather";
 import type {
   ArticleWithMeta,
   CampusFact,
@@ -31,6 +33,7 @@ export default async function HomePage() {
     { data: slotsData },
     { data: factsData },
     { data: wordsData },
+    weather,
   ] = await Promise.all([
       supabase
         .from("articles")
@@ -55,6 +58,7 @@ export default async function HomePage() {
         .eq("active", true)
         .order("sort_order")
         .order("created_at"),
+      fetchOwoWeather(),
     ]);
 
   const fact = todaysFact((factsData ?? []) as CampusFact[]);
@@ -99,7 +103,7 @@ export default async function HomePage() {
 
   const showBreaking = breaking.length > 0;
   const showTopNews = topNews.length > 0;
-  const showRail = showBreaking || showTopNews;
+  const showRail = showBreaking || showTopNews || Boolean(weather);
 
   const railIds = new Set([...breaking, ...topNews].map((a) => a.id));
   const mainPool = articles.filter((a) => !railIds.has(a.id));
@@ -147,6 +151,8 @@ export default async function HomePage() {
 
         {showRail && (
           <aside className="border-t border-rule pt-6 lg:border-t-0 lg:pt-0 lg:pl-8">
+            {weather && <WeatherPanel weather={weather} />}
+
             {showBreaking && (
               <div className={showTopNews ? "mb-8" : ""}>
                 <h2 className="border-b-2 border-accent pb-2 text-sm font-bold uppercase tracking-wider text-accent">
