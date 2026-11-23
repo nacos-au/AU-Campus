@@ -49,10 +49,8 @@ stable
 as $$
   select p.id
   from public.profiles p
-  where (
-      p.role in ('editor', 'admin')
-      or coalesce(p.is_super_admin, false)
-    )
+  where p.role in ('editor', 'admin')
+    and coalesce(p.is_super_admin, false) = false
     and (exclude_uid is null or p.id is distinct from exclude_uid)
   order by (
     select count(*)::int

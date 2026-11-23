@@ -146,7 +146,8 @@ export function ArticleComposer({
       const { data, error } = await supabase
         .from("profiles")
         .select("id, display_name, username, role, is_super_admin")
-        .or("role.eq.editor,role.eq.admin,is_super_admin.eq.true")
+        .or("role.eq.editor,role.eq.admin")
+        .eq("is_super_admin", false)
         .order("display_name");
       if (error) throw error;
       return data as Pick<Profile, "id" | "display_name" | "username">[];
