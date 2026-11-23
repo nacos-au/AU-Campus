@@ -125,6 +125,7 @@ export function WeeklyBoardManager() {
   const [mobileAddOpen, setMobileAddOpen] = useState(false);
   const [mobileInspectOpen, setMobileInspectOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [articleQuery, setArticleQuery] = useState("");
 
   const dirtyRef = useRef(false);
   const savingRef = useRef(false);
@@ -381,60 +382,63 @@ export function WeeklyBoardManager() {
         intro.span = 8;
         intro.byline = "From the Desk";
         intro.body =
-          "A quieter week on campus — fewer breaking stories, more room to think. This sample shows text and story widgets sharing the page.";
+          "A quieter week — pack a lead, two narrow features, and a dense rail. Search-pick articles and write optional page copy in the inspector.";
       }
-      const side = createBlock("text");
-      if (side.type === "text") {
-        side.span = 6;
-        side.body =
-          "Drag blocks, change widths, and autosave. Delete this sample when you are done reviewing.";
+      const sideNote = createBlock("text");
+      if (sideNote.type === "text") {
+        sideNote.span = 6;
+        sideNote.body =
+          "Column features stay narrow. Pair a lead with column widgets and a rail stack so the page packs tight.";
       }
-      const heading = createBlock("heading");
-      if (heading.type === "heading") {
-        heading.text = "What we are watching";
-      }
-      const body = createBlock("text");
-      if (body.type === "text") {
-        body.body =
-          "When the news hole is light, lead with voice — then pin real articles into Article widgets.";
-      }
-      const blocks: WeeklyBlock[] = [
-        intro,
-        side,
-        heading,
-        body,
-        createBlock("divider"),
-      ];
+      const blocks: WeeklyBlock[] = [intro, sideNote, createBlock("divider")];
       if (articles[0]) {
-        const art = createBlock("article");
-        if (art.type === "article") {
-          art.span = 8;
-          art.articleId = articles[0].id;
-          art.showImage = true;
+        const lead = createBlock("article");
+        if (lead.type === "article") {
+          lead.span = 8;
+          lead.variant = "lead";
+          lead.articleId = articles[0].id;
+          lead.showImage = true;
+          lead.teaser =
+            lead.teaser ||
+            "Optional page teaser — rewrite the dek for the weekly frame.";
         }
-        blocks.push(art);
-      } else {
-        const placeholder = createBlock("text");
-        if (placeholder.type === "text") {
-          placeholder.span = 8;
-          placeholder.body =
-            "(No published articles yet — add one, then drop an Article widget here.)";
-        }
-        blocks.push(placeholder);
+        blocks.push(lead);
       }
       if (articles[1]) {
+        const col = createBlock("article");
+        if (col.type === "article") {
+          col.span = 4;
+          col.variant = "column";
+          col.articleId = articles[1].id;
+          col.showImage = true;
+        }
+        blocks.push(col);
+      }
+      if (articles[2]) {
+        const feat = createBlock("article");
+        if (feat.type === "article") {
+          feat.span = 4;
+          feat.variant = "column";
+          feat.articleId = articles[2].id;
+          feat.showImage = true;
+        }
+        blocks.push(feat);
+      }
+      if (articles[3]) {
         const stack = createBlock("articleStack");
         if (stack.type === "articleStack") {
-          stack.title = "Also";
-          stack.articleIds = articles.slice(1, 4).map((a) => a.id);
+          stack.span = 4;
+          stack.title = "Also this week";
+          stack.articleIds = articles.slice(3, 7).map((a) => a.id);
         }
         blocks.push(stack);
-      } else {
+      }
+      if (blocks.length <= 3) {
         const placeholder = createBlock("text");
         if (placeholder.type === "text") {
-          placeholder.span = 6;
+          placeholder.span = 12;
           placeholder.body =
-            "Article stacks belong in this column on a full week.";
+            "Publish a few Digest articles, then recreate the sample to see a full lead + columns + rail pack.";
         }
         blocks.push(placeholder);
       }
@@ -544,7 +548,15 @@ export function WeeklyBoardManager() {
               })
               .map((n) => (
                 <option key={n} value={n}>
-                  {n}/12
+                  {selected.type === "article"
+                    ? n === 12
+                      ? "Full (12)"
+                      : n === 8
+                        ? "Lead (8)"
+                        : n === 6
+                          ? "Feature (6)"
+                          : "Column (4)"
+                    : `${n}/12`}
                 </option>
               ))}
           </select>
@@ -608,6 +620,17 @@ export function WeeklyBoardManager() {
         <>
           <label className="block">
             <span className="text-[11px] font-semibold uppercase text-ink-soft">
+              Search articles
+            </span>
+            <input
+              className="mt-1 w-full border border-rule px-2 py-1.5"
+              value={articleQuery}
+              onChange={(e) => setArticleQuery(e.target.value)}
+              placeholder="Title or section…"
+            />
+          </label>
+          <label className="block">
+            <span className="text-[11px] font-semibold uppercase text-ink-soft">
               Article
             </span>
             <select
@@ -618,16 +641,74 @@ export function WeeklyBoardManager() {
               }
             >
               <option value="">— Select —</option>
-              {articles.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.title}
-                </option>
-              ))}
+              {articles
+                .filter((a) => {
+                  const q = articleQuery.trim().toLowerCase();
+                  if (!q) return true;
+                  return (
+                    a.title.toLowerCase().includes(q) ||
+                    (a.sections?.name ?? "").toLowerCase().includes(q)
+                  );
+                })
+                .map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.title}
+                    {a.sections?.name ? ` · ${a.sections.name}` : ""}
+                  </option>
+                ))}
             </select>
           </label>
           <label className="block">
             <span className="text-[11px] font-semibold uppercase text-ink-soft">
-              Teaser override
+              Variant
+            </span>
+            <select
+              className="mt-1 w-full border border-rule px-2 py-1.5"
+              value={selected.variant ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                patchBlock(selected.id, {
+                  variant: v
+                    ? (v as "lead" | "feature" | "column")
+                    : undefined,
+                });
+              }}
+            >
+              <option value="">Auto from width</option>
+              <option value="lead">Lead</option>
+              <option value="feature">Feature</option>
+              <option value="column">Column</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-[11px] font-semibold uppercase text-ink-soft">
+              Kicker (optional)
+            </span>
+            <input
+              className="mt-1 w-full border border-rule px-2 py-1.5"
+              value={selected.kicker ?? ""}
+              onChange={(e) =>
+                patchBlock(selected.id, { kicker: e.target.value })
+              }
+              placeholder="Overrides section name"
+            />
+          </label>
+          <label className="block">
+            <span className="text-[11px] font-semibold uppercase text-ink-soft">
+              Headline (optional)
+            </span>
+            <input
+              className="mt-1 w-full border border-rule px-2 py-1.5"
+              value={selected.headline ?? ""}
+              onChange={(e) =>
+                patchBlock(selected.id, { headline: e.target.value })
+              }
+              placeholder="Overrides article title on this page"
+            />
+          </label>
+          <label className="block">
+            <span className="text-[11px] font-semibold uppercase text-ink-soft">
+              Teaser (optional)
             </span>
             <textarea
               rows={3}
@@ -636,6 +717,7 @@ export function WeeklyBoardManager() {
               onChange={(e) =>
                 patchBlock(selected.id, { teaser: e.target.value })
               }
+              placeholder="Page copy — not the article dek unless you leave this blank"
             />
           </label>
           <label className="flex items-center gap-2">
@@ -757,14 +839,26 @@ export function WeeklyBoardManager() {
         items={layout.blocks.map((b) => b.id)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="grid grid-cols-12 gap-3">
+        <div className="grid grid-cols-12 grid-flow-dense gap-3">
           {layout.blocks.map((block) => (
-            <div key={block.id} className={block.span === 12 ? "col-span-12" : block.span === 8 ? "col-span-12 lg:col-span-8" : block.span === 6 ? "col-span-12 lg:col-span-6" : "col-span-12 lg:col-span-4"}>
+            <div
+              key={block.id}
+              className={
+                block.span === 12
+                  ? "col-span-12"
+                  : block.span === 8
+                    ? "col-span-12 lg:col-span-8"
+                    : block.span === 6
+                      ? "col-span-12 lg:col-span-6"
+                      : "col-span-12 lg:col-span-4"
+              }
+            >
               <SortableBlock
                 id={block.id}
                 selected={selectedId === block.id}
                 onSelect={() => {
                   setSelectedId(block.id);
+                  setArticleQuery("");
                   setMobileInspectOpen(true);
                 }}
               >

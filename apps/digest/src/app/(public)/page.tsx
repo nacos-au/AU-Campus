@@ -120,6 +120,10 @@ export default async function HomePage() {
       .map((a) => a!.id)
   );
   const remaining = articles.filter((a) => !usedIds.has(a.id));
+  /** Fill under the 2-up so the main column matches a tall Breaking/Top rail. */
+  const underFeatures = remaining.slice(0, showRail ? 8 : 0);
+  const underIds = new Set(underFeatures.map((a) => a.id));
+  const deskPool = remaining.filter((a) => !underIds.has(a.id));
 
   const sectionHighlight = new Map<number, ArticleWithMeta>();
   for (const s of slots.filter((x) => x.kind === "section_highlight")) {
@@ -144,6 +148,13 @@ export default async function HomePage() {
                 <div key={a.id} className={i === 1 ? "sm:pl-6" : ""}>
                   <StoryCard article={a} />
                 </div>
+              ))}
+            </div>
+          )}
+          {underFeatures.length > 0 && (
+            <div className="mt-8 space-y-0 border-t border-rule pt-2">
+              {underFeatures.map((a) => (
+                <ListStory key={a.id} article={a} />
               ))}
             </div>
           )}
@@ -209,7 +220,7 @@ export default async function HomePage() {
 
       {sections.map((section) => {
         const highlight = sectionHighlight.get(section.id);
-        const others = remaining
+        const others = deskPool
           .filter(
             (a) =>
               a.sections?.slug === section.slug &&

@@ -147,7 +147,7 @@ export default async function WeeklyIssuePage({
             </div>
           ) : null}
 
-          <div className="mt-8 grid grid-cols-12 gap-x-6 gap-y-8">
+          <div className="mt-8 grid grid-cols-12 grid-flow-dense gap-x-5 gap-y-6 md:gap-y-7">
             {layout.blocks.map((block) => (
               <WeeklyBlockView
                 key={block.id}

@@ -27,8 +27,12 @@ export type WeeklyBlock =
       type: "article";
       span: 12 | 8 | 6 | 4;
       articleId: string;
+      kicker?: string;
+      headline?: string;
       teaser?: string;
       showImage?: boolean;
+      /** Visual recipe; defaults from span when omitted. */
+      variant?: "lead" | "feature" | "column";
     }
   | {
       id: string;
@@ -125,9 +129,10 @@ export function createBlock(
       return {
         id,
         type: "article",
-        span: 8,
+        span: 4,
         articleId: "",
         showImage: true,
+        variant: "column",
         ...(partial as Partial<Extract<WeeklyBlock, { type: "article" }>>),
       };
     case "articleStack":
@@ -167,6 +172,15 @@ export function spanClass(span: number): string {
     default:
       return "col-span-12";
   }
+}
+
+export function articleVariant(
+  block: Extract<WeeklyBlock, { type: "article" }>
+): "lead" | "feature" | "column" {
+  if (block.variant) return block.variant;
+  if (block.span >= 8) return "lead";
+  if (block.span === 6) return "feature";
+  return "column";
 }
 
 type LegacySlot = WeeklyIssueSlot & {
