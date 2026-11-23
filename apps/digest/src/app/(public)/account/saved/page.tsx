@@ -21,7 +21,9 @@ export default async function SavedStoriesPage() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
-  const stories = ((saves ?? []) as Array<{ articles: ArticleWithMeta | null }>)
+  const stories = (
+    (saves ?? []) as unknown as Array<{ articles: ArticleWithMeta | null }>
+  )
     .map((row) => row.articles)
     .filter((a): a is ArticleWithMeta => !!a && a.status === "published");
 
