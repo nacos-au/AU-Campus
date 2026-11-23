@@ -8,6 +8,7 @@ import {
   ListStory,
   StoryCard,
 } from "@/components/stories";
+import { ARTICLE_PUBLIC_SELECT } from "@/lib/articles";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
 import type { ArticleWithMeta, FrontPageSlot, Section } from "@/lib/types";
 
@@ -15,14 +16,11 @@ export default async function HomePage() {
   const supabase = await createClient();
   const t = await getTranslations("home");
 
-  const ARTICLE_SELECT =
-    "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username)";
-
   const [{ data: articlesData }, { data: sectionsData }, { data: slotsData }] =
     await Promise.all([
       supabase
         .from("articles")
-        .select(ARTICLE_SELECT)
+        .select(ARTICLE_PUBLIC_SELECT)
         .eq("status", "published")
         .order("published_at", { ascending: false })
         .limit(60),

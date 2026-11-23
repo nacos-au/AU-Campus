@@ -1,3 +1,7 @@
+/** Public list/detail select — includes author + optional series. */
+export const ARTICLE_PUBLIC_SELECT =
+  "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username), article_series(id, slug, title)";
+
 interface TiptapNode {
   type?: string;
   text?: string;

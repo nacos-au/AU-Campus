@@ -7,22 +7,19 @@ import { createClient } from "@/lib/supabase/server";
 import { AdSlot } from "@/components/AdSlot";
 import { RichText } from "@/components/RichText";
 import { LikeShare } from "@/components/LikeShare";
-import { displayByline } from "@/lib/byline";
+import { displayByline, seriesHref } from "@/lib/byline";
 import { CompactStory } from "@/components/stories";
-import { readingMinutes } from "@/lib/articles";
+import { ARTICLE_PUBLIC_SELECT, readingMinutes } from "@/lib/articles";
 import { digestFeatures } from "@/lib/features";
 import type { ArticleWithMeta } from "@/lib/types";
 
 export const revalidate = 60;
 
-const SELECT =
-  "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username)";
-
 async function getArticle(slug: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("articles")
-    .select(SELECT)
+    .select(ARTICLE_PUBLIC_SELECT)
     .eq("slug", slug)
     .eq("status", "published")
     .maybeSingle();
@@ -61,7 +58,7 @@ export default async function ArticlePage({
   const supabase = await createClient();
   const { data: relatedData } = await supabase
     .from("articles")
-    .select(SELECT)
+    .select(ARTICLE_PUBLIC_SELECT)
     .eq("status", "published")
     .eq("section_id", article.section_id)
     .neq("id", article.id)
@@ -75,6 +72,12 @@ export default async function ArticlePage({
         timeStyle: "short",
       }).format(new Date(article.published_at))
     : "";
+
+  const credit = displayByline(article);
+  const series = article.article_series;
+  const seriesLink = seriesHref(series);
+  const personalCredit =
+    !article.byline_mode || article.byline_mode === "personal";
 
   return (
     <div className="py-8">
@@ -99,20 +102,33 @@ export default async function ArticlePage({
         )}
 
         <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-1 border-y border-rule py-3 text-xs text-ink-soft">
-          {displayByline(article) && (
+          {(credit || series) && (
             <span>
-              By{" "}
-              {article.byline_mode && article.byline_mode !== "personal" ? (
-                <span className="font-semibold text-ink">{displayByline(article)}</span>
-              ) : article.profiles?.username ? (
+              {credit && (
+                <>
+                  By{" "}
+                  {personalCredit && article.profiles?.username ? (
+                    <Link
+                      href={`/author/${article.profiles.username}`}
+                      className="font-semibold text-ink hover:text-accent"
+                    >
+                      {credit}
+                    </Link>
+                  ) : (
+                    <span className="font-semibold text-ink">{credit}</span>
+                  )}
+                </>
+              )}
+              {credit && series && seriesLink && (
+                <span className="text-ink-soft"> · </span>
+              )}
+              {series && seriesLink && (
                 <Link
-                  href={`/author/${article.profiles.username}`}
+                  href={seriesLink}
                   className="font-semibold text-ink hover:text-accent"
                 >
-                  {displayByline(article)}
+                  {series.title}
                 </Link>
-              ) : (
-                <span className="font-semibold text-ink">{displayByline(article)}</span>
               )}
             </span>
           )}

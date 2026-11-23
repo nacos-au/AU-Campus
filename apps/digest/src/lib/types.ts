@@ -8,7 +8,18 @@ export type ArticleStatus =
   | "archived"
   | "withdrawn";
 
-export type BylineMode = "personal" | "alias" | "series";
+/** Author credit only — series is a separate attachment. */
+export type BylineMode = "personal" | "alias";
+
+export interface ArticleSeries {
+  id: string;
+  slug: string;
+  title: string;
+  description?: string | null;
+  created_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
 export type AdSlot = "leaderboard" | "sidebar" | "infeed";
 export type WeeklyIssueStatus =
   | "draft"
@@ -64,7 +75,9 @@ export interface Article {
   assigned_editor_id?: string | null;
   byline?: string | null;
   byline_mode?: BylineMode;
+  /** @deprecated Prefer series_id / article_series */
   series_key?: string | null;
+  series_id?: string | null;
   like_count?: number;
   review_lock_by?: string | null;
   review_lock_at?: string | null;
@@ -81,6 +94,7 @@ export interface Article {
 export interface ArticleWithMeta extends Article {
   sections: Pick<Section, "slug" | "name"> | null;
   profiles: Pick<Profile, "display_name" | "username"> | null;
+  article_series?: Pick<ArticleSeries, "id" | "slug" | "title"> | null;
   assignee?: Pick<Profile, "display_name"> | null;
 }
 
@@ -234,7 +248,7 @@ export interface RevisionPayload {
   cover_url: string | null;
   byline: string | null;
   byline_mode?: BylineMode;
-  series_key?: string | null;
+  series_id?: string | null;
   sponsored_by?: string | null;
   section_id: number;
   language: string;

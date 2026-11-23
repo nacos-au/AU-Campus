@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AdSlot } from "@/components/AdSlot";
 import { StoryCard } from "@/components/stories";
+import { ARTICLE_PUBLIC_SELECT } from "@/lib/articles";
 import { isPublicSectionSlug } from "@/lib/features";
 import type { ArticleWithMeta, Section } from "@/lib/types";
 
@@ -25,9 +26,7 @@ export default async function SectionPage({
 
   const { data } = await supabase
     .from("articles")
-    .select(
-      "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username)"
-    )
+    .select(ARTICLE_PUBLIC_SELECT)
     .eq("status", "published")
     .eq("section_id", section.id)
     .order("published_at", { ascending: false })

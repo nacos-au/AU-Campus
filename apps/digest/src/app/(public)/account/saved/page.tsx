@@ -16,7 +16,7 @@ export default async function SavedStoriesPage() {
   const { data: saves } = await supabase
     .from("article_saves")
     .select(
-      "created_at, articles(*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username))"
+      "created_at, articles(*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username), article_series(id, slug, title))"
     )
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });

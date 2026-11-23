@@ -45,6 +45,8 @@ as $$
     'body', a.body,
     'cover_url', a.cover_url,
     'byline', a.byline,
+    'byline_mode', a.byline_mode,
+    'series_id', a.series_id,
     'section_id', a.section_id,
     'language', a.language,
     'status', a.status,
@@ -251,6 +253,18 @@ begin
       body = coalesce(r.payload -> 'body', body),
       cover_url = r.payload ->> 'cover_url',
       byline = nullif(trim(coalesce(r.payload ->> 'byline', '')), ''),
+      byline_mode = case
+        when r.payload ->> 'byline_mode' in ('personal', 'alias')
+          then r.payload ->> 'byline_mode'
+        else byline_mode
+      end,
+      series_id = case
+        when r.payload ? 'series_id' and nullif(trim(r.payload ->> 'series_id'), '') is null
+          then null
+        when r.payload ? 'series_id'
+          then (r.payload ->> 'series_id')::uuid
+        else series_id
+      end,
       language = coalesce(r.payload ->> 'language', language),
       section_id = coalesce((r.payload ->> 'section_id')::int, section_id),
       sponsored_by = null,

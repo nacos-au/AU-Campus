@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { CompactStory, StoryCard } from "@/components/stories";
+import { ARTICLE_PUBLIC_SELECT } from "@/lib/articles";
 import type { ArticleWithMeta } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Search" };
@@ -19,9 +20,7 @@ export default async function SearchPage({
     // Demo client has no `.ilike` — fall back to client-side filter on a fetch.
     const { data } = await supabase
       .from("articles")
-      .select(
-        "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username)"
-      )
+      .select(ARTICLE_PUBLIC_SELECT)
       .eq("status", "published")
       .order("published_at", { ascending: false })
       .limit(60);

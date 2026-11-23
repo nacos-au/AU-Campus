@@ -5,7 +5,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { Byline, CompactStory } from "@/components/stories";
 import { WeekPicker } from "@/components/WeekPicker";
-import { excerpt } from "@/lib/articles";
+import { ARTICLE_PUBLIC_SELECT, excerpt } from "@/lib/articles";
 import { isPublicSectionSlug } from "@/lib/features";
 import { getSessionProfile, hasRole } from "@/lib/auth";
 import {
@@ -21,7 +21,7 @@ export const metadata: Metadata = { title: "Weekly Issue" };
 export const revalidate = 60;
 
 const ARTICLE_EMBED =
-  "id, slug, title, dek, body, cover_url, section_id, author_id, status, featured, breaking, published_at, byline, sections(slug, name), profiles!articles_author_id_fkey(display_name, username)";
+  "id, slug, title, dek, body, cover_url, section_id, author_id, status, featured, breaking, published_at, byline, byline_mode, sections(slug, name), profiles!articles_author_id_fkey(display_name, username), article_series(id, slug, title)";
 
 const ISSUE_SELECT = `*, weekly_issue_slots(id, slot, position, article_id, section_id, articles:article_id(${ARTICLE_EMBED}))`;
 
@@ -95,9 +95,7 @@ export default async function WeeklyIssuePage({
 
   const { data: highlightData } = await supabase
     .from("articles")
-    .select(
-      "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username)"
-    )
+    .select(ARTICLE_PUBLIC_SELECT)
     .eq("status", "published")
     .order("published_at", { ascending: false })
     .limit(12);
