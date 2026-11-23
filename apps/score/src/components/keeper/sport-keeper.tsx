@@ -400,16 +400,13 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
             l.event_type === "penalty_scored" ||
             l.event_type === "own_goal")
       );
-      pushLog(selected.side, "disallowed_goal", player_id, player_name, {
-        details: original
-          ? {
-              original_event_id: original.id,
-              original_event_type: original.event_type,
-              original_match_time: original.match_time,
-            }
-          : { note: "no_matching_goal" },
-      });
-      if (original) removeLog(original.id);
+      if (original) {
+        disallowGoal(original);
+      } else {
+        pushLog(selected.side, "disallowed_goal", player_id, player_name, {
+          details: { note: "no_matching_goal" },
+        });
+      }
       setSelected(null);
       setPendingFoul(null);
       return;
@@ -546,6 +543,29 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
     removeLog(id);
     if (assistPrompt?.logId === id) setAssistPrompt(null);
     if (finishPrompt?.logId === id) setFinishPrompt(null);
+  }
+
+  function sideForTeamId(teamId: string): Side {
+    return teamId === match.away_team_id ? "away" : "home";
+  }
+
+  function disallowGoal(original: KeeperLogEntry) {
+    if (
+      original.event_type !== "goal" &&
+      original.event_type !== "penalty_scored" &&
+      original.event_type !== "own_goal"
+    ) {
+      return;
+    }
+    const side = sideForTeamId(original.team_id);
+    pushLog(side, "disallowed_goal", original.player_id, original.player_name, {
+      details: {
+        original_event_id: original.id,
+        original_event_type: original.event_type,
+        original_match_time: original.match_time,
+      },
+    });
+    handleRemove(original.id);
   }
 
   const trackResults = useMemo(() => {
@@ -821,7 +841,11 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
           <h2 className="mb-2 font-display text-xs font-extrabold uppercase tracking-wide opacity-50">
             {config.logSectionLabel}
           </h2>
-          <KeeperEventTimeline logs={logs} onRemove={handleRemove} />
+          <KeeperEventTimeline
+            logs={logs}
+            onRemove={handleRemove}
+            onDisallow={sport === "football" ? disallowGoal : undefined}
+          />
         </section>
       )}
 

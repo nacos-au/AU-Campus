@@ -1,18 +1,22 @@
 "use client";
 
-import { X } from "lucide-react";
+import { Ban, X } from "lucide-react";
 import type { KeeperLogEntry } from "@/lib/keeper/keeper-events";
 import { entryLabel } from "@/lib/keeper/keeper-events";
 import { TeamCrest } from "@/components/ui/team-crest";
 import { formatEventLabel } from "@/lib/match/timeline";
 import { cn } from "@/lib/utils/cn";
 
+const DISALLOWABLE_TYPES = new Set(["goal", "penalty_scored", "own_goal"]);
+
 export function KeeperEventTimeline({
   logs,
   onRemove,
+  onDisallow,
 }: {
   logs: KeeperLogEntry[];
   onRemove: (id: string) => void;
+  onDisallow?: (entry: KeeperLogEntry) => void;
 }) {
   if (logs.length === 0) {
     return (
@@ -24,27 +28,46 @@ export function KeeperEventTimeline({
 
   return (
     <ol className="divide-y divide-rule rounded-lg border border-rule bg-white">
-      {logs.map((entry) => (
-        <li key={entry.id} className="flex items-center gap-3 px-3 py-3 sm:px-4">
-          <span className="w-10 shrink-0 font-mono text-xs font-bold tabular-nums opacity-50">
-            {entry.match_time}
-          </span>
-          <TeamCrest code={entry.team_code} logoUrl={entry.team_logo_url} alt={entry.team_name} size="sm" />
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-display text-sm font-bold">{entryLabel(entry)}</p>
-            <p className="text-xs opacity-50">{formatEventLabel(entry.event_type)}</p>
-          </div>
-          <EventBadge type={entry.event_type} />
-          <button
-            type="button"
-            onClick={() => onRemove(entry.id)}
-            className="interactive-btn shrink-0 rounded-full p-1.5 text-red-600 hover:bg-red-50"
-            aria-label={`Remove ${entryLabel(entry)}`}
-          >
-            <X className="h-4 w-4" strokeWidth={2.5} />
-          </button>
-        </li>
-      ))}
+      {logs.map((entry) => {
+        const canDisallow =
+          Boolean(onDisallow) && DISALLOWABLE_TYPES.has(entry.event_type);
+
+        return (
+          <li key={entry.id} className="flex items-center gap-3 px-3 py-3 sm:px-4">
+            <span className="w-10 shrink-0 font-mono text-xs font-bold tabular-nums opacity-50">
+              {entry.match_time}
+            </span>
+            <TeamCrest code={entry.team_code} logoUrl={entry.team_logo_url} alt={entry.team_name} size="sm" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-display text-sm font-bold">{entryLabel(entry)}</p>
+              <p className="text-xs opacity-50">{formatEventLabel(entry.event_type)}</p>
+            </div>
+            <EventBadge type={entry.event_type} />
+            <div className="flex shrink-0 items-center gap-0.5">
+              {canDisallow && (
+                <button
+                  type="button"
+                  onClick={() => onDisallow?.(entry)}
+                  className="interactive-btn rounded-full p-1.5 text-amber-700 hover:bg-amber-50"
+                  aria-label={`Disallow ${entryLabel(entry)}`}
+                  title="Disallow goal"
+                >
+                  <Ban className="h-4 w-4" strokeWidth={2.5} />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => onRemove(entry.id)}
+                className="interactive-btn rounded-full p-1.5 text-red-600 hover:bg-red-50"
+                aria-label={`Remove ${entryLabel(entry)}`}
+                title="Cancel / remove"
+              >
+                <X className="h-4 w-4" strokeWidth={2.5} />
+              </button>
+            </div>
+          </li>
+        );
+      })}
     </ol>
   );
 }
