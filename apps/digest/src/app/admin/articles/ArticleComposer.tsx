@@ -819,9 +819,9 @@ export function ArticleComposer({
 
               {soleEditor ? (
                 <p className="border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-                  You are the only editor on the desk. Sending this piece will assign
-                  it to you for review. You can still publish or park directly below if
-                  you do not need a separate review pass.
+                  You are the only editor on the desk (failover). This piece will be
+                  assigned to you — review it in the queue, then park or publish from
+                  there like any other editor.
                 </p>
               ) : (
                 <p className="border border-rule bg-gray-50 px-3 py-2 text-sm text-ink-soft">
@@ -871,26 +871,6 @@ export function ArticleComposer({
                     ? "Send to myself for review"
                     : "Send to editor"}
               </button>
-              {soleEditor && (
-                <>
-                  <button
-                    onClick={() => send.mutate("publish")}
-                    disabled={busy || isLive}
-                    className="border border-ink px-5 py-3 text-xs font-semibold uppercase tracking-wider hover:bg-ink hover:text-paper disabled:opacity-50"
-                  >
-                    {isLive ? "Update live article" : "Publish now"}
-                  </button>
-                  {!isLive && (
-                    <button
-                      onClick={() => send.mutate("park")}
-                      disabled={busy}
-                      className="border border-sky-700 px-5 py-3 text-xs font-semibold uppercase tracking-wider text-sky-800 hover:bg-sky-700 hover:text-white disabled:opacity-50"
-                    >
-                      Park (not live)
-                    </button>
-                  )}
-                </>
-              )}
               <button
                 onClick={() =>
                   saveDraft.mutate(undefined, {

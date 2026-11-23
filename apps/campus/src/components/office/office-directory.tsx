@@ -14,18 +14,28 @@ import type { AppId, AppRoleName } from "@/lib/platform-roles";
 
 type NewsroomRole = "reader" | "writer" | "editor" | "admin";
 
+/**
+ * Role model (no overlap by design):
+ * - Newsroom: one profiles.role value (reader|writer|editor|admin) — radio, not toggle.
+ * - Per app: one app_roles row per (user, app) — Score Admin XOR Keeper.
+ * Re-clicking the active chip is a no-op so we never silently demote / lose access.
+ * Demotion is explicit (Reader / confirm revoke).
+ */
+
 function RoleChip({
   active,
   label,
   tone,
   onClick,
   pending,
+  disabled,
 }: {
   active: boolean;
   label: string;
   tone: "ink" | "accent" | "green" | "warn";
   onClick: () => void;
   pending: boolean;
+  disabled?: boolean;
 }) {
   const tones = {
     ink: active
@@ -45,7 +55,8 @@ function RoleChip({
   return (
     <button
       type="button"
-      disabled={pending}
+      disabled={pending || disabled}
+      aria-pressed={active}
       onClick={onClick}
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide transition disabled:opacity-50 ${tones[tone]}`}
     >
@@ -73,7 +84,13 @@ function UserRow({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  function run(key: string, work: () => Promise<{ ok?: boolean; error?: string } | null>) {
+  const handle = user.username ? `@${user.username}` : user.email || "user";
+
+  function run(
+    key: string,
+    okMessage: string,
+    work: () => Promise<{ ok?: boolean; error?: string } | null>
+  ) {
     start(async () => {
       setPendingKey(key);
       setError(null);
@@ -83,9 +100,9 @@ function UserRow({
         if (res?.error) {
           setError(res.error);
         } else {
-          setSuccess("Saved");
+          setSuccess(okMessage);
           router.refresh();
-          window.setTimeout(() => setSuccess(null), 2000);
+          window.setTimeout(() => setSuccess(null), 2500);
         }
       } finally {
         setPendingKey(null);
@@ -93,40 +110,75 @@ function UserRow({
     });
   }
 
-  function toggle(app: AppId, role: AppRoleName) {
+  /** One role per app — set replaces previous; revoke only when confirmed. */
+  function assignApp(app: AppId, role: AppRoleName) {
     const current = user.apps[app];
-    const next = current === role ? null : role;
-    const msg =
-      next === null
-        ? `Remove ${app} ${role} from @${user.username || user.email}?`
-        : `Grant ${app} / ${role} to @${user.username || user.email}?`;
-    if (!window.confirm(msg)) return;
+    if (current === role) return; // already set — no silent revoke
 
-    run(`${app}:${role}`, () => setAppRole({ userId: user.id, app, role: next }));
+    const swap =
+      current && current !== role
+        ? `This replaces their current ${app} / ${current} role.\n\n`
+        : "";
+    if (
+      !window.confirm(
+        `${swap}Grant ${app} / ${role} to ${handle}?`
+      )
+    )
+      return;
+
+    run(`${app}:${role}`, `${app} → ${role}`, () =>
+      setAppRole({ userId: user.id, app, role })
+    );
   }
 
-  function setNewsroom(role: NewsroomRole) {
+  function revokeApp(app: AppId) {
+    const current = user.apps[app];
+    if (!current) return;
+    if (
+      !window.confirm(
+        `Remove ${app} / ${current} from ${handle}?\n\nThey will lose that app access immediately.`
+      )
+    )
+      return;
+
+    run(`${app}:revoke`, `${app} access removed`, () =>
+      setAppRole({ userId: user.id, app, role: null })
+    );
+  }
+
+  /** Exclusive newsroom ladder — one profiles.role, never overlap. */
+  function assignNewsroom(role: NewsroomRole) {
     if (user.id === selfId) {
       setError("You cannot change your own newsroom role here.");
       return;
     }
-    const next = user.role === role ? "reader" : role;
-    const msg =
-      next === "reader"
-        ? `Demote @${user.username || user.email} to reader?`
-        : `Set newsroom role to ${role} for @${user.username || user.email}?`;
+    if (user.role === role) return; // already set
+
+    const from = user.role;
+    const demoting =
+      role === "reader" ||
+      (from === "admin" && (role === "editor" || role === "writer")) ||
+      (from === "editor" && role === "writer");
+
+    const msg = demoting
+      ? `Change ${handle} from ${from} → ${role}?\n\nThey keep their account and articles; only desk permissions change.`
+      : `Set newsroom role ${from} → ${role} for ${handle}?`;
     if (!window.confirm(msg)) return;
 
-    run(`newsroom:${role}`, () =>
-      setNewsroomRole({ userId: user.id, role: next })
+    run(`newsroom:${role}`, `Newsroom → ${role}`, () =>
+      setNewsroomRole({ userId: user.id, role })
     );
   }
 
   function verifyMember() {
     if (user.verification_level === "verified") {
-      const ok = window.confirm(`Revoke verification for ${user.email || user.display_name}?`);
-      if (!ok) return;
-      run("verify", () =>
+      if (
+        !window.confirm(
+          `Revoke verification for ${user.email || user.display_name}?`
+        )
+      )
+        return;
+      run("verify", "Verification revoked", () =>
         setMemberVerification({ userId: user.id, verified: false })
       );
       return;
@@ -135,7 +187,7 @@ function UserRow({
       "Member ID to link this account (checked in person). At least 3 characters."
     );
     if (!matric || matric.trim().length < 3) return;
-    run("verify", () =>
+    run("verify", "Verified", () =>
       setMemberVerification({
         userId: user.id,
         verified: true,
@@ -147,18 +199,25 @@ function UserRow({
   function toggleSuper() {
     const enabled = !user.is_super_admin;
     if (enabled) {
-      const ok = window.confirm(
-        `Make ${user.email} a SUPER ADMIN?\n\nThey will control all platforms and can grant roles. Prefer a single owner.`
-      );
-      if (!ok) return;
+      if (
+        !window.confirm(
+          `Make ${user.email} a SUPER ADMIN?\n\nThey will control all platforms and can grant roles. Prefer a single owner.`
+        )
+      )
+        return;
     } else {
-      const ok = window.confirm(`Remove super admin from ${user.email}?`);
-      if (!ok) return;
+      if (!window.confirm(`Remove super admin from ${user.email}?`)) return;
     }
-    run("super", () => setSuperAdminFlag({ userId: user.id, enabled }));
+    run("super", enabled ? "Super admin granted" : "Super admin removed", () =>
+      setSuperAdminFlag({ userId: user.id, enabled })
+    );
   }
 
   const busy = pendingKey !== null;
+  const newsroom: NewsroomRole =
+    user.role === "writer" || user.role === "editor" || user.role === "admin"
+      ? user.role
+      : "reader";
 
   return (
     <div className="border-b border-rule px-4 py-3 last:border-b-0">
@@ -176,68 +235,88 @@ function UserRow({
             {user.username ? `@${user.username}` : "—"} · {user.email || "no email"}
           </p>
           <p className="mt-0.5 text-[10px] uppercase tracking-wide text-ink-soft">
-            {user.verification_level === "verified" ? "L2 verified" : "L1 soft"} · newsroom{" "}
-            {user.role}
+            {user.verification_level === "verified" ? "L2 verified" : "L1 soft"} ·
+            newsroom {newsroom}
+            {user.apps.score ? ` · score ${user.apps.score}` : ""}
           </p>
         </div>
         <div className="flex min-w-0 flex-col items-end gap-2">
           <div className="flex flex-wrap justify-end gap-1.5">
             <span className="self-center text-[10px] font-bold uppercase tracking-wide text-ink-soft">
-              Digest
+              Newsroom
             </span>
-            <RoleChip
-              active={user.role === "writer"}
-              label="Writer"
-              tone="accent"
-              pending={pendingKey === "newsroom:writer"}
-              onClick={() => setNewsroom("writer")}
-            />
-            <RoleChip
-              active={user.role === "editor"}
-              label="Editor"
-              tone="accent"
-              pending={pendingKey === "newsroom:editor"}
-              onClick={() => setNewsroom("editor")}
-            />
-            <RoleChip
-              active={user.role === "admin"}
-              label="Admin"
-              tone="accent"
-              pending={pendingKey === "newsroom:admin"}
-              onClick={() => setNewsroom("admin")}
-            />
+            {(
+              [
+                ["reader", "Reader"],
+                ["writer", "Writer"],
+                ["editor", "Editor"],
+                ["admin", "Admin"],
+              ] as const
+            ).map(([role, label]) => (
+              <RoleChip
+                key={role}
+                active={newsroom === role}
+                label={label}
+                tone="accent"
+                pending={pendingKey === `newsroom:${role}`}
+                disabled={user.id === selfId}
+                onClick={() => assignNewsroom(role)}
+              />
+            ))}
           </div>
           <div className="flex flex-wrap justify-end gap-1.5">
             <span className="self-center text-[10px] font-bold uppercase tracking-wide text-ink-soft">
-              Apps
+              Score
             </span>
             <RoleChip
-              active={user.apps.campus === "admin"}
-              label="Campus"
-              tone="ink"
-              pending={pendingKey === "campus:admin"}
-              onClick={() => toggle("campus", "admin")}
-            />
-            <RoleChip
-              active={user.apps.digest === "admin"}
-              label="Digest ops"
-              tone="accent"
-              pending={pendingKey === "digest:admin"}
-              onClick={() => toggle("digest", "admin")}
-            />
-            <RoleChip
               active={user.apps.score === "admin"}
-              label="Score"
+              label="Admin"
               tone="green"
               pending={pendingKey === "score:admin"}
-              onClick={() => toggle("score", "admin")}
+              onClick={() => assignApp("score", "admin")}
             />
             <RoleChip
               active={user.apps.score === "record_keeper"}
               label="Keeper"
               tone="green"
               pending={pendingKey === "score:record_keeper"}
-              onClick={() => toggle("score", "record_keeper")}
+              onClick={() => assignApp("score", "record_keeper")}
+            />
+            {user.apps.score && (
+              <RoleChip
+                active={false}
+                label="Clear"
+                tone="ink"
+                pending={pendingKey === "score:revoke"}
+                onClick={() => revokeApp("score")}
+              />
+            )}
+          </div>
+          <div className="flex flex-wrap justify-end gap-1.5">
+            <span className="self-center text-[10px] font-bold uppercase tracking-wide text-ink-soft">
+              Other
+            </span>
+            <RoleChip
+              active={user.apps.campus === "admin"}
+              label="Campus"
+              tone="ink"
+              pending={pendingKey === "campus:admin"}
+              onClick={() =>
+                user.apps.campus === "admin"
+                  ? revokeApp("campus")
+                  : assignApp("campus", "admin")
+              }
+            />
+            <RoleChip
+              active={user.apps.digest === "admin"}
+              label="Digest ops"
+              tone="accent"
+              pending={pendingKey === "digest:admin"}
+              onClick={() =>
+                user.apps.digest === "admin"
+                  ? revokeApp("digest")
+                  : assignApp("digest", "admin")
+              }
             />
             <RoleChip
               active={user.verification_level === "verified"}
@@ -260,7 +339,7 @@ function UserRow({
         <p className="mt-2 text-xs font-semibold text-ink-soft">Saving role…</p>
       )}
       {success && (
-        <p className="mt-2 text-xs font-semibold text-green">Assigned successfully</p>
+        <p className="mt-2 text-xs font-semibold text-green">{success}</p>
       )}
       {error && <p className="mt-2 text-xs font-semibold text-accent">{error}</p>}
     </div>
@@ -304,7 +383,8 @@ export function OfficeDirectory({
         <div className="border-b border-rule px-4 py-3">
           <h2 className="font-display text-sm font-extrabold text-ink">Staff roster</h2>
           <p className="text-xs text-ink-soft">
-            Newsroom Writer / Editor / Admin, Score Admin / Keeper, and app ops.
+            One newsroom role per person. Score is Admin <em>or</em> Keeper — never both.
+            Re-clicking an active chip does nothing; use Reader / Clear to demote.
           </p>
         </div>
         {initialStaff.length === 0 ? (
@@ -318,8 +398,7 @@ export function OfficeDirectory({
         <div className="border-b border-rule px-4 py-3">
           <h2 className="font-display text-sm font-extrabold text-ink">Find & grant</h2>
           <p className="text-xs text-ink-soft">
-            Search email, name, or @username — tap a chip to grant or revoke (confirm). Spinner
-            shows while saving.
+            Search email, name, or @username. Confirm each change — spinner while saving.
           </p>
           <input
             value={q}
