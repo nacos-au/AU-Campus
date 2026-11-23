@@ -61,10 +61,12 @@ export default async function AdminDashboard() {
     (r) => r.status === "awaiting_editor" && r.assigned_editor_id === me
   );
   const mine = rows.filter((r) => r.author_id === me);
+  // Writers: only own work. Staff: full desk recent (RLS already hides others' drafts).
+  const deskRows = staff ? rows : mine;
   const needsMyChanges = mine.filter((r) => r.status === "awaiting_writer");
   const myDrafts = mine.filter((r) => r.status === "draft");
   const withEditor = mine.filter((r) => r.status === "awaiting_editor");
-  const recent = rows.slice(0, 6);
+  const recent = deskRows.slice(0, 6);
 
   const revenue = (purchases.data ?? []).reduce(
     (s: number, p: { amount_kobo: number }) => s + p.amount_kobo,
@@ -165,7 +167,7 @@ export default async function AdminDashboard() {
             </Link>
           }
         >
-          {(staff ? recent : mine.slice(0, 6)).length === 0 ? (
+          {recent.length === 0 ? (
             <Empty
               title="Nothing yet"
               body="Your first story is a click away."
@@ -177,7 +179,7 @@ export default async function AdminDashboard() {
             />
           ) : (
             <ul className="divide-y divide-rule">
-              {(staff ? recent : mine.slice(0, 6)).map((r) => (
+              {recent.map((r) => (
                 <li key={r.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
                   <div className="min-w-0">
                     <Link

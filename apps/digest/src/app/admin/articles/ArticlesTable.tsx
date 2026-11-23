@@ -263,6 +263,13 @@ export function ArticlesTable({
     return { status: a.status, revision: false };
   }
 
+  function isParty(a: Row) {
+    return (
+      a.author_id === userId ||
+      (a.article_collaborators ?? []).some((c) => c.user_id === userId)
+    );
+  }
+
   function awaitingMe(a: Row) {
     const r = revisionOf(a);
     // Include self-assigned (sole-editor failover) — still needs review.
@@ -272,19 +279,25 @@ export function ArticlesTable({
     return a.status === "awaiting_editor" && a.assigned_editor_id === userId;
   }
 
-  const reviewCount = articles.filter(awaitingMe).length;
+  /** Writers only see their own/collab queue; staff see the desk. */
+  const desk = isStaff
+    ? articles
+    : articles.filter((a) => isParty(a));
 
-  const visible = articles.filter((a) => {
+  const reviewCount = desk.filter(awaitingMe).length;
+
+  const visible = desk.filter((a) => {
     if (filter === "all") {
       return a.status !== "archived" && a.status !== "withdrawn";
     }
     if (filter === "review") return awaitingMe(a) && a.status !== "archived";
     if (filter === "draft") {
-      // Own drafts + shared collaborative drafts.
-      const party =
-        a.author_id === userId ||
-        (a.article_collaborators ?? []).some((c) => c.user_id === userId);
-      return a.status === "draft" && party;
+      return a.status === "draft" && isParty(a);
+    }
+    // Writer-pipeline tabs = your pieces only. Desk queue is “Needs my review”.
+    if (filter === "awaiting_editor" || filter === "awaiting_writer") {
+      if (!isParty(a)) return false;
+      return effective(a).status === filter || a.status === filter;
     }
     return effective(a).status === filter || a.status === filter;
   });
