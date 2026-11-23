@@ -13,14 +13,14 @@ CREATE INDEX IF NOT EXISTS articles_breaking_idx
 
 -- Sections
 INSERT INTO public.sections (slug, name, position) VALUES
-  ('news', 'News', 1),
+  ('academics', 'Academics', 1),
   ('campus', 'Campus Life', 2),
   ('sports', 'Sports', 3),
   ('technology', 'Technology', 4)
 ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, position = EXCLUDED.position;
 
 UPDATE public.sections SET position = position + 100
-WHERE slug NOT IN ('news','campus','sports','technology');
+WHERE slug NOT IN ('academics','campus','sports','technology');
 
 DO $$
 DECLARE
@@ -32,7 +32,7 @@ BEGIN
     RAISE EXCEPTION 'No profiles yet — create an account once, then re-run this seed.';
   END IF;
 
-  SELECT id INTO v_section FROM public.sections WHERE slug = 'news';
+  SELECT id INTO v_section FROM public.sections WHERE slug = 'academics';
   INSERT INTO public.articles (
     slug, title, dek, body, cover_url, section_id, author_id,
     language, status, featured, breaking, published_at, created_at, updated_at
@@ -64,7 +64,7 @@ BEGIN
     published_at = COALESCE(public.articles.published_at, EXCLUDED.published_at),
     updated_at = now();
 
-  SELECT id INTO v_section FROM public.sections WHERE slug = 'news';
+  SELECT id INTO v_section FROM public.sections WHERE slug = 'academics';
   INSERT INTO public.articles (
     slug, title, dek, body, cover_url, section_id, author_id,
     language, status, featured, breaking, published_at, created_at, updated_at
@@ -96,7 +96,7 @@ BEGIN
     published_at = COALESCE(public.articles.published_at, EXCLUDED.published_at),
     updated_at = now();
 
-  SELECT id INTO v_section FROM public.sections WHERE slug = 'news';
+  SELECT id INTO v_section FROM public.sections WHERE slug = 'academics';
   INSERT INTO public.articles (
     slug, title, dek, body, cover_url, section_id, author_id,
     language, status, featured, breaking, published_at, created_at, updated_at
@@ -128,7 +128,7 @@ BEGIN
     published_at = COALESCE(public.articles.published_at, EXCLUDED.published_at),
     updated_at = now();
 
-  SELECT id INTO v_section FROM public.sections WHERE slug = 'news';
+  SELECT id INTO v_section FROM public.sections WHERE slug = 'academics';
   INSERT INTO public.articles (
     slug, title, dek, body, cover_url, section_id, author_id,
     language, status, featured, breaking, published_at, created_at, updated_at
@@ -160,7 +160,7 @@ BEGIN
     published_at = COALESCE(public.articles.published_at, EXCLUDED.published_at),
     updated_at = now();
 
-  SELECT id INTO v_section FROM public.sections WHERE slug = 'news';
+  SELECT id INTO v_section FROM public.sections WHERE slug = 'academics';
   INSERT INTO public.articles (
     slug, title, dek, body, cover_url, section_id, author_id,
     language, status, featured, breaking, published_at, created_at, updated_at
@@ -448,7 +448,7 @@ BEGIN
     published_at = COALESCE(public.articles.published_at, EXCLUDED.published_at),
     updated_at = now();
 
-  SELECT id INTO v_section FROM public.sections WHERE slug = 'news';
+  SELECT id INTO v_section FROM public.sections WHERE slug = 'academics';
   INSERT INTO public.articles (
     slug, title, dek, body, cover_url, section_id, author_id,
     language, status, featured, breaking, published_at, created_at, updated_at
@@ -480,7 +480,7 @@ BEGIN
     published_at = COALESCE(public.articles.published_at, EXCLUDED.published_at),
     updated_at = now();
 
-  SELECT id INTO v_section FROM public.sections WHERE slug = 'news';
+  SELECT id INTO v_section FROM public.sections WHERE slug = 'academics';
   INSERT INTO public.articles (
     slug, title, dek, body, cover_url, section_id, author_id,
     language, status, featured, breaking, published_at, created_at, updated_at
@@ -512,7 +512,7 @@ BEGIN
     published_at = COALESCE(public.articles.published_at, EXCLUDED.published_at),
     updated_at = now();
 
-  SELECT id INTO v_section FROM public.sections WHERE slug = 'news';
+  SELECT id INTO v_section FROM public.sections WHERE slug = 'academics';
   INSERT INTO public.articles (
     slug, title, dek, body, cover_url, section_id, author_id,
     language, status, featured, breaking, published_at, created_at, updated_at
@@ -544,7 +544,7 @@ BEGIN
     published_at = COALESCE(public.articles.published_at, EXCLUDED.published_at),
     updated_at = now();
 
-  SELECT id INTO v_section FROM public.sections WHERE slug = 'news';
+  SELECT id INTO v_section FROM public.sections WHERE slug = 'academics';
   INSERT INTO public.articles (
     slug, title, dek, body, cover_url, section_id, author_id,
     language, status, featured, breaking, published_at, created_at, updated_at

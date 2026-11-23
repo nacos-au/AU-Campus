@@ -148,8 +148,10 @@ export default async function AdminDashboard() {
         <Stat label="My drafts" value={myDrafts.length} href="/admin/articles" />
         {isAdmin ? (
           <Stat label="Edition sales" value={formatNaira(revenue)} hint={`${(purchases.data ?? []).length} purchases`} href="/admin/editions" />
+        ) : staff ? (
+          <Stat label="Editions" value={editions.count ?? 0} href="/admin/editions" />
         ) : (
-          <Stat label="Editions" value={editions.count ?? 0} href={staff ? "/admin/editions" : "/editions"} />
+          <Stat label="Needs changes" value={needsMyChanges.length} href="/admin/articles?filter=awaiting_writer" accent={needsMyChanges.length > 0} />
         )}
       </div>
 
@@ -220,6 +222,11 @@ export default async function AdminDashboard() {
                 Write a new article
               </Link>
             </li>
+            <li>
+              <Link href="/admin/articles" className="block py-1.5 font-semibold hover:text-accent">
+                My articles
+              </Link>
+            </li>
             {staff && (
               <>
                 <li>
@@ -232,9 +239,16 @@ export default async function AdminDashboard() {
                     Manage sections
                   </Link>
                 </li>
+                {digestFeatures.manualAds && (
+                  <li>
+                    <Link href="/admin/ads" className="block py-1.5 font-semibold hover:text-accent">
+                      Advertising &amp; bookings
+                    </Link>
+                  </li>
+                )}
                 <li>
-                  <Link href="/admin/ads" className="block py-1.5 font-semibold hover:text-accent">
-                    Advertising &amp; bookings
+                  <Link href="/weekly" className="block py-1.5 font-semibold hover:text-accent">
+                    Preview this week’s issue
                   </Link>
                 </li>
               </>
@@ -246,11 +260,6 @@ export default async function AdminDashboard() {
                 </Link>
               </li>
             )}
-            <li>
-              <Link href="/weekly" className="block py-1.5 font-semibold hover:text-accent">
-                Preview this week’s issue
-              </Link>
-            </li>
           </ul>
           <p className="mt-5 border-t border-rule pt-4 text-xs leading-relaxed text-ink-soft">
             You’re signed in as <span className="font-semibold text-ink">{profile.role}</span>.{" "}

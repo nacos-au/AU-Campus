@@ -16,7 +16,7 @@ export const digestFeatures = {
 
 /** Desks shown on the public site and homepage section blocks. */
 export const PUBLIC_SECTION_SLUGS = [
-  "news",
+  "academics",
   "campus",
   "sports",
   "technology",

@@ -10,7 +10,7 @@ grant usage on schema private to authenticated, anon, service_role;
 
 -- Move any leftover stories onto News so the FK delete can proceed.
 update public.articles
-set section_id = (select id from public.sections where slug = 'news' limit 1)
+set section_id = (select id from public.sections where slug = 'academics' limit 1)
 where section_id in (
   select id from public.sections where slug in ('opinion', 'culture', 'science')
 );
@@ -18,7 +18,7 @@ where section_id in (
 do $$
 begin
   update public.weekly_issue_slots
-  set section_id = (select id from public.sections where slug = 'news' limit 1)
+  set section_id = (select id from public.sections where slug = 'academics' limit 1)
   where section_id in (
     select id from public.sections where slug in ('opinion', 'culture', 'science')
   );
@@ -31,12 +31,12 @@ where slug in ('opinion', 'culture', 'science');
 
 update public.sections
 set position = case slug
-  when 'news' then 1
+  when 'academics' then 1
   when 'campus' then 2
   when 'sports' then 3
   else position
 end
-where slug in ('news', 'campus', 'sports');
+where slug in ('academics', 'campus', 'sports');
 
 -- ─── Equal / least-busy editor picker ───────────────────────────────────────
 

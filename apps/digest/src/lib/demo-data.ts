@@ -109,7 +109,7 @@ function article(a: {
 // ─── Sections ────────────────────────────────────────────────────────────────
 
 export const demoSections: Section[] = [
-  { id: 1, slug: "news", name: "News", position: 1 },
+  { id: 1, slug: "academics", name: "Academics", position: 1 },
   { id: 2, slug: "campus", name: "Campus Life", position: 2 },
   { id: 3, slug: "sports", name: "Sports", position: 3 },
 ];
