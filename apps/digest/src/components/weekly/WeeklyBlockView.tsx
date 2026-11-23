@@ -161,8 +161,18 @@ export function WeeklyBlockView({ block, articlesById, preview }: Props) {
             <p className="text-[10px] font-bold uppercase tracking-wider text-accent">
               {kicker}
             </p>
+          ) : !showImg && a.sections?.name ? (
+            <p className="text-[10px] font-bold uppercase tracking-wider text-accent">
+              {a.sections.name}
+            </p>
           ) : null}
-          <h3 className={`${hedClass} group-hover:text-accent`}>{headline}</h3>
+          <h3
+            className={`${hedClass} ${
+              !showImg && variant === "lead" ? "md:text-[2rem]" : ""
+            } group-hover:text-accent`}
+          >
+            {headline}
+          </h3>
           <p
             className={`mt-1.5 font-serif leading-snug text-ink-soft ${
               variant === "lead" ? "text-base" : "text-sm"

@@ -76,9 +76,8 @@ export default async function HomePage() {
       <div className="py-24 text-center text-ink-soft">
         <p className="font-serif text-2xl">No stories published yet.</p>
         <p className="mt-2 text-sm max-w-md mx-auto">
-          Your Supabase database is connected but empty. Run{" "}
-          <code className="text-xs">supabase/digest_seed_content_APPLY_ALL.sql</code>{" "}
-          in the SQL editor, then publish from the newsroom.
+          Your Supabase database is connected but empty. Publish stories from the
+          newsroom, or load demo fixtures with <code className="text-xs">DEMO_MODE</code>.
         </p>
       </div>
     );

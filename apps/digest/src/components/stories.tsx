@@ -101,15 +101,17 @@ export function ReadTime({
 /** Front-page lead: large serif headline, dek, big image.
  *  Mobile follows NYT: kicker → headline → dek → read time → photo.
  *  Desktop keeps photo-above for the editorial spread.
+ *  No cover: text-led package with kicker + stronger type (no empty image hole).
  */
 export function LeadStory({ article }: { article: ArticleWithMeta }) {
+  const hasCover = Boolean(article.cover_url);
   return (
-    <article>
+    <article className={hasCover ? undefined : "border-b border-ink pb-5"}>
       <Link href={href(article)} className="headline-link group block">
-        {article.cover_url && (
+        {hasCover && (
           <div className="relative mb-4 hidden aspect-video w-full overflow-hidden bg-rule md:block">
             <Image
-              src={article.cover_url}
+              src={article.cover_url!}
               alt={article.title}
               fill
               priority
@@ -119,15 +121,31 @@ export function LeadStory({ article }: { article: ArticleWithMeta }) {
           </div>
         )}
         {article.sections && (
-          <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-ink-soft md:hidden">
+          <p
+            className={`mb-2 text-[11px] font-bold uppercase tracking-wider text-accent ${
+              hasCover ? "md:hidden" : ""
+            }`}
+          >
             {article.sections.name}
           </p>
         )}
-        <h1 className="font-serif text-[1.75rem] font-bold leading-tight sm:text-3xl md:text-4xl">
+        <h1
+          className={`font-serif font-bold leading-tight ${
+            hasCover
+              ? "text-[1.75rem] sm:text-3xl md:text-4xl"
+              : "text-[1.85rem] sm:text-3xl md:text-[2.65rem] md:leading-[1.15]"
+          }`}
+        >
           {article.title}
         </h1>
         {article.dek && (
-          <p className="mt-3 font-serif text-base leading-snug text-ink-soft sm:text-lg">
+          <p
+            className={`mt-3 font-serif leading-snug text-ink-soft ${
+              hasCover
+                ? "text-base sm:text-lg"
+                : "text-base sm:text-lg md:text-xl md:leading-snug"
+            }`}
+          >
             {article.dek}
           </p>
         )}
@@ -136,11 +154,11 @@ export function LeadStory({ article }: { article: ArticleWithMeta }) {
         <Byline article={article} />
         <ReadTime article={article} className="mt-0" />
       </div>
-      {article.cover_url && (
+      {hasCover && (
         <Link href={href(article)} className="mt-4 block md:hidden">
           <div className="relative aspect-[4/3] w-full overflow-hidden bg-rule">
             <Image
-              src={article.cover_url}
+              src={article.cover_url!}
               alt={article.title}
               fill
               priority
@@ -164,13 +182,14 @@ export function StoryCard({
   showDek?: boolean;
   imageAspect?: string;
 }) {
+  const hasCover = Boolean(article.cover_url);
   return (
-    <article>
+    <article className={hasCover ? undefined : "border-t border-rule pt-3"}>
       <Link href={href(article)} className="headline-link block">
-        {article.cover_url && (
+        {hasCover && (
           <div className={`relative mb-3 ${imageAspect} w-full overflow-hidden bg-rule`}>
             <Image
-              src={article.cover_url}
+              src={article.cover_url!}
               alt={article.title}
               fill
               sizes="(max-width: 640px) 100vw, 33vw"
@@ -178,11 +197,24 @@ export function StoryCard({
             />
           </div>
         )}
-        <h2 className="font-serif text-xl font-bold leading-snug">
+        {!hasCover && article.sections && (
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-accent">
+            {article.sections.name}
+          </p>
+        )}
+        <h2
+          className={`font-serif font-bold leading-snug ${
+            hasCover ? "text-xl" : "text-[1.35rem]"
+          }`}
+        >
           {article.title}
         </h2>
         {showDek && article.dek && (
-          <p className="mt-2 text-sm leading-normal text-ink-soft">
+          <p
+            className={`mt-2 leading-normal text-ink-soft ${
+              hasCover ? "text-sm" : "font-serif text-sm"
+            }`}
+          >
             {article.dek}
           </p>
         )}
@@ -194,25 +226,36 @@ export function StoryCard({
 
 /** Compact right-rail item: small thumbnail beside a bold headline. */
 export function CompactStory({ article }: { article: ArticleWithMeta }) {
+  const hasCover = Boolean(article.cover_url);
   return (
-    <article className="flex gap-3">
+    <article
+      className={
+        hasCover
+          ? "flex gap-3"
+          : "border-t border-rule pt-3 first:border-t-0 first:pt-0"
+      }
+    >
       <Link href={href(article)} className="headline-link flex flex-1 flex-col">
-        <h3 className="font-serif text-base font-bold leading-snug">
-          {article.title}
-        </h3>
         {article.sections && (
-          <span className="mt-1.5 text-[11px] font-semibold uppercase tracking-wide text-accent">
+          <span className="mb-1 text-[10px] font-bold uppercase tracking-wider text-accent">
             {article.sections.name}
           </span>
         )}
+        <h3
+          className={`font-serif font-bold leading-snug ${
+            hasCover ? "text-base" : "text-[15px]"
+          }`}
+        >
+          {article.title}
+        </h3>
       </Link>
-      {article.cover_url && (
+      {hasCover && (
         <Link
           href={href(article)}
           className="relative block h-16 w-24 shrink-0 overflow-hidden bg-rule"
         >
           <Image
-            src={article.cover_url}
+            src={article.cover_url!}
             alt=""
             fill
             sizes="96px"
@@ -251,9 +294,19 @@ export function ListStory({ article }: { article: ArticleWithMeta }) {
   return (
     <article className="border-t border-rule pt-3">
       <Link href={href(article)} className="headline-link block">
-        <h3 className="font-serif text-base font-bold leading-snug">
+        {article.sections && (
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-accent">
+            {article.sections.name}
+          </p>
+        )}
+        <h3 className="font-serif text-[15px] font-bold leading-snug">
           {article.title}
         </h3>
+        {article.dek && (
+          <p className="mt-1 line-clamp-2 font-serif text-sm leading-snug text-ink-soft">
+            {article.dek}
+          </p>
+        )}
       </Link>
     </article>
   );

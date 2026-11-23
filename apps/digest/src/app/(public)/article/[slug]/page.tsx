@@ -91,17 +91,33 @@ export default async function ArticlePage({
           </Link>
         )}
 
-        <h1 className="mt-3 font-serif text-3xl font-bold leading-tight sm:text-5xl sm:leading-tight">
+        <h1
+          className={`mt-3 font-serif font-bold leading-tight ${
+            article.cover_url
+              ? "text-3xl sm:text-5xl sm:leading-tight"
+              : "text-[2rem] sm:text-[3.25rem] sm:leading-[1.12]"
+          }`}
+        >
           {article.title}
         </h1>
 
         {article.dek && (
-          <p className="mt-4 font-serif text-xl leading-snug text-ink-soft">
+          <p
+            className={`mt-4 font-serif leading-snug text-ink-soft ${
+              article.cover_url ? "text-xl" : "text-xl sm:text-2xl"
+            }`}
+          >
             {article.dek}
           </p>
         )}
 
-        <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-1 border-y border-rule py-3 text-xs text-ink-soft">
+        <div
+          className={`mt-6 flex flex-wrap items-center gap-x-4 gap-y-1 py-3 text-xs text-ink-soft ${
+            article.cover_url
+              ? "border-y border-rule"
+              : "border-t border-ink border-b border-rule"
+          }`}
+        >
           {(credit || series) && (
             <span>
               {credit && (
@@ -181,7 +197,7 @@ export default async function ArticlePage({
           </figure>
         )}
 
-        <div className="mt-8">
+        <div className={article.cover_url ? "mt-8" : "mt-10"}>
           <RichText doc={article.body} />
         </div>
 

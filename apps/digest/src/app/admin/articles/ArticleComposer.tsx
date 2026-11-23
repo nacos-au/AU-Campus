@@ -958,6 +958,12 @@ export function ArticleComposer({
                       <button
                         type="button"
                         onClick={() => {
+                          if (article?.featured) {
+                            setError(
+                              "Top News stories need a cover. Unfeature the story before removing art."
+                            );
+                            return;
+                          }
                           setCoverUrl("");
                           markDirty();
                         }}
@@ -974,7 +980,8 @@ export function ArticleComposer({
                   </div>
                 ) : (
                   <p className="mt-2 text-sm text-ink-soft">
-                    Optional. Used on the homepage and story page.
+                    Optional for most stories. Required for Top News / featured
+                    homepage packages.
                   </p>
                 )}
                 <input
@@ -1086,6 +1093,12 @@ export function ArticleComposer({
                     <button
                       type="button"
                       onClick={() => {
+                        if (article?.featured) {
+                          setError(
+                            "Top News stories need a cover. Unfeature the story before removing art."
+                          );
+                          return;
+                        }
                         setCoverUrl("");
                         markDirty();
                       }}

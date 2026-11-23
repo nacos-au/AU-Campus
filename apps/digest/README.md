@@ -9,16 +9,9 @@ Built with **Next.js (App Router) · TypeScript · Tailwind CSS · Supabase (Pos
 
 ---
 
-## Seed sample content
+## Sample content
 
-Populate sections, published articles, and breaking flags in Supabase:
-
-```bash
-# Paste supabase/digest_seed_content_APPLY_ALL.sql into the Supabase SQL editor
-# (requires at least one profile row — sign up once first)
-```
-
-The public site (front page, sections, articles, editions store, ads) renders from built-in fixture content. Auth, the newsroom CMS and payments need a real Supabase connection — set `DEMO_MODE=false` and follow the quick start below when you're ready.
+With `DEMO_MODE` on, the public site can render built-in fixtures. For a live Supabase project, publish from the newsroom after migrations are applied. Auth, CMS, and payments need a real Supabase connection — set `DEMO_MODE=false` and follow the quick start below when you're ready.
 
 ## Quick start
 

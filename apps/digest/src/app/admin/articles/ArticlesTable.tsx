@@ -132,6 +132,14 @@ export function ArticlesTable({
 
   const toggleFeatured = useMutation({
     mutationFn: async (vars: { id: string; featured: boolean }) => {
+      if (vars.featured) {
+        const row = articles.find((a) => a.id === vars.id);
+        if (!row?.cover_url?.trim()) {
+          throw new Error(
+            "Top News needs a cover photo. Add art in the editor first."
+          );
+        }
+      }
       const { error } = await supabase
         .from("articles")
         .update({ featured: vars.featured })
@@ -525,6 +533,11 @@ export function ArticlesTable({
                             id: a.id,
                             featured: !a.featured,
                           })
+                        }
+                        title={
+                          !a.featured && !a.cover_url?.trim()
+                            ? "Add a cover photo before marking Top News"
+                            : undefined
                         }
                         className="border border-ink px-2.5 py-1 hover:bg-ink hover:text-paper transition-colors"
                       >

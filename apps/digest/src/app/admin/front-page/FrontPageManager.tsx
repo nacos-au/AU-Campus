@@ -37,7 +37,7 @@ export function FrontPageManager() {
       const { data, error } = await supabase
         .from("articles")
         .select(
-          "id, title, slug, section_id, status, sections(slug, name)"
+          "id, title, slug, section_id, status, cover_url, sections(slug, name)"
         )
         .eq("status", "published")
         .order("published_at", { ascending: false })
@@ -66,6 +66,18 @@ export function FrontPageManager() {
       position: number;
       sectionId?: number | null;
     }) => {
+      if (
+        vars.kind === "page_one" ||
+        vars.kind === "top_news" ||
+        vars.kind === "section_highlight"
+      ) {
+        const row = published.find((a) => a.id === vars.articleId);
+        if (!row?.cover_url?.trim()) {
+          throw new Error(
+            "Cover art is required for featured homepage placements."
+          );
+        }
+      }
       const { error } = await supabase.rpc("set_front_page_slot", {
         p_kind: vars.kind,
         p_article_id: vars.articleId,
