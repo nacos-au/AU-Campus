@@ -87,3 +87,15 @@ export function usedArticleIds(issue: WeeklyIssueWithSlots): Set<string> {
   }
   return ids;
 }
+
+/** Optional issue-owned teaser for a placed article. */
+export function teaserFor(
+  issue: WeeklyIssueWithSlots,
+  articleId: string
+): string | null {
+  const slot = (issue.weekly_issue_slots ?? []).find(
+    (s) => s.article_id === articleId
+  );
+  const t = slot?.teaser?.trim();
+  return t || null;
+}

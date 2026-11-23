@@ -5,17 +5,25 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { Byline, CompactStory } from "@/components/stories";
 import { WeekPicker } from "@/components/WeekPicker";
+import { WordOfTheDay } from "@/components/WordOfTheDay";
 import { ARTICLE_PUBLIC_SELECT, excerpt } from "@/lib/articles";
+import { todaysWord } from "@/lib/campus-lore";
 import { isPublicSectionSlug } from "@/lib/features";
 import { getSessionProfile, hasRole } from "@/lib/auth";
 import {
   formatWeekLabel,
   isLiveIssue,
   slotsByKind,
+  teaserFor,
   usedArticleIds,
   type WeeklyIssueWithSlots,
 } from "@/lib/weekly";
-import type { ArticleWithMeta, Section, WeeklyIssue } from "@/lib/types";
+import type {
+  ArticleWithMeta,
+  CampusWord,
+  Section,
+  WeeklyIssue,
+} from "@/lib/types";
 
 export const metadata: Metadata = { title: "Weekly Issue" };
 export const revalidate = 60;
@@ -23,10 +31,15 @@ export const revalidate = 60;
 const ARTICLE_EMBED =
   "id, slug, title, dek, body, cover_url, section_id, author_id, status, featured, breaking, published_at, byline, byline_mode, sections(slug, name), profiles!articles_author_id_fkey(display_name, username), article_series(id, slug, title)";
 
-const ISSUE_SELECT = `*, weekly_issue_slots(id, slot, position, article_id, section_id, articles:article_id(${ARTICLE_EMBED}))`;
+const ISSUE_SELECT = `*, weekly_issue_slots(id, slot, position, article_id, section_id, teaser, articles:article_id(${ARTICLE_EMBED}))`;
 
-function dek(a: ArticleWithMeta, chars = 180) {
-  return a.dek || excerpt(a.body, chars);
+function storyDek(
+  issue: WeeklyIssueWithSlots | null,
+  a: ArticleWithMeta,
+  chars = 180
+) {
+  const override = issue ? teaserFor(issue, a.id) : null;
+  return override || a.dek || excerpt(a.body, chars);
 }
 
 function Thumb({ a, className = "" }: { a: ArticleWithMeta; className?: string }) {
@@ -52,12 +65,21 @@ export default async function WeeklyIssuePage({
   ]);
   const isStaff = hasRole(profile, "editor");
 
-  const { data: allIssuesData } = await supabase
-    .from("weekly_issues")
-    .select("id, week_start, title, status, scheduled_at, published_at")
-    .neq("status", "archived")
-    .order("week_start", { ascending: false });
+  const [{ data: allIssuesData }, { data: wordsData }] = await Promise.all([
+    supabase
+      .from("weekly_issues")
+      .select("id, week_start, title, status, scheduled_at, published_at")
+      .neq("status", "archived")
+      .order("week_start", { ascending: false }),
+    supabase
+      .from("campus_words")
+      .select("*")
+      .eq("active", true)
+      .order("sort_order")
+      .order("created_at"),
+  ]);
 
+  const word = todaysWord((wordsData ?? []) as CampusWord[]);
   const allIssues = (allIssuesData ?? []) as WeeklyIssue[];
   const liveIssues = allIssues.filter((i) => isLiveIssue(i));
   const pickerSource = isStaff ? allIssues.filter((i) => i.status !== "archived") : liveIssues;
@@ -119,6 +141,13 @@ export default async function WeeklyIssuePage({
     label: formatWeekLabel(i.week_start, locale),
   }));
 
+  const hasFront = Boolean(lead || second || rail.length);
+  const intro = issue?.intro?.trim() || "";
+  const introByline = issue?.intro_byline?.trim() || "";
+
+  const frontCols =
+    [lead, second, rail.length > 0].filter(Boolean).length;
+
   return (
     <div className="py-6 md:py-10">
       <header className="border-b-2 border-ink pb-5">
@@ -136,41 +165,77 @@ export default async function WeeklyIssuePage({
         )}
       </header>
 
-      {!lead ? (
+      {(intro || word) && (
+        <div
+          className={`mt-8 grid gap-8 border-b border-rule pb-10 ${
+            intro && word ? "lg:grid-cols-[1.6fr_1fr]" : ""
+          }`}
+        >
+          {intro ? (
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-soft">
+                {introByline || t("fromTheDesk")}
+              </p>
+              <p className="mt-3 max-w-prose font-serif text-lg leading-relaxed text-ink line-clamp-6 md:text-xl md:leading-relaxed">
+                {intro}
+              </p>
+            </div>
+          ) : null}
+          {word ? (
+            <WordOfTheDay
+              word={word}
+              label={t("wordOfTheDay")}
+              revealLabel={t("tapForMeaning")}
+            />
+          ) : null}
+        </div>
+      )}
+
+      {!hasFront && !intro ? (
         <p className="py-20 text-center text-ink-soft">{t("weeklyEmpty")}</p>
-      ) : (
+      ) : hasFront ? (
         <>
           <h2 className="mt-8 font-serif text-2xl font-bold">The Front Page</h2>
 
-          <div className="mt-4 grid gap-8 border-b border-rule pb-10 lg:grid-cols-[1.6fr_1fr_1fr]">
-            <article className="lg:border-r lg:border-rule lg:pr-8">
-              <Link href={`/article/${lead.slug}`} className="headline-link group block">
-                {lead.cover_url && (
-                  <div className="relative mb-4 aspect-[16/10] w-full overflow-hidden bg-rule">
-                    <Image
-                      src={lead.cover_url}
-                      alt={lead.title}
-                      fill
-                      priority
-                      sizes="(max-width: 1024px) 100vw, 50vw"
-                      className="object-cover"
-                    />
-                  </div>
-                )}
-                {lead.sections && (
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-accent">
-                    {lead.sections.name}
+          <div
+            className={`mt-4 grid gap-8 border-b border-rule pb-10 ${
+              frontCols >= 3
+                ? "lg:grid-cols-[1.6fr_1fr_1fr]"
+                : frontCols === 2
+                  ? "lg:grid-cols-2"
+                  : "lg:grid-cols-1"
+            }`}
+          >
+            {lead && (
+              <article className="lg:border-r lg:border-rule lg:pr-8">
+                <Link href={`/article/${lead.slug}`} className="headline-link group block">
+                  {lead.cover_url && (
+                    <div className="relative mb-4 aspect-[16/10] w-full overflow-hidden bg-rule">
+                      <Image
+                        src={lead.cover_url}
+                        alt={lead.title}
+                        fill
+                        priority
+                        sizes="(max-width: 1024px) 100vw, 50vw"
+                        className="object-cover"
+                      />
+                    </div>
+                  )}
+                  {lead.sections && (
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-accent">
+                      {lead.sections.name}
+                    </p>
+                  )}
+                  <h3 className="mt-1 font-serif text-3xl font-bold leading-tight group-hover:text-accent md:text-4xl">
+                    {lead.title}
+                  </h3>
+                  <p className="mt-3 line-clamp-5 font-serif text-lg leading-snug text-ink-soft">
+                    {storyDek(issue, lead, 240)}
                   </p>
-                )}
-                <h3 className="mt-1 font-serif text-3xl font-bold leading-tight group-hover:text-accent md:text-4xl">
-                  {lead.title}
-                </h3>
-                <p className="mt-3 font-serif text-lg leading-snug text-ink-soft">
-                  {dek(lead, 240)}
-                </p>
-              </Link>
-              <Byline article={lead} className="mt-3" />
-            </article>
+                </Link>
+                <Byline article={lead} className="mt-3" />
+              </article>
+            )}
 
             {second && (
               <article className="lg:border-r lg:border-rule lg:pr-8">
@@ -194,32 +259,34 @@ export default async function WeeklyIssuePage({
                   <h3 className="mt-1 font-serif text-2xl font-bold leading-tight group-hover:text-accent">
                     {second.title}
                   </h3>
-                  <p className="mt-2 font-serif leading-snug text-ink-soft">
-                    {dek(second)}
+                  <p className="mt-2 line-clamp-4 font-serif leading-snug text-ink-soft">
+                    {storyDek(issue, second)}
                   </p>
                 </Link>
                 <Byline article={second} className="mt-3" />
               </article>
             )}
 
-            <div className="divide-y divide-rule">
-              {rail.map((a) => (
-                <article key={a.id} className="py-4 first:pt-0">
-                  <Link href={`/article/${a.slug}`} className="headline-link group flex gap-3">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-serif text-lg font-bold leading-snug group-hover:text-accent">
-                        {a.title}
-                      </h3>
-                      <p className="mt-1 line-clamp-3 font-serif text-sm leading-snug text-ink-soft">
-                        {dek(a, 120)}
-                      </p>
-                    </div>
-                    <Thumb a={a} className="h-16 w-20" />
-                  </Link>
-                  <Byline article={a} className="mt-1.5" />
-                </article>
-              ))}
-            </div>
+            {rail.length > 0 && (
+              <div className="divide-y divide-rule">
+                {rail.map((a) => (
+                  <article key={a.id} className="py-4 first:pt-0">
+                    <Link href={`/article/${a.slug}`} className="headline-link group flex gap-3">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-serif text-lg font-bold leading-snug group-hover:text-accent">
+                          {a.title}
+                        </h3>
+                        <p className="mt-1 line-clamp-3 font-serif text-sm leading-snug text-ink-soft">
+                          {storyDek(issue, a, 120)}
+                        </p>
+                      </div>
+                      <Thumb a={a} className="h-16 w-20" />
+                    </Link>
+                    <Byline article={a} className="mt-1.5" />
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
 
           {bySection.map(({ section, stories }) => (
@@ -233,7 +300,11 @@ export default async function WeeklyIssuePage({
                   All {section.name} →
                 </Link>
               </div>
-              <div className="mt-4 grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
+              <div
+                className={`mt-4 grid gap-x-8 gap-y-6 sm:grid-cols-2 ${
+                  stories.length >= 4 ? "lg:grid-cols-4" : stories.length === 3 ? "lg:grid-cols-3" : ""
+                }`}
+              >
                 {stories.map((a) => (
                   <article key={a.id}>
                     <Link href={`/article/${a.slug}`} className="headline-link group block">
@@ -252,7 +323,7 @@ export default async function WeeklyIssuePage({
                         {a.title}
                       </h3>
                       <p className="mt-1 line-clamp-3 font-serif text-sm leading-snug text-ink-soft">
-                        {dek(a, 120)}
+                        {storyDek(issue, a, 120)}
                       </p>
                     </Link>
                     <Byline article={a} className="mt-1.5" />
@@ -278,7 +349,7 @@ export default async function WeeklyIssuePage({
             </section>
           )}
         </>
-      )}
+      ) : null}
     </div>
   );
 }

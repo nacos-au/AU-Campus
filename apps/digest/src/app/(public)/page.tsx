@@ -2,6 +2,8 @@ import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { AdSlot } from "@/components/AdSlot";
+import { FunFactCloud } from "@/components/FunFactCloud";
+import { WordOfTheDay } from "@/components/WordOfTheDay";
 import {
   CompactStory,
   LeadStory,
@@ -9,15 +11,27 @@ import {
   StoryCard,
 } from "@/components/stories";
 import { ARTICLE_PUBLIC_SELECT } from "@/lib/articles";
+import { todaysFact, todaysWord } from "@/lib/campus-lore";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
-import type { ArticleWithMeta, FrontPageSlot, Section } from "@/lib/types";
+import type {
+  ArticleWithMeta,
+  CampusFact,
+  CampusWord,
+  FrontPageSlot,
+  Section,
+} from "@/lib/types";
 
 export default async function HomePage() {
   const supabase = await createClient();
   const t = await getTranslations("home");
 
-  const [{ data: articlesData }, { data: sectionsData }, { data: slotsData }] =
-    await Promise.all([
+  const [
+    { data: articlesData },
+    { data: sectionsData },
+    { data: slotsData },
+    { data: factsData },
+    { data: wordsData },
+  ] = await Promise.all([
       supabase
         .from("articles")
         .select(ARTICLE_PUBLIC_SELECT)
@@ -29,7 +43,22 @@ export default async function HomePage() {
         .from("front_page_slots")
         .select("id, kind, article_id, section_id, position, updated_at")
         .order("position"),
+      supabase
+        .from("campus_facts")
+        .select("*")
+        .eq("active", true)
+        .order("sort_order")
+        .order("created_at"),
+      supabase
+        .from("campus_words")
+        .select("*")
+        .eq("active", true)
+        .order("sort_order")
+        .order("created_at"),
     ]);
+
+  const fact = todaysFact((factsData ?? []) as CampusFact[]);
+  const word = todaysWord((wordsData ?? []) as CampusWord[]);
 
   const articles = (articlesData ?? []) as unknown as ArticleWithMeta[];
   const byId = new Map(articles.map((a) => [a.id, a]));
@@ -159,6 +188,29 @@ export default async function HomePage() {
 
       {digestFeatures.manualAds && (
         <AdSlot slot="leaderboard" className="mt-12 border-t border-rule pt-8" />
+      )}
+
+      {(fact || word) && (
+        <div className="mt-12 border-t-2 border-ink">
+          {fact && (
+            <FunFactCloud
+              fact={fact}
+              kicker={t("didYouKnow")}
+              revealLabel={t("revealAnswer")}
+              hideLabel={t("hideAnswer")}
+            />
+          )}
+          {word && (
+            <div className="mx-auto max-w-md px-4 pb-10">
+              <WordOfTheDay
+                word={word}
+                label={t("wordOfTheDay")}
+                revealLabel={t("tapForMeaning")}
+                compact
+              />
+            </div>
+          )}
+        </div>
       )}
 
       {sections.map((section) => {

@@ -26,6 +26,8 @@ export default async function AdminLayout({
           { href: "/admin/front-page", label: "Front page", icon: "editions" },
           { href: "/admin/sections", label: "Sections", icon: "sections" },
           { href: "/admin/weekly", label: "Weekly", icon: "editions" },
+          { href: "/admin/facts", label: "Fun facts", icon: "articles" },
+          { href: "/admin/words", label: "Words", icon: "articles" },
           ...(digestFeatures.manualAds
             ? ([{ href: "/admin/ads", label: "Advertising", icon: "ads" }] as AdminNavItem[])
             : []),

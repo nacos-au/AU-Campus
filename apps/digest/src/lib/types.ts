@@ -268,6 +268,8 @@ export interface WeeklyIssue {
   status: WeeklyIssueStatus;
   scheduled_at: string | null;
   published_at: string | null;
+  intro?: string | null;
+  intro_byline?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -279,4 +281,26 @@ export interface WeeklyIssueSlot {
   position: number;
   article_id: string;
   section_id: number | null;
+  teaser?: string | null;
+}
+
+export interface CampusWord {
+  id: string;
+  word: string;
+  definition: string;
+  example?: string | null;
+  active: boolean;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface CampusFact {
+  id: string;
+  question: string;
+  answer: string;
+  active: boolean;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
 }

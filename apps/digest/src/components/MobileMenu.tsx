@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useId, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { useTranslations } from "next-intl";
 import { isActivePath } from "./CategoryNav";
 import { NavSearch } from "./NavSearch";
@@ -23,6 +29,8 @@ type Props = {
   isWriter: boolean;
   adminMode?: boolean;
   signOutAction: () => Promise<void>;
+  /** Server-rendered weather badge opposite the close control. */
+  weatherSlot?: ReactNode;
 };
 
 export function MobileMenu({
@@ -31,6 +39,7 @@ export function MobileMenu({
   isWriter,
   adminMode = false,
   signOutAction,
+  weatherSlot,
 }: Props) {
   const t = useTranslations("nav");
   const pathname = usePathname();
@@ -97,7 +106,9 @@ export function MobileMenu({
               <p id={titleId} className="font-masthead text-lg font-bold">
                 {site.masthead}
               </p>
-              <span className="w-10" aria-hidden />
+              <div className="flex h-10 min-w-10 items-center justify-end">
+                {weatherSlot ?? <span className="w-10" aria-hidden />}
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto">

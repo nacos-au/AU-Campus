@@ -21,13 +21,14 @@ import type {
 } from "@/lib/types";
 
 const SLOT_SELECT =
-  "*, weekly_issue_slots(id, slot, position, article_id, section_id, articles:article_id(id, title, slug, section_id, status))";
+  "*, weekly_issue_slots(id, slot, position, article_id, section_id, teaser, articles:article_id(id, title, slug, section_id, status))";
 
 type SlotDraft = {
   slot: WeeklySlotKind;
   position: number;
   articleId: string;
   sectionId: number | null;
+  teaser: string;
 };
 
 const STATUS_STYLE: Record<WeeklyIssueStatus, string> = {
@@ -47,10 +48,18 @@ export function WeeklyManager() {
   const [title, setTitle] = useState("");
   const [weekStart, setWeekStart] = useState(mondayOf());
   const [scheduledAt, setScheduledAt] = useState("");
+  const [intro, setIntro] = useState("");
+  const [introByline, setIntroByline] = useState("");
   const [leadId, setLeadId] = useState("");
   const [secondId, setSecondId] = useState("");
   const [railIds, setRailIds] = useState(["", "", "", ""]);
+  const [leadTeaser, setLeadTeaser] = useState("");
+  const [secondTeaser, setSecondTeaser] = useState("");
+  const [railTeasers, setRailTeasers] = useState(["", "", "", ""]);
   const [insideBySection, setInsideBySection] = useState<
+    Record<number, string[]>
+  >({});
+  const [insideTeasers, setInsideTeasers] = useState<
     Record<number, string[]>
   >({});
 
@@ -113,6 +122,17 @@ export function WeeklyManager() {
       }
       return changed ? next : prev;
     });
+    setInsideTeasers((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const s of sections) {
+        if (!next[s.id]) {
+          next[s.id] = ["", "", "", ""];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
     if (!title) setTitle(`Week of ${formatWeekLabel(weekStart)}`);
   }, [sections, editingId, title, weekStart]);
 
@@ -125,12 +145,22 @@ export function WeeklyManager() {
     setTitle(`Week of ${formatWeekLabel(nextWeek)}`);
     setWeekStart(nextWeek);
     setScheduledAt("");
+    setIntro("");
+    setIntroByline("");
     setLeadId("");
     setSecondId("");
     setRailIds(["", "", "", ""]);
+    setLeadTeaser("");
+    setSecondTeaser("");
+    setRailTeasers(["", "", "", ""]);
     const inside: Record<number, string[]> = {};
-    for (const s of sections) inside[s.id] = ["", "", "", ""];
+    const teasers: Record<number, string[]> = {};
+    for (const s of sections) {
+      inside[s.id] = ["", "", "", ""];
+      teasers[s.id] = ["", "", "", ""];
+    }
     setInsideBySection(inside);
+    setInsideTeasers(teasers);
     setError(null);
   }
 
@@ -138,6 +168,8 @@ export function WeeklyManager() {
     setEditingId(issue.id);
     setTitle(issue.title);
     setWeekStart(issue.week_start);
+    setIntro(issue.intro ?? "");
+    setIntroByline(issue.intro_byline ?? "");
     setScheduledAt(
       issue.scheduled_at
         ? new Date(issue.scheduled_at).toISOString().slice(0, 16)
@@ -146,30 +178,56 @@ export function WeeklyManager() {
     const slots = [...(issue.weekly_issue_slots ?? [])].sort(
       (a, b) => a.position - b.position
     );
-    setLeadId(slots.find((s) => s.slot === "lead")?.article_id ?? "");
-    setSecondId(slots.find((s) => s.slot === "second")?.article_id ?? "");
-    const rails = slots
-      .filter((s) => s.slot === "rail")
-      .map((s) => s.article_id);
-    setRailIds([0, 1, 2, 3].map((i) => rails[i] ?? ""));
+    const leadSlot = slots.find((s) => s.slot === "lead");
+    const secondSlot = slots.find((s) => s.slot === "second");
+    setLeadId(leadSlot?.article_id ?? "");
+    setLeadTeaser(leadSlot?.teaser ?? "");
+    setSecondId(secondSlot?.article_id ?? "");
+    setSecondTeaser(secondSlot?.teaser ?? "");
+    const rails = slots.filter((s) => s.slot === "rail");
+    setRailIds([0, 1, 2, 3].map((i) => rails[i]?.article_id ?? ""));
+    setRailTeasers([0, 1, 2, 3].map((i) => rails[i]?.teaser ?? ""));
     const inside: Record<number, string[]> = {};
+    const teasers: Record<number, string[]> = {};
     for (const s of sections) {
-      const ids = slots
-        .filter((x) => x.slot === "inside" && x.section_id === s.id)
-        .map((x) => x.article_id);
-      inside[s.id] = [0, 1, 2, 3].map((i) => ids[i] ?? "");
+      const desk = slots.filter(
+        (x) => x.slot === "inside" && x.section_id === s.id
+      );
+      inside[s.id] = [0, 1, 2, 3].map((i) => desk[i]?.article_id ?? "");
+      teasers[s.id] = [0, 1, 2, 3].map((i) => desk[i]?.teaser ?? "");
     }
     setInsideBySection(inside);
+    setInsideTeasers(teasers);
     setError(null);
   }
 
   function buildSlots(): SlotDraft[] {
     const out: SlotDraft[] = [];
-    if (leadId) out.push({ slot: "lead", position: 0, articleId: leadId, sectionId: null });
+    if (leadId)
+      out.push({
+        slot: "lead",
+        position: 0,
+        articleId: leadId,
+        sectionId: null,
+        teaser: leadTeaser.trim(),
+      });
     if (secondId)
-      out.push({ slot: "second", position: 0, articleId: secondId, sectionId: null });
+      out.push({
+        slot: "second",
+        position: 0,
+        articleId: secondId,
+        sectionId: null,
+        teaser: secondTeaser.trim(),
+      });
     railIds.forEach((id, i) => {
-      if (id) out.push({ slot: "rail", position: i, articleId: id, sectionId: null });
+      if (id)
+        out.push({
+          slot: "rail",
+          position: i,
+          articleId: id,
+          sectionId: null,
+          teaser: (railTeasers[i] ?? "").trim(),
+        });
     });
     for (const s of sections) {
       (insideBySection[s.id] ?? []).forEach((id, i) => {
@@ -179,6 +237,7 @@ export function WeeklyManager() {
             position: i,
             articleId: id,
             sectionId: s.id,
+            teaser: (insideTeasers[s.id]?.[i] ?? "").trim(),
           });
       });
     }
@@ -189,14 +248,16 @@ export function WeeklyManager() {
     if (!title.trim()) throw new Error("Title is required.");
     if (!weekStart) throw new Error("Week start is required.");
     const slots = buildSlots();
-    if (!slots.some((s) => s.slot === "lead")) {
-      throw new Error("Pick a lead story for the front page.");
+    if (status !== "draft" && !slots.some((s) => s.slot === "lead") && !intro.trim()) {
+      throw new Error("Add a lead story or a week intro before scheduling/publishing.");
     }
 
     const payload = {
       title: title.trim(),
       week_start: weekStart,
       status,
+      intro: intro.trim() || null,
+      intro_byline: introByline.trim() || null,
       scheduled_at:
         status === "scheduled" && scheduledAt
           ? new Date(scheduledAt).toISOString()
@@ -231,6 +292,7 @@ export function WeeklyManager() {
       position: s.position,
       article_id: s.articleId,
       section_id: s.sectionId,
+      teaser: s.teaser || null,
     }));
     if (rows.length) {
       const { error } = await supabase.from("weekly_issue_slots").insert(rows);
@@ -355,9 +417,41 @@ export function WeeklyManager() {
           </div>
 
           <section>
+            <h2 className="font-serif text-xl font-bold">From the desk</h2>
+            <p className="mt-1 text-sm text-ink-soft">
+              Optional week letter — the issue’s own voice, not an article dek.
+            </p>
+            <div className="mt-4 grid gap-4">
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
+                  Intro byline
+                </span>
+                <input
+                  value={introByline}
+                  onChange={(e) => setIntroByline(e.target.value)}
+                  placeholder="From the Desk"
+                  className="mt-1 w-full border border-rule px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
+                  Week intro
+                </span>
+                <textarea
+                  value={intro}
+                  onChange={(e) => setIntro(e.target.value)}
+                  rows={5}
+                  className="mt-1 w-full border border-rule px-3 py-2 text-sm"
+                  placeholder="What this week’s paper is about…"
+                />
+              </label>
+            </div>
+          </section>
+
+          <section>
             <h2 className="font-serif text-xl font-bold">Front page frame</h2>
             <p className="mt-1 text-sm text-ink-soft">
-              Lead · Second · Rail (up to 4). Same layout readers see on /weekly.
+              Lead · Second · Rail (up to 4). Optional teaser overrides the article dek on /weekly.
             </p>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="block sm:col-span-2">
@@ -369,8 +463,14 @@ export function WeeklyManager() {
                   onChange={setLeadId}
                   exclude={picked}
                 />
+                <input
+                  value={leadTeaser}
+                  onChange={(e) => setLeadTeaser(e.target.value)}
+                  placeholder="Optional teaser for lead"
+                  className="mt-2 w-full border border-rule px-3 py-2 text-sm"
+                />
               </label>
-              <label className="block">
+              <label className="block sm:col-span-2">
                 <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
                   Second
                 </span>
@@ -378,6 +478,12 @@ export function WeeklyManager() {
                   value={secondId}
                   onChange={setSecondId}
                   exclude={picked}
+                />
+                <input
+                  value={secondTeaser}
+                  onChange={(e) => setSecondTeaser(e.target.value)}
+                  placeholder="Optional teaser for second"
+                  className="mt-2 w-full border border-rule px-3 py-2 text-sm"
                 />
               </label>
               {railIds.map((id, i) => (
@@ -393,6 +499,16 @@ export function WeeklyManager() {
                       setRailIds(next);
                     }}
                     exclude={picked}
+                  />
+                  <input
+                    value={railTeasers[i] ?? ""}
+                    onChange={(e) => {
+                      const next = [...railTeasers];
+                      next[i] = e.target.value;
+                      setRailTeasers(next);
+                    }}
+                    placeholder="Optional teaser"
+                    className="mt-2 w-full border border-rule px-3 py-2 text-sm"
                   />
                 </label>
               ))}
@@ -428,6 +544,21 @@ export function WeeklyManager() {
                               [s.id]: cur,
                             });
                           }}
+                        />
+                        <input
+                          value={insideTeasers[s.id]?.[i] ?? ""}
+                          onChange={(e) => {
+                            const cur = [
+                              ...(insideTeasers[s.id] ?? ["", "", "", ""]),
+                            ];
+                            cur[i] = e.target.value;
+                            setInsideTeasers({
+                              ...insideTeasers,
+                              [s.id]: cur,
+                            });
+                          }}
+                          placeholder="Optional teaser"
+                          className="mt-2 w-full border border-rule px-3 py-2 text-sm"
                         />
                       </label>
                     ))}
@@ -473,7 +604,53 @@ export function WeeklyManager() {
           </div>
         </div>
 
-        <aside>
+        <aside className="space-y-8">
+          <div className="border border-rule bg-white p-4">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-ink-soft">
+              Layout preview
+            </h2>
+            <p className="mt-1 text-[11px] text-ink-soft">
+              Empty slots collapse. Teasers clamp on the public page.
+            </p>
+            <div className="mt-3 space-y-2 text-xs">
+              {intro.trim() ? (
+                <p className="line-clamp-3 border-b border-rule pb-2 font-serif italic text-ink-soft">
+                  {intro.trim()}
+                </p>
+              ) : (
+                <p className="text-ink-soft/70">No intro yet</p>
+              )}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="border border-rule p-2">
+                  <p className="font-bold uppercase tracking-wide text-[10px]">Lead</p>
+                  <p className="mt-1 line-clamp-2 font-semibold">
+                    {articles.find((a) => a.id === leadId)?.title ?? "—"}
+                  </p>
+                  {leadTeaser.trim() ? (
+                    <p className="mt-1 line-clamp-2 text-ink-soft">{leadTeaser}</p>
+                  ) : null}
+                </div>
+                <div className="border border-rule p-2">
+                  <p className="font-bold uppercase tracking-wide text-[10px]">Second</p>
+                  <p className="mt-1 line-clamp-2 font-semibold">
+                    {articles.find((a) => a.id === secondId)?.title ?? "—"}
+                  </p>
+                </div>
+                <div className="border border-rule p-2">
+                  <p className="font-bold uppercase tracking-wide text-[10px]">Rail</p>
+                  <ul className="mt-1 space-y-1">
+                    {railIds.filter(Boolean).map((id) => (
+                      <li key={id} className="line-clamp-1">
+                        {articles.find((a) => a.id === id)?.title ?? id}
+                      </li>
+                    ))}
+                    {!railIds.some(Boolean) && <li>—</li>}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <h2 className="text-xs font-bold uppercase tracking-wider text-ink-soft">
             All issues
           </h2>

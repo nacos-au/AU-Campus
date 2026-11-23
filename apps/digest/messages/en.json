@@ -29,7 +29,13 @@
     "browseEditions": "Browse editions",
     "advertisement": "Advertisement",
     "minRead": "{minutes} min read",
-    "by": "By {name}"
+    "by": "By {name}",
+    "didYouKnow": "Did you know?",
+    "revealAnswer": "Reveal answer",
+    "hideAnswer": "Hide answer",
+    "wordOfTheDay": "Word of the Day",
+    "tapForMeaning": "Tap for meaning",
+    "fromTheDesk": "From the Desk"
   },
   "editions": {
     "title": "Print Editions",
@@ -71,8 +77,9 @@
     "getSupport": "Get support",
     "helpCenter": "Help Center"
   },
-  "footer": {
+    "footer": {
     "rights": "All rights reserved.",
+    "weatherCredit": "Weather for Owo via Open-Meteo.",
     "tagline": "The independent student newspaper of the University Students' Association.",
     "sections": "Sections",
     "newsroom": "The Newsroom",

@@ -15,6 +15,7 @@ import { CategoryNav, type NavItem } from "./CategoryNav";
 import { MobileMenu } from "./MobileMenu";
 import { ProfileMenu } from "./ProfileMenu";
 import { IconUser } from "./icons";
+import { WeatherBadge } from "./WeatherBadge";
 
 export async function SiteHeader() {
   const [t, locale, { user, profile }, supabase] = await Promise.all([
@@ -71,6 +72,7 @@ export async function SiteHeader() {
             isWriter={isWriter}
             adminMode={elevated}
             signOutAction={signOut}
+            weatherSlot={<WeatherBadge />}
           />
 
           <Link href="/" className="flex min-w-0 items-center justify-center">
@@ -149,14 +151,17 @@ export async function SiteHeader() {
                 {t("admin")}
               </Link>
             )}
-            {digestFeatures.weekly && (
-              <Link
-                href="/weekly"
-                className="bg-accent px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-accent-hover transition-colors"
-              >
-                {t("weeklyIssue")}
-              </Link>
-            )}
+            <div className="flex flex-col items-end gap-1.5">
+              {digestFeatures.weekly && (
+                <Link
+                  href="/weekly"
+                  className="bg-accent px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-accent-hover transition-colors"
+                >
+                  {t("weeklyIssue")}
+                </Link>
+              )}
+              <WeatherBadge />
+            </div>
             {user ? (
               <ProfileMenu
                 compact

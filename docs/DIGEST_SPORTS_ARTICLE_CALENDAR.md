@@ -1,0 +1,213 @@
+# Digest Sports — Article Idea Calendar
+
+Series frame (optional branding): **Pitch & Court** / *On the Ground at AUO*  
+Section: **Sports**  
+Status: Near-term pack **1–7** for editorial sign-off; priority next **18** + **NPUGA history**; remaining ideas held for later.
+
+---
+
+## Source honesty (read before drafting)
+
+Claims below that cite history are **leads for research**, not locked facts for publication. Re-verify with Sports Director / coaches / athletes before print.
+
+| Claim | Source | Confidence | Before publish |
+| --- | --- | --- | --- |
+| NPUGA “JABU 2013”: men’s & women’s volleyball **gold**; athletics medal names; AUO **4th overall**; BIU / ABUAD / Lead City 1–3 | [AUO Press Club blog, 3 Feb 2014](http://auopressclub.blogspot.com/2014/02/jabu-2013-auo-clinches4-th-spot.html); NPUGA winners table on Wikipedia matches top 3 for 2013 host JABU | Medium–high for medals & top 3; **4th place only in Press Club post** | Confirm medal table + overall rank with Sports Office; note Press Club is campus primary but 12+ years old |
+| Sports lead named as Sunday / Tunde / **Akintunde Akinola**, Director of Sports, also NPUGA figure | Press Club; [Vanguard Nov 2013](https://www.vanguardngr.com/2013/11/25-private-varsities-set-npuga-games/); [NPUGA About](https://npuga.org/about-us/); National Daily 2015 | High that **Akintunde Akinola** is the long-running name; blog “Sunday” may be informal/error | Confirm **current** Director (may have changed since NPUGA presidency ended ~2024) |
+| Niger-Delta Sports Festival 2025: 12 AUO students; **Kelvin Ahmadu** VB gold; **Odunayo Babalola** BB silver; **Stephanie Obianyo** VB + claimed **national female volleyball** selection; other named athletes | [Official AUO news, 9 May 2025](https://achievers.edu.ng/achievers-university-hails-students-on-outstanding-representation-of-ondo-state-at-the-maiden-niger-delta-sports-festival/) | High for university’s own account of festival results; **national team claim needs athlete/coach corroboration** | Interview Stephanie + Sports Office; do not overstate federation selection without confirmation |
+| Ondo University Basketball Championship: AUO **finalists**, lose to AAUA **38–34**; coach **Tosin Olajubutu** quoted; FUTA 3rd | [SportXVibe, 17 Nov 2025](https://sportxvibe.com.ng/aaua-wins-maiden-ondo-university-basketball-championship/) | High for result & coach name (reputable secondary) | Confirm with coach; get AUO scorers / MVP notes if any |
+| Campus facilities inventory (pitch, courts, etc.) | Wikipedia “Sports and Athletics” + **lived campus reality** | Wiki = **claimed count**, often promotional; **quality = student/ground truth** | Article 6 uses ground audit (photos + quotes), not wiki as proof of quality |
+
+**Bottom line:** Festival 2025 and Ondo basketball final are recent and solid leads. NPUGA 2013 is real campus history but treat names/ranks as **to be verified**. Do not publish Wikipedia facility language as “we are well equipped.”
+
+---
+
+## Superior brief (one-liners) — pass-through copy
+
+1. **The Sound of Achievers Sports** — The feel of sports on campus right now: crowds, training nights, and why people show up.
+2. **When Achievers Owned the Court** — Our biggest sports wins and moments worth remembering (verified before print).
+3. **The Ones Who Carry the Jersey** — Short profiles of the athletes defining football, basketball, and volleyball this season.
+4. **After Preseason** — What the finished football preseason revealed about form, surprises, and who matters next.
+5. **Three Sports, One Campus** — A single snapshot of football, basketball, and volleyball mid-tournament — and what to watch next.
+6. **Survive, Don’t Thrive** — Honest look at facilities and how we stack up vs peer schools — pressure on the institution, pride for students.
+7. **Sports Director Q&A** — Sit-down on the calendar, resources, and the path from surviving to building athletes.
+
+**Priority next (not in the first seven):**  
+18. **Freshers’ Guide to AUO Sports** — Where to watch, when games run, how Score works, how not to miss finals.  
+21. **NPUGA: The Games That Made Private-University Sport** — History of NPUGA, why it matters, and Achievers’ place in it (including our past medal runs).
+
+---
+
+## Near-term pack (Articles 1–7)
+
+Keep **1–5 order**. Article **6** is facilities/peer standing. Article **7** is Sports Director Q&A.
+
+### 1. Flagship opener — atmosphere
+- **Working title:** *The Sound of Achievers Sports*
+- **Format:** Feature / atmosphere essay (~1,000–1,400 words)
+- **Angle:** Sidelines, hostel courts, evening training, noise when a faculty scores. Thread current moment: football, basketball, volleyball live; football preseason already done. Soft nod to history without a medal dump.
+- **Tone:** Warm, observational, first Sports voice for Digest.
+- **Research:** 2–3 session hangs; 4–6 student quotes; one Sports Office or coach line on “where we are now.”
+- **Publish:** Week 1 (ASAP).
+
+### 2. Memory & pride — greatest achievements
+- **Working title:** *When Achievers Owned the Court: Medals Worth Remembering*
+- **Format:** Reported history (~900–1,200 words)
+- **Angle:** Shared sports memory for freshers and new Digest readers — NPUGA volleyball era (pending verify), Niger-Delta 2025 cohort, Ondo basketball final run. Pride without pretending the program has always been elite.
+- **Research:** Sports Director/coaches; archive clips; confirm every named medal before print.
+- **Publish:** Week 1–2.
+- **Depends on:** Source verification table above.
+
+### 3. Faces of the program — athletes
+- **Working title:** *The Ones Who Carry the Jersey*
+- **Format:** Multi-profile package (3–5 short profiles)
+- **Angle:** Current standouts across football / basketball / volleyball + one non-obvious name (captain, track, or “glue” player). Pipeline from festival athletes where still on campus.
+- **Research:** 10–15 min interviews; dept/level; defining moment; portrait plan.
+- **Publish:** Week 2.
+
+### 4. Football chapter — post-preseason
+- **Working title:** *After Preseason: What the Football Season Already Told Us*
+- **Format:** Season analysis / wrap-into-preview (~800–1,100 words)
+- **Angle:** Preseason done — surprises, form, who matters in the main competition. Tie Digest ↔ Score data.
+- **Research:** Final table/results; 1 coach + 2 captains; official competition name/dates.
+- **Publish:** As soon as preseason results are locked (can swap with 3 if results land first).
+
+### 5. Triple header — mid-season state of play
+- **Working title:** *Three Sports, One Campus: Football, Basketball, Volleyball Right Now*
+- **Format:** Roundup (~900–1,200 words)
+- **Angle:** One sitting snapshot of all three tournaments; fixtures that matter; rivalry heat; “what to watch this week” ending (template for repeats).
+- **Research:** Score + organizers; one quote per sport; next 7–10 day schedule; one photo per venue if possible.
+- **Publish:** When all three have enough games to say something real.
+
+### 6. Peer standing & facilities — constructive accountability *(new)*
+- **Working title:** *Survive, Don’t Thrive: Where Achievers Sports Stands — and What It Would Take to Climb*
+- **Alt titles:** *Built for Survival, Ready for More* · *The Gap Between Our Athletes and Our Grounds*
+- **Format:** Reported essay / accountability feature (~1,100–1,500 words)
+- **Core thesis:** Consensus is we are **not** among the great sports universities yet. The school **helps students survive** as athletes (courts exist, teams form, some represent the state) but **does not yet build an environment where talent thrives**. That is a call to improve — not a dunk on students.
+- **Ground truth to report (verify on walk + photos):**
+  - No proper gym / strength facility
+  - Main football pitch in poor condition; track around it in bad shape
+  - Basketball, volleyball, tennis courts: usable, decent-ish, not great
+  - Makeshift barbell/chair + cement weights near a student center; hostel DIY workouts common
+- **Structure (tone guardrails):**
+  1. **Open on athletes, not concrete** — what students already achieve *despite* the grounds (links Arts 2–3).
+  2. **Honest facilities audit** — what exists, what works, what fails; student + coach voices.
+  3. **Peer contrast (fair, specific)** — not “we suck.” Compare *categories*: gym access, pitch quality, indoor hall, sports science/medical support, scholarship/kit culture. Use 2–3 peer schools students already know (e.g. ABUAD/NPUGA hosts, FUTA/AAUA as state rivals) as **illustrations of the standard**, not a ranking table we can’t defend.
+  4. **The question:** Are we *finding* athletes or *building* them? Survival vs development pathway.
+  5. **Close upward** — clear, realistic asks (pitch rehab, gym, coaching continuity, recovery space); celebrate hustle; invite management to match student hunger. Morale up, pressure on institution.
+- **Do / don’t:**
+  - **Do** quote students who still love training here; name coaches who improvise well.
+  - **Do** separate “management investment” from “athlete character.”
+  - **Don’t** mock the school into defensiveness; don’t flatten athletes as victims; don’t invent peer facility facts — visit or cite.
+- **Research:** Facilities walk + photos; Sports Director right of reply; 3–4 athletes; 1–2 coaches; optional short peer check (student who visited ABUAD/FUTA/AAUA courts); any public AUO sports-infrastructure promises.
+- **Publish:** After 1–5 (or after 2+3 minimum) so pride and faces exist before the critique. Soften if tournaments are mid-finals and morale is fragile — still publish, but lead with wins-in-progress.
+- **Risk note:** Editorial review before publish; offer Sports Office factual check on facility claims without giving veto on the thesis.
+
+### 7. Sports Director Q&A
+- **Working title:** *Ask the Sports Director*
+- **Format:** Q&A / interview feature
+- **Angle:** Calendar, budget reality, facilities response (Art. 6), whether AUO is building athletes, NPUGA plans. Best **after** Art. 6 so questions have teeth and the office has been heard.
+- **Research:** Formal interview; follow-ups on verified history claims.
+- **Publish:** After Art. 6 (or paired as institutional right of reply).
+
+---
+
+## Priority next (pull forward soon)
+
+### 18. Freshers’ guide to watching AUO sports
+- **Working title:** *How to Watch Sports at Achievers*
+- **Format:** Service / explainer (~600–900 words)
+- **Angle:** Where to stand, when games run, how Score works, how not to miss finals — onboarding for new students and casual fans.
+- **Why priority:** High utility during live tournaments; easy companion to Arts 4–5.
+
+### 21. History of NPUGA *(new)*
+- **Working title:** *NPUGA: The Games That Made Private-University Sport*
+- **Format:** Explainer / history feature (~1,000–1,400 words)
+- **Angle:** What NPUGA is, how the private-university games grew, landmark editions, and **Achievers’ place in that story** (e.g. JABU 2013 medal run pending verify; Akinola’s long NPUGA role). Distinct from Art. 2 (AUO medals generally) — this is the **competition’s history**, with AUO as a chapter.
+- **Research:** NPUGA site / past hosts; Sports Director or ex-officials; Press Club + contemporary press; clear AUO vs association timeline.
+- **Publish:** After Art. 2 source checks, or whenever NPUGA news returns to campus conversation.
+
+---
+
+## Later pipeline (remainder)
+
+Pull forward when tournaments, access, or news make them timely.
+
+### 8. Game of the Week (recurring)
+Match report tied to Score: one decisive football / basketball / volleyball fixture. Short, sharp, photo-led. Becomes the desk’s habit.
+
+### 9. Volleyball deep-dive
+Same shape as Art. 4 — tournament arc, key players, how AUO’s VB history (pending verify) shows up in this squad.
+
+### 10. Basketball deep-dive
+State-final hangover → campus league form; Olajubutu / captains; path back to beating AAUA-level sides.
+
+### 11. Women’s sports spotlight
+Correct male-skewed coverage: women’s football/volleyball/basketball or multi-sport package. Include Stephanie Obianyo thread if still active and verified.
+
+### 12. End-of-tournament awards / season review
+MVPs, breakout, best atmosphere night, unfinished business. One piece per sport or one combined “season book.”
+
+### 13. Hostel iron — student training culture
+Photo essay / short feature on DIY gyms, cement plates, corridor workouts — human side of Art. 6 without repeating the policy ask.
+
+### 14. Interfaculty / AUSA politics of sport
+How teams are picked, funding, refereeing trust, faculty rivalries — only with careful sourcing.
+
+### 15. Track & field / “other sports” night
+Chess, scrabble, tennis championship energy (e.g. Olagbegi tennis events on AUO site) — widen “sports” beyond the big three.
+
+### 16. From Owo to Uyo — festival alumni follow-up
+Where are the Niger-Delta 12 now? Still competing? Mentoring? National pathways?
+
+### 17. Coach’s clipboard
+One coach, one training week, one tactical idea explained for non-athletes.
+
+### 19. Injury, recovery, and what we lack
+Medical/physio access on campus; why cement-weight culture has a cost — pairs with Art. 6 asks.
+
+### 20. “Build the gym” campaign closeout
+If Art. 6 sparks response: progress check, student petition, admin reply — only if there’s real movement.
+
+---
+
+## Suggested publish sequence
+
+| Order | Piece | When |
+| --- | --- | --- |
+| 1 | Atmosphere opener | Week 1 |
+| 2 | Greatest achievements | Week 1–2 (after source checks) |
+| 3 | Athlete package | Week 2 |
+| 4 | Football post-preseason | When results locked (swappable with 3) |
+| 5 | Triple-sport roundup | Mid-tournaments |
+| 6 | Survive / thrive facilities + peers | After 1–5 (min after 2+3) |
+| 7 | Sports Director Q&A | After Art. 6 |
+| 18 | Freshers’ guide | During live tournaments (flexible) |
+| 21 | NPUGA history | After Art. 2 checks / when NPUGA is topical |
+| 8–20 | Remaining pipeline | As news and capacity allow |
+
+---
+
+## Shared research checklist (launch set)
+
+- [ ] Sports Director (or acting) sit-down — history, current year, facilities right of reply  
+- [ ] One coach each: football, basketball, volleyball  
+- [ ] Athlete shortlist 6–8 → lock 4–5 for Art. 3  
+- [ ] Verify NPUGA 2013 medals/rank; Niger-Delta names; Ondo BB final  
+- [ ] Facilities walk + photos for Art. 6  
+- [ ] Score: preseason + live tables for Arts 4–5  
+- [ ] Confirm official names of live competitions (interfaculty / AUSA / other)  
+- [ ] Photo plan: atmosphere, portraits, action, facilities (honest, not humiliating)
+
+---
+
+## Open decisions
+
+1. Series branding on bylines (*Pitch & Court*) vs standalone Sports titles  
+2. Exact competition names for Arts 4–5  
+3. Must-include athletes / achievements for Arts 2–3  
+4. Art. 6 peer schools to name (recommend: state rivals AAUA + FUTA; one private with known sports plant e.g. ABUAD — only with fair, checked comparisons)
+
+---
+
+*Last updated: planning pass for Digest Sports launch. Drafting starts only after titles/angles above are signed off.*

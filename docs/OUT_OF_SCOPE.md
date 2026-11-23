@@ -121,7 +121,24 @@ Revisit when casual or pickup-game scoring is a product priority.
 
 ---
 
-## 7. Implementation Priority
+## 7. Digest — Richer Fun Fact extras
+
+**In scope now:** site-wide “Did you know?” cloud trivia (question → reveal answer), daily rotation over an admin-managed `campus_facts` pool.
+
+**Parked for later (full Fun Fact product):**
+
+- Categories / tags and themed packs
+- Illustration or photo attachments
+- Share cards / social image export
+- Streaks, favorites, or “guess before reveal” scoring
+- Issue-pinned facts (force a fact for a given Weekly Issue week)
+- Analytics on reveal rate
+
+Revisit after the cloud rotator proves retention on the homepage.
+
+---
+
+## 8. Implementation Priority
 
 | Feature | Priority | Depends On |
 |---------|----------|------------|
@@ -131,5 +148,6 @@ Revisit when casual or pickup-game scoring is a product priority.
 | Digest correction notes | Later | Digest live + editorial policy |
 | Digest timed release / cron | Later | Need exact-time go-live without a click |
 | Score Phantom (un-hide) | Later | Product priority for casual scoring |
+| Digest richer Fun Fact extras | Later | Cloud Q&A rotator live |
 
 These will be built after the core platform (live scoring, standings, profiles, auth) is complete and connected to Supabase.
