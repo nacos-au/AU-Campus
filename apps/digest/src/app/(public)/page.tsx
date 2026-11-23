@@ -190,26 +190,14 @@ export default async function HomePage() {
         <AdSlot slot="leaderboard" className="mt-12 border-t border-rule pt-8" />
       )}
 
-      {(fact || word) && (
+      {fact && (
         <div className="mt-12 border-t-2 border-ink">
-          {fact && (
-            <FunFactCloud
-              fact={fact}
-              kicker={t("didYouKnow")}
-              revealLabel={t("revealAnswer")}
-              hideLabel={t("hideAnswer")}
-            />
-          )}
-          {word && (
-            <div className="mx-auto max-w-md px-4 pb-10">
-              <WordOfTheDay
-                word={word}
-                label={t("wordOfTheDay")}
-                revealLabel={t("tapForMeaning")}
-                compact
-              />
-            </div>
-          )}
+          <FunFactCloud
+            fact={fact}
+            kicker={t("didYouKnow")}
+            revealLabel={t("revealAnswer")}
+            hideLabel={t("hideAnswer")}
+          />
         </div>
       )}
 
@@ -250,6 +238,19 @@ export default async function HomePage() {
           </section>
         );
       })}
+
+      {word && (
+        <section className="mt-14 border-t border-rule pt-8">
+          <div className="mx-auto max-w-sm">
+            <WordOfTheDay
+              word={word}
+              label={t("wordOfTheDay")}
+              revealLabel={t("tapForMeaning")}
+              compact
+            />
+          </div>
+        </section>
+      )}
     </div>
   );
 }

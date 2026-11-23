@@ -21,20 +21,24 @@ export function FunFactCloud({
   return (
     <section
       aria-label={kicker}
-      className="relative mx-auto w-full max-w-2xl px-4 py-10 md:py-14"
+      className="mx-auto w-full max-w-2xl px-4 py-10 md:py-14"
     >
-      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div
-          className="h-[85%] w-[95%] max-w-xl rounded-[45%_55%_50%_50%/55%_45%_55%_45%] bg-ink/[0.03] blur-[1px]"
-          aria-hidden
-        />
-      </div>
-
-      <div className="relative mx-auto max-w-lg rounded-[40%_60%_55%_45%/50%_45%_55%_50%] border border-ink/15 bg-paper/90 px-8 py-10 text-center shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur-[2px] md:px-12 md:py-12">
+      {/* Soft cloud: grows with content; mobile uses a contained pill-blob so answers stay inside */}
+      <div
+        className={[
+          "relative mx-auto overflow-hidden border border-ink/15 bg-paper",
+          "px-6 py-8 text-center sm:px-10 sm:py-10 md:px-12 md:py-12",
+          "rounded-[1.75rem] sm:rounded-[2.5rem]",
+          "md:rounded-[40%_60%_55%_45%/50%_45%_55%_50%]",
+          "shadow-[0_1px_0_rgba(0,0,0,0.04)]",
+          "before:pointer-events-none before:absolute before:inset-2 before:-z-10",
+          "before:rounded-[inherit] before:bg-ink/[0.03]",
+        ].join(" ")}
+      >
         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-ink-soft">
           {kicker}
         </p>
-        <h2 className="mt-4 font-serif text-2xl font-bold leading-snug text-ink md:text-[1.75rem]">
+        <h2 className="mt-3 break-words font-serif text-xl font-bold leading-snug text-ink sm:mt-4 sm:text-2xl md:text-[1.75rem]">
           {fact.question}
         </h2>
 
@@ -42,7 +46,7 @@ export function FunFactCloud({
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
-          className="mt-6 inline-flex items-center gap-2 border-b border-ink pb-0.5 text-[11px] font-bold uppercase tracking-wider text-ink transition-opacity hover:opacity-70"
+          className="mt-5 inline-flex items-center gap-2 border-b border-ink pb-0.5 text-[11px] font-bold uppercase tracking-wider text-ink transition-opacity hover:opacity-70 sm:mt-6"
         >
           {open ? hideLabel : revealLabel}
         </button>
@@ -52,8 +56,8 @@ export function FunFactCloud({
             open ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
           }`}
         >
-          <div className="overflow-hidden">
-            <p className="mt-5 font-serif text-base leading-relaxed text-ink-soft md:text-lg">
+          <div className="min-h-0 overflow-hidden">
+            <p className="mt-4 break-words font-serif text-[15px] leading-relaxed text-ink-soft sm:mt-5 sm:text-base md:text-lg">
               {fact.answer}
             </p>
           </div>
