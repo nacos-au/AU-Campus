@@ -23,6 +23,7 @@ const STATUS_STYLES: Record<ArticleStatus, string> = {
   published: "bg-green-100 text-green-800",
   scheduled: "bg-sky-100 text-sky-800",
   archived: "bg-ink/10 text-ink-soft",
+  withdrawn: "bg-red-50 text-red-800",
 };
 
 const STATUS_LABELS: Record<ArticleStatus, string> = {
@@ -32,6 +33,7 @@ const STATUS_LABELS: Record<ArticleStatus, string> = {
   published: "Live",
   scheduled: "Parked",
   archived: "Archived",
+  withdrawn: "Withdrawn",
 };
 
 type Filter = "all" | "review" | ArticleStatus;
@@ -67,6 +69,7 @@ export function ArticlesTable({
       "published",
       "scheduled",
       "archived",
+      "withdrawn",
     ].includes(initialFilter)
       ? initialFilter
       : "all"
@@ -173,6 +176,18 @@ export function ArticlesTable({
     onSettled: refresh,
   });
 
+  const withdraw = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc("withdraw_article", {
+        p_article_id: id,
+        p_reason: null,
+      });
+      if (error) throw error;
+    },
+    onError: (e: Error) => setError(e.message),
+    onSettled: refresh,
+  });
+
   const reassign = useMutation({
     mutationFn: async (vars: { id: string; editorId: string }) => {
       const { error } = await supabase
@@ -214,21 +229,24 @@ export function ArticlesTable({
 
   function awaitingMe(a: Row) {
     const r = revisionOf(a);
+    // Include self-assigned (sole-editor failover) — still needs review.
     if (r?.state === "awaiting_editor") {
-      return r.assigned_editor_id === userId && a.author_id !== userId;
+      return r.assigned_editor_id === userId;
     }
-    return (
-      a.status === "awaiting_editor" &&
-      a.assigned_editor_id === userId &&
-      a.author_id !== userId
-    );
+    return a.status === "awaiting_editor" && a.assigned_editor_id === userId;
   }
 
   const reviewCount = articles.filter(awaitingMe).length;
 
   const visible = articles.filter((a) => {
-    if (filter === "all") return a.status !== "archived";
+    if (filter === "all") {
+      return a.status !== "archived" && a.status !== "withdrawn";
+    }
     if (filter === "review") return awaitingMe(a) && a.status !== "archived";
+    if (filter === "draft") {
+      // Drafts are personal — never list someone else's unfinished work.
+      return a.status === "draft" && a.author_id === userId;
+    }
     return effective(a).status === filter || a.status === filter;
   });
 
@@ -243,6 +261,7 @@ export function ArticlesTable({
     { id: "published", label: "Live" },
     { id: "scheduled", label: "Parked" },
     { id: "archived", label: "Archived" },
+    { id: "withdrawn", label: "Withdrawn" },
   ];
 
   return (
@@ -449,6 +468,27 @@ export function ArticlesTable({
                       className="border border-ink px-2.5 py-1 hover:bg-ink hover:text-paper transition-colors"
                     >
                       Restore to draft
+                    </button>
+                  )}
+
+                  {mine &&
+                    (a.status === "awaiting_editor" ||
+                      a.status === "awaiting_writer") && (
+                    <button
+                      onClick={async () => {
+                        if (
+                          await confirm({
+                            title: `Withdraw “${a.title}”?`,
+                            body: "Removes it from the editor queue. The assigned editor will see that you withdrew it. Body content is cleared; an audit row is kept.",
+                            confirmLabel: "Withdraw",
+                            danger: true,
+                          })
+                        )
+                          withdraw.mutate(a.id);
+                      }}
+                      className="text-red-700 underline hover:text-red-900"
+                    >
+                      Withdraw
                     </button>
                   )}
 

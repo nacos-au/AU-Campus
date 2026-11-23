@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { AdSlot } from "@/components/AdSlot";
 import { RichText } from "@/components/RichText";
 import { LikeShare } from "@/components/LikeShare";
+import { displayByline } from "@/lib/byline";
 import { CompactStory } from "@/components/stories";
 import { readingMinutes } from "@/lib/articles";
 import { digestFeatures } from "@/lib/features";
@@ -98,22 +99,20 @@ export default async function ArticlePage({
         )}
 
         <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-1 border-y border-rule py-3 text-xs text-ink-soft">
-          {(article.byline || article.profiles?.display_name) && (
+          {displayByline(article) && (
             <span>
               By{" "}
-              {article.byline ? (
-                <span className="font-semibold text-ink">{article.byline}</span>
+              {article.byline_mode && article.byline_mode !== "personal" ? (
+                <span className="font-semibold text-ink">{displayByline(article)}</span>
               ) : article.profiles?.username ? (
                 <Link
                   href={`/author/${article.profiles.username}`}
                   className="font-semibold text-ink hover:text-accent"
                 >
-                  {article.profiles.display_name}
+                  {displayByline(article)}
                 </Link>
               ) : (
-                <span className="font-semibold text-ink">
-                  {article.profiles?.display_name}
-                </span>
+                <span className="font-semibold text-ink">{displayByline(article)}</span>
               )}
             </span>
           )}

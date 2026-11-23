@@ -19,6 +19,7 @@ export default async function AdminLayout({
     { href: "/admin/articles", label: "Articles", icon: "articles" },
     ...(staff
       ? ([
+          { href: "/admin/front-page", label: "Front page", icon: "editions" },
           { href: "/admin/sections", label: "Sections", icon: "sections" },
           { href: "/admin/weekly", label: "Weekly", icon: "editions" },
           ...(digestFeatures.manualAds

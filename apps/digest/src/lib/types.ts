@@ -5,7 +5,10 @@ export type ArticleStatus =
   | "awaiting_writer"
   | "published"
   | "scheduled"
-  | "archived";
+  | "archived"
+  | "withdrawn";
+
+export type BylineMode = "personal" | "alias" | "series";
 export type AdSlot = "leaderboard" | "sidebar" | "infeed";
 export type WeeklyIssueStatus =
   | "draft"
@@ -54,7 +57,11 @@ export interface Article {
   editor_note: string | null;
   assigned_editor_id?: string | null;
   byline?: string | null;
+  byline_mode?: BylineMode;
+  series_key?: string | null;
   like_count?: number;
+  review_lock_by?: string | null;
+  review_lock_at?: string | null;
   sponsored_by?: string | null;
   /** Legacy timed-release field; unused — parked stories use status scheduled only. */
   embargo_at?: string | null;
@@ -178,9 +185,31 @@ export interface ReviewComment {
   article_id: string;
   author_id: string;
   body: string;
-  anchor: { quote: string } | null;
+  anchor: {
+    quote: string;
+    prefix?: string;
+    suffix?: string;
+  } | null;
+  resolved?: boolean;
+  resolved_at?: string | null;
+  resolved_by?: string | null;
   created_at: string;
   profiles?: Pick<Profile, "display_name"> | null;
+}
+
+export type FrontPageKind =
+  | "page_one"
+  | "breaking"
+  | "top_news"
+  | "section_highlight";
+
+export interface FrontPageSlot {
+  id: string;
+  kind: FrontPageKind;
+  article_id: string;
+  section_id: number | null;
+  position: number;
+  updated_at: string;
 }
 
 export interface AppNotification {
@@ -198,6 +227,8 @@ export interface RevisionPayload {
   body: unknown;
   cover_url: string | null;
   byline: string | null;
+  byline_mode?: BylineMode;
+  series_key?: string | null;
   sponsored_by?: string | null;
   section_id: number;
   language: string;

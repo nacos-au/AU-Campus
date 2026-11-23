@@ -58,7 +58,7 @@ export default async function AdminDashboard() {
 
   const rows = (articlesRes.data ?? []) as unknown as Row[];
   const forMe = rows.filter(
-    (r) => r.status === "awaiting_editor" && r.assigned_editor_id === me && r.author_id !== me
+    (r) => r.status === "awaiting_editor" && r.assigned_editor_id === me
   );
   const mine = rows.filter((r) => r.author_id === me);
   const needsMyChanges = mine.filter((r) => r.status === "awaiting_writer");
@@ -98,7 +98,7 @@ export default async function AdminDashboard() {
                 <div className="min-w-0">
                   <p className="truncate font-serif font-bold">{r.title || "Untitled"}</p>
                   <p className="text-xs text-ink-soft">
-                    {r.profiles?.display_name} · {r.sections?.name} · {ago(r.updated_at)}
+                    {r.author_id === me ? "You (author)" : r.profiles?.display_name} · {r.sections?.name} · {ago(r.updated_at)}
                   </p>
                 </div>
                 <Link href={`/admin/review/${r.id}`} className={btn.primary}>

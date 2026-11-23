@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { readingMinutes } from "@/lib/articles";
+import { displayByline } from "@/lib/byline";
 import type { ArticleWithMeta } from "@/lib/types";
 
 function href(a: ArticleWithMeta) {
@@ -14,7 +15,7 @@ export function Byline({
   article: ArticleWithMeta;
   className?: string;
 }) {
-  const name = article.byline || article.profiles?.display_name;
+  const name = displayByline(article);
   if (!name) return null;
   return (
     <p className={`text-[11px] uppercase tracking-wide text-ink-soft ${className}`}>

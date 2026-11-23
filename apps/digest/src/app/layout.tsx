@@ -9,6 +9,7 @@ import { getLocale } from "next-intl/server";
 import { isRtlLocale } from "@/i18n/locales";
 import { site } from "@/lib/site";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
+import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import "./globals.css";
 
 const franklin = Libre_Franklin({
@@ -47,6 +48,7 @@ export default async function RootLayout({
       className={`${franklin.variable} ${sourceSerif.variable} ${masthead.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <GoogleAnalytics />
         <NextIntlClientProvider>
           <ConfirmProvider>{children}</ConfirmProvider>
         </NextIntlClientProvider>

@@ -44,12 +44,20 @@ export default async function AccountPage() {
               )}
             </p>
           </div>
-          <Link
-            href="/account/settings"
-            className="text-sm text-[#326891] underline underline-offset-2 hover:text-ink"
-          >
-            Account settings
-          </Link>
+          <div className="flex flex-wrap gap-3 text-sm">
+            <Link
+              href="/account/saved"
+              className="text-[#326891] underline underline-offset-2 hover:text-ink"
+            >
+              Saved stories
+            </Link>
+            <Link
+              href="/account/settings"
+              className="text-[#326891] underline underline-offset-2 hover:text-ink"
+            >
+              Account settings
+            </Link>
+          </div>
         </div>
       </header>
 

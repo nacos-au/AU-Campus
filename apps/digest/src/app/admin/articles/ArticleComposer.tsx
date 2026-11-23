@@ -16,7 +16,7 @@ import { uploadCover } from "@/lib/uploads";
 import { locales, localeNames } from "@/i18n/locales";
 import { RichText } from "@/components/RichText";
 import { useConfirm } from "@/components/ConfirmDialog";
-import type { Article, Profile, RevisionPayload, Section } from "@/lib/types";
+import type { Article, BylineMode, Profile, RevisionPayload, Section } from "@/lib/types";
 
 const EMPTY_DOC = { type: "doc", content: [] };
 const AUTOSAVE_MS = 2000;
@@ -100,6 +100,12 @@ export function ArticleComposer({
   const [title, setTitle] = useState(initial?.title ?? "");
   const [dek, setDek] = useState(initial?.dek ?? "");
   const [byline, setByline] = useState(initial?.byline ?? "");
+  const [bylineMode, setBylineMode] = useState<BylineMode>(
+    (initial as Article | null)?.byline_mode ?? "personal"
+  );
+  const [seriesKey, setSeriesKey] = useState(
+    (initial as Article | null)?.series_key ?? ""
+  );
   const [sectionId, setSectionId] = useState<number | "">(
     initial?.section_id ?? ""
   );
@@ -197,7 +203,12 @@ export function ArticleComposer({
       dek: dek.trim() || null,
       body: editor?.getJSON() ?? EMPTY_DOC,
       cover_url: coverUrl || null,
-      byline: byline.trim() || null,
+      byline: bylineMode === "personal" ? null : byline.trim() || null,
+      byline_mode: bylineMode,
+      series_key:
+        bylineMode === "series"
+          ? seriesKey.trim().toLowerCase().replace(/\s+/g, "-") || null
+          : null,
       section_id: Number(resolvedSection) || Number(sections[0]?.id) || 0,
       language,
     };
@@ -230,6 +241,8 @@ export function ArticleComposer({
         body: p.body,
         cover_url: p.cover_url,
         byline: p.byline,
+        byline_mode: p.byline_mode ?? "personal",
+        series_key: p.series_key ?? null,
         sponsored_by: null,
         section_id: p.section_id,
         language: p.language,
@@ -260,6 +273,8 @@ export function ArticleComposer({
     [
       article,
       byline,
+      bylineMode,
+      seriesKey,
       coverUrl,
       isLive,
       language,
@@ -609,7 +624,7 @@ export function ArticleComposer({
             </h1>
             {dek && <p className="mt-3 font-serif text-xl text-ink-soft">{dek}</p>}
             <p className="mt-4 text-sm text-ink-soft">
-              By <span className="font-semibold text-ink">{byline || "You"}</span>
+              By <span className="font-semibold text-ink">{bylineMode === "personal" ? "You" : byline || "…"}</span>
             </p>
             {coverUrl && (
               <div className="relative mt-6 aspect-video w-full overflow-hidden">
@@ -644,19 +659,53 @@ export function ArticleComposer({
               placeholder="Add a subtitle…"
               className="mt-2 w-full resize-none bg-transparent font-serif text-xl text-ink-soft placeholder:text-ink-soft/50 focus:outline-none [field-sizing:content]"
             />
-            <label className="mt-4 inline-flex max-w-full items-center gap-2 rounded-full border border-rule-dark px-3 py-1.5 text-sm">
-              <span className="text-ink-soft">By</span>
-              <input
-                value={byline}
-                onChange={(e) => {
-                  setByline(e.target.value);
-                  markDirty();
-                }}
-                readOnly={locked}
-                placeholder="Your name or series"
-                className="w-64 max-w-[60vw] bg-transparent font-semibold focus:outline-none"
-              />
-            </label>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-ink-soft">
+                Credit on the story
+                <select
+                  value={bylineMode}
+                  onChange={(e) => {
+                    setBylineMode(e.target.value as BylineMode);
+                    markDirty();
+                  }}
+                  className="mt-1 block w-full border border-rule-dark px-3 py-2 text-sm text-ink"
+                >
+                  <option value="personal">My name (account)</option>
+                  <option value="alias">Alias / department</option>
+                  <option value="series">Series name</option>
+                </select>
+              </label>
+              {bylineMode !== "personal" && (
+                <label className="block text-xs font-semibold uppercase tracking-wide text-ink-soft">
+                  {bylineMode === "series" ? "Series name" : "Alias / desk name"}
+                  <input
+                    value={byline}
+                    onChange={(e) => {
+                      setByline(e.target.value);
+                      markDirty();
+                    }}
+                    placeholder={
+                      bylineMode === "series"
+                        ? "e.g. Interviewing Achievers"
+                        : "e.g. Department of Computer Science"
+                    }
+                    className="mt-1 block w-full border border-rule-dark px-3 py-2 text-sm text-ink"
+                  />
+                </label>
+              )}
+              {bylineMode === "series" && (
+                <label className="block text-xs font-semibold uppercase tracking-wide text-ink-soft">
+                  Series key (optional)
+                  <input
+                    value={seriesKey}
+                    onChange={(e) => {
+                      setSeriesKey(e.target.value);
+                      markDirty();
+                    }}
+                    placeholder="interviewing-achievers"
+                    className="mt-1 block w-full border border-rule-dark px-3 py-2 text-sm text-ink"
+                  />
+                </label>
+              )}
 
             {/* Cover photo — editable in the compose canvas */}
             {!locked && (

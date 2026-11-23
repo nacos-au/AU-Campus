@@ -6,7 +6,7 @@ export const digestFeatures = {
   forum: false,
   talent: false,
   printEditions: false,
-  publicLikes: false,
+  publicLikes: true,
   adsenseFallback: false,
   weekly: true,
   /** Ads paused for now — AdSlots and advertise links stay gated off. */

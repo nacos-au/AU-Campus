@@ -69,6 +69,9 @@ export function ReviewClient({
   const qc = useQueryClient();
   const bodyRef = useRef<HTMLDivElement>(null);
   const [quote, setQuote] = useState<string | null>(null);
+  const [quotePrefix, setQuotePrefix] = useState<string | null>(null);
+  const [quoteSuffix, setQuoteSuffix] = useState<string | null>(null);
+  const [activeQuote, setActiveQuote] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,13 +93,29 @@ export function ReviewClient({
   });
 
   const body = useMemo(() => <RichText doc={content.body} />, [content.body]);
-  const quotes = comments.map((c) => c.anchor?.quote ?? "").filter(Boolean);
-  const quoteKey = quotes.join("\u0000");
+  const quotes = comments
+    .filter((c) => !c.resolved)
+    .map((c) => c.anchor?.quote ?? "")
+    .filter(Boolean);
+  if (activeQuote && !quotes.includes(activeQuote)) quotes.unshift(activeQuote);
+  const quoteKey = quotes.join("\u0000") + (activeQuote ?? "");
 
   useEffect(() => {
     if (bodyRef.current) applyHighlights(bodyRef.current, quotes);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quoteKey]);
+
+  useEffect(() => {
+    if (!canReview) return;
+    void supabase.rpc("heartbeat_review", { p_article_id: articleId });
+    const tick = window.setInterval(() => {
+      void supabase.rpc("heartbeat_review", { p_article_id: articleId });
+    }, 60_000);
+    return () => {
+      window.clearInterval(tick);
+      void supabase.rpc("release_review", { p_article_id: articleId });
+    };
+  }, [canReview, articleId, supabase]);
 
   function captureSelection() {
     const sel = window.getSelection();
@@ -107,7 +126,15 @@ export function ReviewClient({
       bodyRef.current?.contains(sel.anchorNode) &&
       t.length <= 400
     ) {
+      const full = bodyRef.current.innerText || "";
+      const i = full.indexOf(t);
+      const prefix = i >= 0 ? full.slice(Math.max(0, i - 24), i) : "";
+      const suffix =
+        i >= 0 ? full.slice(i + t.length, i + t.length + 24) : "";
       setQuote(t);
+      setQuotePrefix(prefix || null);
+      setQuoteSuffix(suffix || null);
+      setActiveQuote(t);
     }
   }
 
@@ -118,13 +145,26 @@ export function ReviewClient({
     const { error } = await supabase.rpc("add_review_comment", {
       p_article_id: articleId,
       p_body: text,
-      p_anchor: quote ? { quote } : null,
+      p_anchor: quote
+        ? { quote, prefix: quotePrefix, suffix: quoteSuffix }
+        : null,
     });
     setBusy(false);
     if (error) return setError(error.message);
     setText("");
     setQuote(null);
+    setQuotePrefix(null);
+    setQuoteSuffix(null);
     qc.invalidateQueries({ queryKey: ["review-comments", articleId] });
+  }
+
+  async function toggleResolved(id: string, resolved: boolean) {
+    const { error } = await supabase.rpc("resolve_review_comment", {
+      p_comment_id: id,
+      p_resolved: resolved,
+    });
+    if (error) setError(error.message);
+    else qc.invalidateQueries({ queryKey: ["review-comments", articleId] });
   }
 
   async function act(kind: "changes" | "approve" | "park" | "make_live") {
@@ -230,23 +270,43 @@ export function ReviewClient({
           )}
           {comments.map((c) => {
             const mine = c.author_id === userId;
+            const done = !!c.resolved;
             return (
               <div
                 key={c.id}
+                id={`review-c-${c.id}`}
                 className={`border p-3 text-sm ${
-                  mine ? "border-ink/30 bg-gray-50" : "border-rule-dark"
+                  done
+                    ? "border-rule bg-gray-50/60 opacity-70"
+                    : mine
+                      ? "border-ink/30 bg-gray-50"
+                      : "border-rule-dark"
                 }`}
               >
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
                   {mine ? "You" : c.profiles?.display_name} ·{" "}
                   {new Date(c.created_at).toLocaleString()}
+                  {done ? " · Resolved" : ""}
                 </p>
                 {c.anchor?.quote && (
-                  <p className="mt-1.5 border-l-2 border-yellow-400 bg-yellow-50 px-2 py-1 text-xs italic">
+                  <button
+                    type="button"
+                    onClick={() => setActiveQuote(c.anchor?.quote ?? null)}
+                    className="mt-1.5 block w-full border-l-2 border-yellow-400 bg-yellow-50 px-2 py-1 text-left text-xs italic hover:bg-yellow-100"
+                  >
                     “{c.anchor.quote}”
-                  </p>
+                  </button>
                 )}
                 <p className="mt-1.5 whitespace-pre-wrap">{c.body}</p>
+                {(canReview || isAuthor) && (
+                  <button
+                    type="button"
+                    onClick={() => toggleResolved(c.id, !done)}
+                    className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-ink-soft underline hover:text-ink"
+                  >
+                    {done ? "Reopen" : "Resolve"}
+                  </button>
+                )}
               </div>
             );
           })}

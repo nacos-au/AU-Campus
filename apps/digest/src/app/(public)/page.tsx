@@ -9,7 +9,8 @@ import {
   StoryCard,
 } from "@/components/stories";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
-import type { ArticleWithMeta, Section } from "@/lib/types";
+import type { ArticleWithMeta, FrontPageSlot, Section } from "@/lib/types";
+
 export default async function HomePage() {
   const supabase = await createClient();
   const t = await getTranslations("home");
@@ -17,21 +18,27 @@ export default async function HomePage() {
   const ARTICLE_SELECT =
     "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username)";
 
-  const [{ data: articlesData }, { data: sectionsData }] = await Promise.all([
-    supabase
-      .from("articles")
-      .select(ARTICLE_SELECT)
-      .eq("status", "published")
-      .order("featured", { ascending: false })
-      .order("published_at", { ascending: false })
-      .limit(40),
-    supabase.from("sections").select("*").order("position"),
-  ]);
+  const [{ data: articlesData }, { data: sectionsData }, { data: slotsData }] =
+    await Promise.all([
+      supabase
+        .from("articles")
+        .select(ARTICLE_SELECT)
+        .eq("status", "published")
+        .order("published_at", { ascending: false })
+        .limit(60),
+      supabase.from("sections").select("*").order("position"),
+      supabase
+        .from("front_page_slots")
+        .select("id, kind, article_id, section_id, position, updated_at")
+        .order("position"),
+    ]);
 
   const articles = (articlesData ?? []) as unknown as ArticleWithMeta[];
+  const byId = new Map(articles.map((a) => [a.id, a]));
   const sections = ((sectionsData ?? []) as Section[]).filter((s) =>
     isPublicSectionSlug(s.slug)
   );
+  const slots = (slotsData ?? []) as FrontPageSlot[];
 
   if (articles.length === 0) {
     return (
@@ -42,24 +49,26 @@ export default async function HomePage() {
           <code className="text-xs">supabase/digest_seed_content_APPLY_ALL.sql</code>{" "}
           in the SQL editor, then publish from the newsroom.
         </p>
-        <p className="mt-4 text-xs">
-          Newsroom:{" "}
-          <a href="/admin" className="font-semibold text-ink underline underline-offset-2">
-            sign in and publish
-          </a>{" "}
-          after creating an account.
-        </p>
       </div>
     );
   }
 
-  // Only explicit flags — never invent a rail from leftovers.
+  function fromSlots(kind: FrontPageSlot["kind"], limit = 5) {
+    return slots
+      .filter((s) => s.kind === kind)
+      .sort((a, b) => a.position - b.position)
+      .map((s) => byId.get(s.article_id))
+      .filter((a): a is ArticleWithMeta => !!a)
+      .slice(0, limit);
+  }
+
   const breaking = digestFeatures.breakingNews
-    ? articles.filter((a) => a.breaking).slice(0, 5)
+    ? fromSlots("breaking", 5)
     : [];
-  const topNews = articles
-    .filter((a) => a.featured && !breaking.some((b) => b.id === a.id))
-    .slice(0, 5);
+  const topNews = fromSlots("top_news", 5).filter(
+    (a) => !breaking.some((b) => b.id === a.id)
+  );
+  const pageOne = fromSlots("page_one", 1)[0] ?? null;
 
   const showBreaking = breaking.length > 0;
   const showTopNews = topNews.length > 0;
@@ -67,12 +76,25 @@ export default async function HomePage() {
 
   const railIds = new Set([...breaking, ...topNews].map((a) => a.id));
   const mainPool = articles.filter((a) => !railIds.has(a.id));
-  const [lead, ...rest] = mainPool.length > 0 ? mainPool : articles;
-  const secondary = rest.slice(0, 2);
+  const lead =
+    pageOne && !railIds.has(pageOne.id)
+      ? pageOne
+      : mainPool[0] ?? articles[0];
+  const secondary = mainPool
+    .filter((a) => a.id !== lead?.id)
+    .slice(0, 2);
   const usedIds = new Set(
-    [lead, ...secondary, ...breaking, ...topNews].filter(Boolean).map((a) => a.id)
+    [lead, ...secondary, ...breaking, ...topNews]
+      .filter(Boolean)
+      .map((a) => a!.id)
   );
   const remaining = articles.filter((a) => !usedIds.has(a.id));
+
+  const sectionHighlight = new Map<number, ArticleWithMeta>();
+  for (const s of slots.filter((x) => x.kind === "section_highlight")) {
+    const art = byId.get(s.article_id);
+    if (art && s.section_id != null) sectionHighlight.set(s.section_id, art);
+  }
 
   return (
     <div className="py-4 md:py-6">
@@ -142,11 +164,17 @@ export default async function HomePage() {
       )}
 
       {sections.map((section) => {
-        const sectionArticles = remaining
-          .filter((a) => a.sections?.slug === section.slug)
-          .slice(0, 4);
-        if (sectionArticles.length === 0) return null;
-        const [first, ...more] = sectionArticles;
+        const highlight = sectionHighlight.get(section.id);
+        const others = remaining
+          .filter(
+            (a) =>
+              a.sections?.slug === section.slug &&
+              a.id !== highlight?.id
+          )
+          .slice(0, highlight ? 3 : 4);
+        const first = highlight ?? others[0];
+        const more = highlight ? others : others.slice(1);
+        if (!first) return null;
 
         return (
           <section key={section.id} className="mt-12 border-t-2 border-ink pt-6">
