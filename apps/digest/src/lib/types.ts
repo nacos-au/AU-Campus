@@ -82,8 +82,6 @@ export interface Article {
   review_lock_by?: string | null;
   review_lock_at?: string | null;
   sponsored_by?: string | null;
-  /** Legacy timed-release field; unused — parked stories use status scheduled only. */
-  embargo_at?: string | null;
   /** Set when a post-publish edit is approved — public “Updated” label. */
   content_updated_at?: string | null;
   published_at: string | null;
