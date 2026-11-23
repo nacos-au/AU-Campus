@@ -2,7 +2,7 @@
 
 import { PageHeader, btn, input } from "@/components/admin/ui";
 import { useConfirm } from "@/components/ConfirmDialog";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { ROLE_LABELS, ROLE_SUMMARIES } from "@/lib/roles";
@@ -12,6 +12,15 @@ import { deleteMemberAction } from "./actions";
 const ASSIGNABLE: Role[] = ["reader", "writer", "editor", "admin"];
 
 type TeamRow = Profile & { email?: string | null };
+
+function Spinner({ className = "" }: { className?: string }) {
+  return (
+    <span
+      className={`inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent ${className}`}
+      aria-hidden
+    />
+  );
+}
 
 export function TeamManager({
   currentUserId,
@@ -24,7 +33,16 @@ export function TeamManager({
   const queryClient = useQueryClient();
   const { confirm } = useConfirm();
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  const [pendingRoleId, setPendingRoleId] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!success) return;
+    const t = window.setTimeout(() => setSuccess(null), 2500);
+    return () => window.clearTimeout(t);
+  }, [success]);
 
   const { data: people = [], isLoading } = useQuery({
     queryKey: ["admin-team"],
@@ -39,30 +57,44 @@ export function TeamManager({
   });
 
   const setRole = useMutation({
-    mutationFn: async (vars: { id: string; role: Role }) => {
+    mutationFn: async (vars: { id: string; role: Role; label: string }) => {
+      setPendingRoleId(vars.id);
       const { error } = await supabase
         .from("profiles")
         .update({ role: vars.role })
         .eq("id", vars.id);
       if (error) throw error;
+      return vars;
     },
-    onSuccess: () => {
+    onSuccess: (vars) => {
       setError(null);
+      setSuccess(`${vars.label} → ${ROLE_LABELS[vars.role]}`);
       queryClient.invalidateQueries({ queryKey: ["admin-team"] });
     },
-    onError: (e: Error) => setError(e.message),
+    onError: (e: Error) => {
+      setSuccess(null);
+      setError(e.message);
+    },
+    onSettled: () => setPendingRoleId(null),
   });
 
   const remove = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await deleteMemberAction(id);
+    mutationFn: async (vars: { id: string; label: string }) => {
+      setPendingDeleteId(vars.id);
+      const res = await deleteMemberAction(vars.id);
       if (!res.ok) throw new Error(res.error);
+      return vars;
     },
-    onSuccess: () => {
+    onSuccess: (vars) => {
       setError(null);
+      setSuccess(`Removed ${vars.label}`);
       queryClient.invalidateQueries({ queryKey: ["admin-team"] });
     },
-    onError: (e: Error) => setError(e.message),
+    onError: (e: Error) => {
+      setSuccess(null);
+      setError(e.message);
+    },
+    onSettled: () => setPendingDeleteId(null),
   });
 
   const needle = q.trim().toLowerCase();
@@ -106,14 +138,34 @@ export function TeamManager({
         />
       </label>
 
-      {error && (
-        <p className="mt-4 border border-accent/30 bg-accent-soft px-3 py-2 text-sm text-accent">
-          {error}
-        </p>
+      {(error || success || setRole.isPending || remove.isPending) && (
+        <div
+          className={`mt-4 flex items-center gap-2 border px-3 py-2 text-sm ${
+            error
+              ? "border-accent/30 bg-accent-soft text-accent"
+              : success
+                ? "border-green-200 bg-green-50 text-green-800"
+                : "border-rule bg-gray-50 text-ink-soft"
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          {(setRole.isPending || remove.isPending) && !error && !success && (
+            <>
+              <Spinner />
+              <span>Saving…</span>
+            </>
+          )}
+          {success && !error && <span>{success}</span>}
+          {error && <span>{error}</span>}
+        </div>
       )}
 
       {isLoading ? (
-        <p className="py-12 text-center text-sm text-ink-soft">Loading…</p>
+        <p className="flex items-center justify-center gap-2 py-12 text-sm text-ink-soft">
+          <Spinner className="text-ink-soft" />
+          Loading team…
+        </p>
       ) : filtered.length === 0 ? (
         <p className="mt-8 py-8 text-center text-sm text-ink-soft">
           {needle ? `No one matches “${q.trim()}”.` : "No profiles yet."}
@@ -124,6 +176,9 @@ export function TeamManager({
             const isSelf = p.id === currentUserId;
             const canDelete =
               !isSelf && (!p.is_super_admin || isSuperAdmin);
+            const roleBusy = pendingRoleId === p.id;
+            const deleteBusy = pendingDeleteId === p.id;
+            const label = p.display_name || p.username || p.email || "Member";
             return (
               <div
                 key={p.id}
@@ -152,44 +207,56 @@ export function TeamManager({
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <select
-                    value={p.role}
-                    disabled={isSelf || setRole.isPending}
-                    onChange={(e) =>
-                      setRole.mutate({ id: p.id, role: e.target.value as Role })
-                    }
-                    className="border border-rule-dark px-3 py-1.5 text-sm disabled:opacity-50"
-                    title={
-                      isSelf
-                        ? "You cannot change your own role"
-                        : "Change this person's role"
-                    }
-                  >
-                    {ASSIGNABLE.map((r) => (
-                      <option key={r} value={r}>
-                        {ROLE_LABELS[r]}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={p.role}
+                      disabled={isSelf || setRole.isPending}
+                      onChange={(e) =>
+                        setRole.mutate({
+                          id: p.id,
+                          role: e.target.value as Role,
+                          label,
+                        })
+                      }
+                      className="border border-rule-dark px-3 py-1.5 pr-8 text-sm disabled:opacity-50"
+                      title={
+                        isSelf
+                          ? "You cannot change your own role"
+                          : "Change this person's role"
+                      }
+                    >
+                      {ASSIGNABLE.map((r) => (
+                        <option key={r} value={r}>
+                          {ROLE_LABELS[r]}
+                        </option>
+                      ))}
+                    </select>
+                    {roleBusy && (
+                      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-ink-soft">
+                        <Spinner />
+                      </span>
+                    )}
+                  </div>
                   {canDelete && (
                     <button
                       type="button"
                       disabled={remove.isPending}
-                      className={btn.danger}
+                      className={`${btn.danger} inline-flex items-center gap-1.5`}
                       onClick={async () => {
                         if (
                           !(await confirm({
-                            title: `Delete ${p.display_name || "this member"}?`,
+                            title: `Delete ${label}?`,
                             body: "This permanently removes their account and sign-in. Their published bylines may become anonymous. This cannot be undone.",
                             confirmLabel: "Delete member",
                             danger: true,
                           }))
                         )
                           return;
-                        remove.mutate(p.id);
+                        remove.mutate({ id: p.id, label });
                       }}
                     >
-                      Delete
+                      {deleteBusy && <Spinner />}
+                      {deleteBusy ? "Deleting…" : "Delete"}
                     </button>
                   )}
                 </div>
