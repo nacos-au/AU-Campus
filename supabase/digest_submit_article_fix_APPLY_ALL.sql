@@ -1,9 +1,6 @@
 -- =============================================================================
--- Fix: submit_article overload ambiguity
--- PostgREST cannot choose between submit_article(uuid) and
--- submit_article(uuid, uuid default null) when only p_article_id is passed.
--- Keep a single 2-arg function; default null = auto-assign.
--- Safe to re-run.
+-- submit_article: unambiguous RPC + sticky editor continuity
+-- Safe to re-run. Prefer digest_editor_continuity_APPLY_ALL.sql for full desk rules.
 -- =============================================================================
 
 drop function if exists public.submit_article(uuid);
@@ -22,6 +19,7 @@ declare
   a public.articles;
   r public.article_revisions;
   editor_id uuid;
+  sticky uuid;
 begin
   select * into a from public.articles where id = p_article_id;
   if not found then
@@ -30,6 +28,15 @@ begin
   if a.author_id is distinct from actor then
     raise exception 'Only the author can submit this article';
   end if;
+
+  -- Continuity: same reviewer who started the cycle (revision or article).
+  select coalesce(
+    (select assigned_editor_id
+       from public.article_revisions
+      where article_id = p_article_id
+      limit 1),
+    a.assigned_editor_id
+  ) into sticky;
 
   if p_editor is not null then
     if not (
@@ -46,12 +53,14 @@ begin
       raise exception 'Only an admin can choose a specific editor';
     end if;
     editor_id := p_editor;
+  elsif sticky is not null and private.is_assignable_desk_editor(sticky) then
+    -- Same editor continues after needs-changes (and any other resubmit).
+    editor_id := sticky;
   else
     editor_id := private.pick_least_busy_editor(actor);
   end if;
 
   if editor_id is null then
-    -- Sole editor submitting their own piece: allow self-assign.
     if private.is_sole_digest_editor(actor) then
       editor_id := actor;
     end if;
@@ -80,6 +89,11 @@ begin
           assigned_editor_id = editor_id,
           updated_at = now()
       where article_id = p_article_id;
+    -- Keep article.assigned_editor_id in sync for continuity.
+    update public.articles
+      set assigned_editor_id = editor_id,
+          updated_at = now()
+      where id = p_article_id;
     perform private.notify(
       editor_id, 'review_requested', p_article_id,
       'Edit awaiting your review: ' || a.title
@@ -98,7 +112,10 @@ begin
       where id = p_article_id;
     perform private.notify(
       editor_id, 'review_requested', p_article_id,
-      'New piece awaiting your review: ' || a.title
+      case
+        when a.status = 'awaiting_writer' then 'Revised piece ready for you: ' || a.title
+        else 'New piece awaiting your review: ' || a.title
+      end
     );
   end if;
 end;
