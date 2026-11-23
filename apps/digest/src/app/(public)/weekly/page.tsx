@@ -1,55 +1,31 @@
-import Image from "next/image";
-import Link from "next/link";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
-import { Byline, CompactStory } from "@/components/stories";
 import { WeekPicker } from "@/components/WeekPicker";
 import { WordOfTheDay } from "@/components/WordOfTheDay";
-import { ARTICLE_PUBLIC_SELECT, excerpt } from "@/lib/articles";
+import { WeeklyBlockView } from "@/components/weekly/WeeklyBlockView";
+import { ARTICLE_PUBLIC_SELECT } from "@/lib/articles";
 import { todaysWord } from "@/lib/campus-lore";
-import { isPublicSectionSlug } from "@/lib/features";
 import { getSessionProfile, hasRole } from "@/lib/auth";
+import {
+  articleIdsInLayout,
+  ensureLayout,
+  parseLayout,
+} from "@/lib/weekly-layout";
 import {
   formatWeekLabel,
   isLiveIssue,
-  slotsByKind,
-  teaserFor,
-  usedArticleIds,
-  type WeeklyIssueWithSlots,
 } from "@/lib/weekly";
 import type {
   ArticleWithMeta,
   CampusWord,
-  Section,
   WeeklyIssue,
 } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Weekly Issue" };
 export const revalidate = 60;
 
-const ARTICLE_EMBED =
-  "id, slug, title, dek, body, cover_url, section_id, author_id, status, featured, breaking, published_at, byline, byline_mode, sections(slug, name), profiles!articles_author_id_fkey(display_name, username), article_series(id, slug, title)";
-
-const ISSUE_SELECT = `*, weekly_issue_slots(id, slot, position, article_id, section_id, teaser, articles:article_id(${ARTICLE_EMBED}))`;
-
-function storyDek(
-  issue: WeeklyIssueWithSlots | null,
-  a: ArticleWithMeta,
-  chars = 180
-) {
-  const override = issue ? teaserFor(issue, a.id) : null;
-  return override || a.dek || excerpt(a.body, chars);
-}
-
-function Thumb({ a, className = "" }: { a: ArticleWithMeta; className?: string }) {
-  if (!a.cover_url) return null;
-  return (
-    <div className={`relative shrink-0 overflow-hidden bg-rule ${className}`}>
-      <Image src={a.cover_url} alt="" fill sizes="200px" className="object-cover" />
-    </div>
-  );
-}
+const ISSUE_SELECT = `*, weekly_issue_slots(id, slot, position, article_id, section_id, teaser)`;
 
 export default async function WeeklyIssuePage({
   searchParams,
@@ -82,71 +58,60 @@ export default async function WeeklyIssuePage({
   const word = todaysWord((wordsData ?? []) as CampusWord[]);
   const allIssues = (allIssuesData ?? []) as WeeklyIssue[];
   const liveIssues = allIssues.filter((i) => isLiveIssue(i));
-  const pickerSource = isStaff ? allIssues.filter((i) => i.status !== "archived") : liveIssues;
+  const pickerSource = isStaff
+    ? allIssues.filter((i) => i.status !== "archived")
+    : liveIssues;
 
   const requested = weekParam?.match(/^\d{4}-\d{2}-\d{2}$/) ? weekParam : null;
-  const defaultWeek = liveIssues[0]?.week_start ?? pickerSource[0]?.week_start ?? null;
+  const defaultWeek =
+    liveIssues[0]?.week_start ?? pickerSource[0]?.week_start ?? null;
   const activeWeek = requested ?? defaultWeek;
 
-  let issue: WeeklyIssueWithSlots | null = null;
+  let issue: WeeklyIssue | null = null;
   if (activeWeek) {
     const { data } = await supabase
       .from("weekly_issues")
       .select(ISSUE_SELECT)
       .eq("week_start", activeWeek)
       .maybeSingle();
-    issue = (data as unknown as WeeklyIssueWithSlots) ?? null;
+    issue = (data as WeeklyIssue | null) ?? null;
     if (issue && !isLiveIssue(issue) && !isStaff) {
       issue = null;
     }
   }
 
-  const { data: sectionsData } = await supabase
-    .from("sections")
-    .select("*")
-    .order("position");
-  const sections = ((sectionsData ?? []) as Section[]).filter((s) =>
-    isPublicSectionSlug(s.slug)
-  );
+  const layout = issue
+    ? ensureLayout({
+        layout: issue.layout,
+        intro: issue.intro,
+        introByline: issue.intro_byline,
+        slots: (
+          (issue as WeeklyIssue & { weekly_issue_slots?: unknown[] })
+            .weekly_issue_slots ?? []
+        ) as Parameters<typeof ensureLayout>[0]["slots"],
+      }).layout
+    : parseLayout(null);
 
-  const { lead, second, rail, inside } = issue
-    ? slotsByKind(issue)
-    : { lead: null, second: null, rail: [], inside: [] };
-
-  const used = issue ? usedArticleIds(issue) : new Set<string>();
-
-  const { data: highlightData } = await supabase
-    .from("articles")
-    .select(ARTICLE_PUBLIC_SELECT)
-    .eq("status", "published")
-    .order("published_at", { ascending: false })
-    .limit(12);
-
-  const highlights = ((highlightData ?? []) as unknown as ArticleWithMeta[])
-    .filter((a) => !used.has(a.id))
-    .slice(0, 6);
-
-  const bySection = sections
-    .map((s) => ({
-      section: s,
-      stories: inside
-        .filter((x) => x.sectionId === s.id)
-        .map((x) => x.article)
-        .slice(0, 4),
-    }))
-    .filter((g) => g.stories.length > 0);
+  const ids = articleIdsInLayout(layout);
+  let articlesById = new Map<string, ArticleWithMeta>();
+  if (ids.length) {
+    const { data } = await supabase
+      .from("articles")
+      .select(ARTICLE_PUBLIC_SELECT)
+      .in("id", ids)
+      .eq("status", "published");
+    articlesById = new Map(
+      ((data ?? []) as unknown as ArticleWithMeta[]).map((a) => [a.id, a])
+    );
+  }
 
   const weekOptions = pickerSource.map((i) => ({
     weekStart: i.week_start,
     label: formatWeekLabel(i.week_start, locale),
   }));
 
-  const hasFront = Boolean(lead || second || rail.length);
-  const intro = issue?.intro?.trim() || "";
-  const introByline = issue?.intro_byline?.trim() || "";
-
-  const frontCols =
-    [lead, second, rail.length > 0].filter(Boolean).length;
+  const hasBlocks = layout.blocks.length > 0;
+  const hasIntro = layout.blocks.some((b) => b.type === "intro");
 
   return (
     <div className="py-6 md:py-10">
@@ -163,193 +128,47 @@ export default async function WeeklyIssuePage({
         ) : (
           <p className="mt-3 text-sm text-ink-soft">{t("weeklyEmpty")}</p>
         )}
+        {issue?.title ? (
+          <p className="mt-2 font-serif text-lg text-ink-soft">{issue.title}</p>
+        ) : null}
       </header>
 
-      {(intro || word) && (
-        <div
-          className={`mt-8 grid gap-8 border-b border-rule pb-10 ${
-            intro && word ? "lg:grid-cols-[1.6fr_1fr]" : ""
-          }`}
-        >
-          {intro ? (
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-soft">
-                {introByline || t("fromTheDesk")}
-              </p>
-              <p className="mt-3 max-w-prose font-serif text-lg leading-relaxed text-ink line-clamp-6 md:text-xl md:leading-relaxed">
-                {intro}
-              </p>
+      {!hasBlocks ? (
+        <p className="py-20 text-center text-ink-soft">{t("weeklyEmpty")}</p>
+      ) : (
+        <>
+          {word && !hasIntro ? (
+            <div className="mt-8 max-w-sm">
+              <WordOfTheDay
+                word={word}
+                label={t("wordOfTheDay")}
+                revealLabel={t("tapForMeaning")}
+              />
             </div>
           ) : null}
-          {word ? (
-            <WordOfTheDay
-              word={word}
-              label={t("wordOfTheDay")}
-              revealLabel={t("tapForMeaning")}
-            />
-          ) : null}
-        </div>
-      )}
 
-      {!hasFront && !intro ? (
-        <p className="py-20 text-center text-ink-soft">{t("weeklyEmpty")}</p>
-      ) : hasFront ? (
-        <>
-          <h2 className="mt-8 font-serif text-2xl font-bold">The Front Page</h2>
-
-          <div
-            className={`mt-4 grid gap-8 border-b border-rule pb-10 ${
-              frontCols >= 3
-                ? "lg:grid-cols-[1.6fr_1fr_1fr]"
-                : frontCols === 2
-                  ? "lg:grid-cols-2"
-                  : "lg:grid-cols-1"
-            }`}
-          >
-            {lead && (
-              <article className="lg:border-r lg:border-rule lg:pr-8">
-                <Link href={`/article/${lead.slug}`} className="headline-link group block">
-                  {lead.cover_url && (
-                    <div className="relative mb-4 aspect-[16/10] w-full overflow-hidden bg-rule">
-                      <Image
-                        src={lead.cover_url}
-                        alt={lead.title}
-                        fill
-                        priority
-                        sizes="(max-width: 1024px) 100vw, 50vw"
-                        className="object-cover"
-                      />
-                    </div>
-                  )}
-                  {lead.sections && (
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-accent">
-                      {lead.sections.name}
-                    </p>
-                  )}
-                  <h3 className="mt-1 font-serif text-3xl font-bold leading-tight group-hover:text-accent md:text-4xl">
-                    {lead.title}
-                  </h3>
-                  <p className="mt-3 line-clamp-5 font-serif text-lg leading-snug text-ink-soft">
-                    {storyDek(issue, lead, 240)}
-                  </p>
-                </Link>
-                <Byline article={lead} className="mt-3" />
-              </article>
-            )}
-
-            {second && (
-              <article className="lg:border-r lg:border-rule lg:pr-8">
-                <Link href={`/article/${second.slug}`} className="headline-link group block">
-                  {second.cover_url && (
-                    <div className="relative mb-3 aspect-[4/3] w-full overflow-hidden bg-rule">
-                      <Image
-                        src={second.cover_url}
-                        alt={second.title}
-                        fill
-                        sizes="(max-width: 1024px) 100vw, 25vw"
-                        className="object-cover"
-                      />
-                    </div>
-                  )}
-                  {second.sections && (
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-accent">
-                      {second.sections.name}
-                    </p>
-                  )}
-                  <h3 className="mt-1 font-serif text-2xl font-bold leading-tight group-hover:text-accent">
-                    {second.title}
-                  </h3>
-                  <p className="mt-2 line-clamp-4 font-serif leading-snug text-ink-soft">
-                    {storyDek(issue, second)}
-                  </p>
-                </Link>
-                <Byline article={second} className="mt-3" />
-              </article>
-            )}
-
-            {rail.length > 0 && (
-              <div className="divide-y divide-rule">
-                {rail.map((a) => (
-                  <article key={a.id} className="py-4 first:pt-0">
-                    <Link href={`/article/${a.slug}`} className="headline-link group flex gap-3">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-serif text-lg font-bold leading-snug group-hover:text-accent">
-                          {a.title}
-                        </h3>
-                        <p className="mt-1 line-clamp-3 font-serif text-sm leading-snug text-ink-soft">
-                          {storyDek(issue, a, 120)}
-                        </p>
-                      </div>
-                      <Thumb a={a} className="h-16 w-20" />
-                    </Link>
-                    <Byline article={a} className="mt-1.5" />
-                  </article>
-                ))}
-              </div>
-            )}
+          <div className="mt-8 grid grid-cols-12 gap-x-6 gap-y-8">
+            {layout.blocks.map((block) => (
+              <WeeklyBlockView
+                key={block.id}
+                block={block}
+                articlesById={articlesById}
+              />
+            ))}
           </div>
 
-          {bySection.map(({ section, stories }) => (
-            <section key={section.id} className="border-b border-rule py-8">
-              <div className="flex items-baseline justify-between">
-                <h2 className="font-serif text-2xl font-bold">{section.name}</h2>
-                <Link
-                  href={`/section/${section.slug}`}
-                  className="text-[11px] font-bold uppercase tracking-wider text-accent hover:text-accent-hover"
-                >
-                  All {section.name} →
-                </Link>
-              </div>
-              <div
-                className={`mt-4 grid gap-x-8 gap-y-6 sm:grid-cols-2 ${
-                  stories.length >= 4 ? "lg:grid-cols-4" : stories.length === 3 ? "lg:grid-cols-3" : ""
-                }`}
-              >
-                {stories.map((a) => (
-                  <article key={a.id}>
-                    <Link href={`/article/${a.slug}`} className="headline-link group block">
-                      {a.cover_url && (
-                        <div className="relative mb-3 aspect-[3/2] w-full overflow-hidden bg-rule">
-                          <Image
-                            src={a.cover_url}
-                            alt=""
-                            fill
-                            sizes="(max-width: 640px) 100vw, 25vw"
-                            className="object-cover"
-                          />
-                        </div>
-                      )}
-                      <h3 className="font-serif text-lg font-bold leading-snug group-hover:text-accent">
-                        {a.title}
-                      </h3>
-                      <p className="mt-1 line-clamp-3 font-serif text-sm leading-snug text-ink-soft">
-                        {storyDek(issue, a, 120)}
-                      </p>
-                    </Link>
-                    <Byline article={a} className="mt-1.5" />
-                  </article>
-                ))}
-              </div>
-            </section>
-          ))}
-
-          {highlights.length > 0 && (
-            <section className="mt-10 border-t-2 border-ink pt-8">
-              <h2 className="font-serif text-2xl font-bold">{t("highlights")}</h2>
-              <p className="mt-1 text-sm text-ink-soft">
-                More recent stories from the paper — pick any to keep reading.
-              </p>
-              <div className="mt-4 divide-y divide-rule">
-                {highlights.map((a) => (
-                  <div key={a.id} className="py-4">
-                    <CompactStory article={a} />
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
+          {word && hasIntro ? (
+            <div className="mt-10 max-w-sm border-t border-rule pt-8">
+              <WordOfTheDay
+                word={word}
+                label={t("wordOfTheDay")}
+                revealLabel={t("tapForMeaning")}
+                compact
+              />
+            </div>
+          ) : null}
         </>
-      ) : null}
+      )}
     </div>
   );
 }

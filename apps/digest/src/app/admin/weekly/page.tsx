@@ -1,7 +1,7 @@
 import { requireRole } from "@/lib/auth";
-import { WeeklyManager } from "./WeeklyManager";
+import { WeeklyBoardManager } from "./WeeklyBoardManager";
 
 export default async function AdminWeeklyPage() {
   await requireRole("editor");
-  return <WeeklyManager />;
+  return <WeeklyBoardManager />;
 }

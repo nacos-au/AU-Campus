@@ -270,6 +270,8 @@ export interface WeeklyIssue {
   published_at: string | null;
   intro?: string | null;
   intro_byline?: string | null;
+  /** Freeform board document — see lib/weekly-layout.ts */
+  layout?: unknown;
   created_at: string;
   updated_at: string;
 }
