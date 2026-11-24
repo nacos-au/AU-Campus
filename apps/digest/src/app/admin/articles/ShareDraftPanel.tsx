@@ -84,12 +84,17 @@ export function ShareDraftPanel({
       qc.invalidateQueries({ queryKey: ["article-share-link", articleId] });
       qc.invalidateQueries({ queryKey: ["article-share-claims", articleId] });
     },
-    onError: (e: Error) =>
+    onError: (e: Error) => {
+      const msg = e.message || "Could not create share link";
+      const missingRpc =
+        /could not find the function/i.test(msg) ||
+        /schema cache/i.test(msg);
       setError(
-        e.message.includes("Could not find") || e.message.includes("function")
+        missingRpc
           ? "Sharing is unavailable until the database update is applied."
-          : e.message
-      ),
+          : msg
+      );
+    },
   });
 
   const rotateLink = useMutation({
