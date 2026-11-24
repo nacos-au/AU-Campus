@@ -11,7 +11,7 @@ import ImageExt from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extensions";
 import { createClient } from "@/lib/supabase/client";
 import { slugify } from "@/lib/articles";
-import { isPublicSectionSlug } from "@/lib/features";
+import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
 import { uploadCover } from "@/lib/uploads";
 import { locales, localeNames } from "@/i18n/locales";
 import { RichText } from "@/components/RichText";
@@ -23,6 +23,7 @@ import type {
   RevisionPayload,
   Section,
 } from "@/lib/types";
+import { ShareDraftPanel } from "./ShareDraftPanel";
 
 const EMPTY_DOC = { type: "doc", content: [] };
 const AUTOSAVE_MS = 2000;
@@ -131,6 +132,7 @@ export function ArticleComposer({
     canManualAssign ? (article?.assigned_editor_id ?? "") : ""
   );
   const [showSettings, setShowSettings] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [preview, setPreview] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -635,6 +637,19 @@ export function ArticleComposer({
           >
             {saveDraft.isPending ? "Saving…" : "Save"}
           </button>
+          {digestFeatures.draftShare &&
+            article?.id &&
+            article.status !== "published" &&
+            article.status !== "withdrawn" &&
+            article.status !== "archived" && (
+              <button
+                type="button"
+                onClick={() => setShowShare(true)}
+                className="border border-rule-dark px-3 py-1.5 text-xs font-semibold uppercase tracking-wider hover:border-ink"
+              >
+                Share
+              </button>
+            )}
           <button
             onClick={() => setPreview((v) => !v)}
             className="border border-ink px-3 py-1.5 text-xs font-semibold uppercase tracking-wider hover:bg-ink hover:text-paper"
@@ -1178,6 +1193,15 @@ export function ArticleComposer({
             </div>
           </div>
         </div>
+      )}
+
+      {article?.id && (
+        <ShareDraftPanel
+          articleId={article.id}
+          userId={userId}
+          open={showShare}
+          onClose={() => setShowShare(false)}
+        />
       )}
     </div>
   );

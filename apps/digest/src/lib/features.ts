@@ -12,6 +12,8 @@ export const digestFeatures = {
   /** Ads paused for now — AdSlots and advertise links stay gated off. */
   manualAds: false,
   breakingNews: true,
+  /** Private draft share links — kill switch if anything goes wrong. */
+  draftShare: true,
 } as const;
 
 /** Desks shown on the public site and homepage section blocks. */

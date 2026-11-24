@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { hasSupabaseConfig } from "@/lib/demo-mode";
 
-const PROTECTED_PREFIXES = ["/admin", "/account", "/read"];
+const PROTECTED_PREFIXES = ["/admin", "/account", "/read", "/share"];
 
 export async function updateSession(request: NextRequest) {
   // Never construct a Supabase client without URL+key — that throws a 500

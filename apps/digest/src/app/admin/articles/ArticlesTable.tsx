@@ -7,7 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { isPublicSectionSlug } from "@/lib/features";
+import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
 import type { ArticleStatus, ArticleWithMeta, Section } from "@/lib/types";
 
 interface Row extends ArticleWithMeta {
@@ -37,7 +37,15 @@ const STATUS_LABELS: Record<ArticleStatus, string> = {
   withdrawn: "Withdrawn",
 };
 
-type Filter = "all" | "review" | ArticleStatus;
+type Filter = "all" | "review" | "shared" | ArticleStatus;
+
+interface SharedClaim {
+  article_id: string;
+  created_at: string;
+  title: string;
+  token: string | null;
+  mode: string | null;
+}
 
 const ARTICLE_SELECT =
   "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username), assignee:profiles!articles_assigned_editor_id_fkey(display_name), article_revisions(state, assigned_editor_id), article_collaborators(user_id, credit_order, profiles(display_name, username))";
@@ -64,6 +72,7 @@ export function ArticlesTable({
     [
       "all",
       "review",
+      "shared",
       "draft",
       "awaiting_editor",
       "awaiting_writer",
@@ -101,6 +110,56 @@ export function ArticlesTable({
       return ((data ?? []) as Section[]).filter((s) =>
         isPublicSectionSlug(s.slug)
       );
+    },
+  });
+
+  const { data: sharedWithMe = [] } = useQuery({
+    queryKey: ["article-shares-with-me", userId],
+    enabled: digestFeatures.draftShare,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("article_share_claims")
+        .select(
+          "article_id, created_at, articles(title), article_share_links(token, mode, revoked_at)"
+        )
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+      if (error) {
+        // Soft-fail before migration is applied
+        if (
+          error.message.includes("does not exist") ||
+          error.code === "42P01" ||
+          error.code === "PGRST205"
+        ) {
+          return [] as SharedClaim[];
+        }
+        throw error;
+      }
+      return (data ?? []).map((row) => {
+        const r = row as {
+          article_id: string;
+          created_at: string;
+          articles:
+            | { title: string }
+            | { title: string }[]
+            | null;
+          article_share_links:
+            | { token: string; mode: string; revoked_at: string | null }
+            | { token: string; mode: string; revoked_at: string | null }[]
+            | null;
+        };
+        const art = Array.isArray(r.articles) ? r.articles[0] : r.articles;
+        const link = Array.isArray(r.article_share_links)
+          ? r.article_share_links[0]
+          : r.article_share_links;
+        return {
+          article_id: r.article_id,
+          created_at: r.created_at,
+          title: art?.title || "Untitled",
+          token: link && !link.revoked_at ? link.token : null,
+          mode: link?.mode ?? null,
+        } satisfies SharedClaim;
+      });
     },
   });
 
@@ -287,6 +346,7 @@ export function ArticlesTable({
   const reviewCount = desk.filter(awaitingMe).length;
 
   const visible = desk.filter((a) => {
+    if (filter === "shared") return false;
     if (filter === "all") {
       return a.status !== "archived" && a.status !== "withdrawn";
     }
@@ -306,6 +366,14 @@ export function ArticlesTable({
     { id: "all", label: "All" },
     ...(isStaff
       ? [{ id: "review" as Filter, label: `Needs my review (${reviewCount})` }]
+      : []),
+    ...(digestFeatures.draftShare
+      ? [
+          {
+            id: "shared" as Filter,
+            label: `Shared with me (${sharedWithMe.length})`,
+          },
+        ]
       : []),
     { id: "draft", label: "Drafts" },
     { id: "awaiting_editor", label: "With editor" },
@@ -354,7 +422,43 @@ export function ArticlesTable({
         </p>
       )}
 
-      {isLoading ? (
+      {filter === "shared" ? (
+        sharedWithMe.length === 0 ? (
+          <p className="py-12 text-center text-sm text-ink-soft">
+            Nothing shared with you yet.
+          </p>
+        ) : (
+          <div className="divide-y divide-rule">
+            {sharedWithMe.map((s) => (
+              <div key={s.article_id} className="py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-serif text-lg font-bold leading-snug sm:truncate">
+                      {s.title}
+                    </p>
+                    <p className="mt-0.5 text-xs text-ink-soft">
+                      Shared with you ·{" "}
+                      {s.mode === "snapshot" ? "Snapshot" : "Live"} ·{" "}
+                      {new Date(s.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                  <span className="shrink-0 bg-gray-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gray-700">
+                    View only
+                  </span>
+                </div>
+                <div className="mt-3">
+                  <Link
+                    href={`/share/view/${s.article_id}`}
+                    className="bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-hover"
+                  >
+                    Open
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : isLoading ? (
         <p className="py-12 text-center text-sm text-ink-soft">Loading…</p>
       ) : visible.length === 0 ? (
         <p className="py-12 text-center text-sm text-ink-soft">
