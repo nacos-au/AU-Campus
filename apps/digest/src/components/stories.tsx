@@ -228,8 +228,16 @@ export function StoryCard({
 }
 
 /** Compact right-rail item: small thumbnail beside a bold headline. */
-export function CompactStory({ article }: { article: ArticleWithMeta }) {
+export function CompactStory({
+  article,
+  showEngagement = false,
+}: {
+  article: ArticleWithMeta;
+  showEngagement?: boolean;
+}) {
   const hasCover = Boolean(article.cover_url);
+  const likes = article.like_count ?? 0;
+  const saves = article.save_count ?? 0;
   return (
     <article
       className={
@@ -251,6 +259,13 @@ export function CompactStory({ article }: { article: ArticleWithMeta }) {
         >
           {article.title}
         </h3>
+        {showEngagement && (
+          <p className="mt-1.5 text-[11px] uppercase tracking-wide text-ink-soft">
+            {likes} {likes === 1 ? "like" : "likes"}
+            {" · "}
+            {saves} {saves === 1 ? "save" : "saves"}
+          </p>
+        )}
       </Link>
       {hasCover && (
         <Link

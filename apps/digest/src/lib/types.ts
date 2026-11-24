@@ -79,6 +79,7 @@ export interface Article {
   series_key?: string | null;
   series_id?: string | null;
   like_count?: number;
+  save_count?: number;
   review_lock_by?: string | null;
   review_lock_at?: string | null;
   sponsored_by?: string | null;
@@ -303,4 +304,14 @@ export interface CampusFact {
   sort_order: number;
   created_at?: string;
   updated_at?: string;
+}
+
+/** Row from writer_engagement_board() — newsroom motivation board. */
+export interface WriterEngagementRow {
+  user_id: string;
+  display_name: string;
+  username: string | null;
+  live_articles: number;
+  likes_received: number;
+  saves_received: number;
 }
