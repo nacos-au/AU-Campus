@@ -749,7 +749,7 @@ export function ReviewClient({
             disabled={busy || !text.trim()}
             className="mt-2 w-full border border-ink py-2 text-xs font-semibold uppercase tracking-wider hover:bg-ink hover:text-paper disabled:opacity-40"
           >
-            Send comment
+            Save comment
           </button>
         </div>
 
