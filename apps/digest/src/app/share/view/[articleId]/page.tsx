@@ -96,21 +96,8 @@ export default async function SharedArticleViewPage({
             {view.section_name}
           </p>
         )}
-        <h1 className="mt-3 font-serif text-3xl font-bold leading-tight sm:text-4xl">
-          {view.title}
-        </h1>
-        {view.dek && (
-          <p className="mt-4 font-serif text-xl leading-snug text-ink-soft">
-            {view.dek}
-          </p>
-        )}
-        {view.byline && (
-          <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-ink-soft">
-            By {view.byline}
-          </p>
-        )}
         {view.cover_url && (
-          <figure className="mt-6">
+          <figure className="mt-4">
             <ImageInfo
               description={view.cover_caption}
               className="aspect-video w-full overflow-hidden bg-rule"
@@ -125,6 +112,23 @@ export default async function SharedArticleViewPage({
               />
             </ImageInfo>
           </figure>
+        )}
+        <h1
+          className={`font-serif text-3xl font-bold leading-tight sm:text-4xl ${
+            view.cover_url ? "mt-6" : "mt-3"
+          }`}
+        >
+          {view.title}
+        </h1>
+        {view.dek && (
+          <p className="mt-4 font-serif text-xl leading-snug text-ink-soft">
+            {view.dek}
+          </p>
+        )}
+        {view.byline && (
+          <p className="mt-4 text-xs font-semibold uppercase tracking-wide text-ink-soft">
+            By {view.byline}
+          </p>
         )}
         <div className="mt-8">
           <RichText doc={view.body} />

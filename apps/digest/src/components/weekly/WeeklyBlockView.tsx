@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Byline } from "@/components/stories";
-import { excerpt } from "@/lib/articles";
+import { articlePublicPath, excerpt } from "@/lib/articles";
 import type { WeeklyBlock } from "@/lib/weekly-layout";
 import { articleVariant, spanClass } from "@/lib/weekly-layout";
 import type { ArticleWithMeta } from "@/lib/types";
@@ -188,7 +188,7 @@ export function WeeklyBlockView({ block, articlesById, preview }: Props) {
         preview ? (
           <div>{inner}</div>
         ) : (
-          <Link href={`/article/${a.slug}`} className="headline-link group block">
+          <Link href={articlePublicPath(a)} className="headline-link group block">
             {inner}
           </Link>
         ),
@@ -243,7 +243,7 @@ export function WeeklyBlockView({ block, articlesById, preview }: Props) {
             ) : (
               <Link
                 key={a.id}
-                href={`/article/${a.slug}`}
+                href={articlePublicPath(a)}
                 className="headline-link group block"
               >
                 {row}

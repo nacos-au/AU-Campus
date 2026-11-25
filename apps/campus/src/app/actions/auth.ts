@@ -155,6 +155,72 @@ export async function signIn(
   redirect(safeNext(formData.get("next")));
 }
 
+export type ResetState = { error?: string; ok?: boolean } | null;
+
+/** Send a password-reset email (free Supabase Auth). */
+export async function requestPasswordReset(
+  _prev: ResetState,
+  formData: FormData
+): Promise<ResetState> {
+  if (!hasSupabaseConfig()) {
+    return {
+      error:
+        "Campus is missing Supabase keys. Add NEXT_PUBLIC_SUPABASE_URL and ANON_KEY, then restart the server.",
+    };
+  }
+
+  const email = String(formData.get("email") ?? "").trim();
+  if (!email) return { error: "Enter the email for your AU account." };
+
+  try {
+    const supabase = await createClient();
+    const redirectTo = `${CAMPUS_URL.replace(/\/$/, "")}/auth/callback?next=${encodeURIComponent(
+      "/reset-password"
+    )}`;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    });
+    if (error) return { error: error.message };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Could not send reset email.",
+    };
+  }
+
+  return { ok: true };
+}
+
+export async function updatePassword(
+  _prev: ResetState,
+  formData: FormData
+): Promise<ResetState> {
+  if (!hasSupabaseConfig()) {
+    return { error: "Campus is missing Supabase keys." };
+  }
+
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+  if (password.length < 8) {
+    return { error: "Password must be at least 8 characters." };
+  }
+  if (password !== confirm) {
+    return { error: "Passwords do not match." };
+  }
+
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) return { error: error.message };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : "Could not update password.",
+    };
+  }
+
+  revalidatePath("/", "layout");
+  redirect("/welcome");
+}
+
 export async function signOut(): Promise<void> {
   if (hasSupabaseConfig()) {
     try {

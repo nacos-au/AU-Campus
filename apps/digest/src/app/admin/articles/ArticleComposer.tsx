@@ -11,7 +11,12 @@ import ImageExt from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extensions";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { articleSlug, isPlaceholderSlug, slugify } from "@/lib/articles";
+import {
+  articleSlug,
+  countUntaggedImages,
+  isPlaceholderSlug,
+  slugify,
+} from "@/lib/articles";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
 import { uploadCover } from "@/lib/uploads";
 import { locales, localeNames } from "@/i18n/locales";
@@ -534,6 +539,18 @@ export function ArticleComposer({
 
   const send = useMutation({
     mutationFn: async (action: "submit" | "publish" | "park") => {
+      const missing = countUntaggedImages({
+        coverUrl,
+        coverCaption,
+        body: editor?.getJSON() ?? EMPTY_DOC,
+      });
+      if (missing > 0) {
+        throw new Error(
+          `Add a short description to every photo before sending (${missing} still ${
+            missing === 1 ? "needs" : "need"
+          } one).`
+        );
+      }
       const id = await persist({ requireHeadline: true });
       if (action === "publish" || action === "park") {
         if (isLive) return;
@@ -898,6 +915,21 @@ export function ArticleComposer({
       <div className="mx-auto max-w-[44rem] px-4 pb-24 pt-8 sm:px-6">
         {preview ? (
           <article>
+            {coverUrl && (
+              <figure className="mb-6">
+                <ImageInfo
+                  description={coverCaption}
+                  className="aspect-video w-full overflow-hidden"
+                >
+                  <Image
+                    src={coverUrl}
+                    alt={coverCaption.trim() || title || "Cover"}
+                    fill
+                    className="object-cover"
+                  />
+                </ImageInfo>
+              </figure>
+            )}
             <h1 className="font-serif text-4xl font-bold leading-tight">
               {title || "Untitled"}
             </h1>
@@ -920,21 +952,6 @@ export function ArticleComposer({
                 </>
               )}
             </p>
-            {coverUrl && (
-              <figure className="mt-6">
-                <ImageInfo
-                  description={coverCaption}
-                  className="aspect-video w-full overflow-hidden"
-                >
-                  <Image
-                    src={coverUrl}
-                    alt={coverCaption.trim() || title || "Cover"}
-                    fill
-                    className="object-cover"
-                  />
-                </ImageInfo>
-              </figure>
-            )}
             <div className="article-body mt-8">
               <RichText doc={editor?.getJSON() ?? EMPTY_DOC} />
             </div>

@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { articlePublicPath } from "@/lib/articles";
 import { IconSearch } from "./icons";
 
 interface Hit {
   id: string;
   slug: string;
+  short_code?: string | null;
   title: string;
   dek: string | null;
   sections: { name: string } | null;
@@ -54,7 +56,7 @@ export function NavSearch({ inline = true }: { inline?: boolean }) {
     setAsked(q.trim());
     const { data } = await supabase
       .from("articles")
-      .select("id, slug, title, dek, sections(name)")
+      .select("id, slug, short_code, title, dek, sections(name)")
       .eq("status", "published")
       .order("published_at", { ascending: false })
       .limit(100);
@@ -116,7 +118,7 @@ export function NavSearch({ inline = true }: { inline?: boolean }) {
               {hits.map((a) => (
                 <li key={a.id}>
                   <Link
-                    href={`/article/${a.slug}`}
+                    href={articlePublicPath(a)}
                     onClick={close}
                     className="block px-4 py-3 hover:bg-gray-50"
                   >

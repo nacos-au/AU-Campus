@@ -618,17 +618,8 @@ export function ReviewClient({
             </span>
           )}
         </div>
-        <h1 className="font-serif text-3xl font-bold leading-tight sm:text-4xl">
-          {content.title}
-        </h1>
-        {content.dek && (
-          <p className="mt-3 font-serif text-xl text-ink-soft">{content.dek}</p>
-        )}
-        {content.byline && (
-          <p className="mt-3 text-sm font-semibold">By {content.byline}</p>
-        )}
         {content.cover_url && (
-          <figure className="mt-6">
+          <figure className="mb-6">
             <ImageInfo
               description={content.cover_caption}
               className="aspect-video w-full overflow-hidden"
@@ -641,6 +632,15 @@ export function ReviewClient({
               />
             </ImageInfo>
           </figure>
+        )}
+        <h1 className="font-serif text-3xl font-bold leading-tight sm:text-4xl">
+          {content.title}
+        </h1>
+        {content.dek && (
+          <p className="mt-3 font-serif text-xl text-ink-soft">{content.dek}</p>
+        )}
+        {content.byline && (
+          <p className="mt-3 text-sm font-semibold">By {content.byline}</p>
         )}
         <div
           ref={bodyRef}

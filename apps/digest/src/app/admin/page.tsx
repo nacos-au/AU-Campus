@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createAuthClient } from "@/lib/supabase/auth-client";
 import { getSessionProfile, hasRole } from "@/lib/auth";
+import { articlePublicPath } from "@/lib/articles";
 import { digestFeatures } from "@/lib/features";
 import { formatNaira } from "@/lib/site";
 import { Card, Empty, Pill, Stat, btn } from "@/components/admin/ui";
@@ -13,6 +14,7 @@ interface Row {
   author_id: string;
   assigned_editor_id: string | null;
   slug: string;
+  short_code?: string | null;
   sections: { name: string } | null;
   profiles: { display_name: string } | null;
 }
@@ -41,7 +43,7 @@ export default async function AdminDashboard() {
     supabase
       .from("articles")
       .select(
-        "id, title, status, updated_at, author_id, assigned_editor_id, slug, sections(name), profiles!articles_author_id_fkey(display_name)"
+        "id, title, status, updated_at, author_id, assigned_editor_id, slug, short_code, sections(name), profiles!articles_author_id_fkey(display_name)"
       )
       .order("updated_at", { ascending: false })
       .limit(60),
@@ -183,7 +185,11 @@ export default async function AdminDashboard() {
                 <li key={r.id} className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0">
                   <div className="min-w-0">
                     <Link
-                      href={r.status === "published" ? `/article/${r.slug}` : `/admin/articles/${r.id}/edit`}
+                      href={
+                        r.status === "published"
+                          ? articlePublicPath(r)
+                          : `/admin/articles/${r.id}/edit`
+                      }
                       className="block truncate font-serif font-bold hover:text-accent"
                     >
                       {r.title || "Untitled"}

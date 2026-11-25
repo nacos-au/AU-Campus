@@ -63,6 +63,8 @@ export interface Section {
 export interface Article {
   id: string;
   slug: string;
+  /** Stable 8-char public id for /a/{short_code}/{stem} URLs. */
+  short_code?: string | null;
   title: string;
   dek: string | null;
   body: unknown; // Tiptap JSON document

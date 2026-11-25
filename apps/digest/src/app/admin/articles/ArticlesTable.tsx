@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { articlePublicPath } from "@/lib/articles";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
 import type { ArticleStatus, ArticleWithMeta, Section } from "@/lib/types";
 
@@ -538,7 +539,7 @@ export function ArticlesTable({
                   )}
                   {a.status === "published" && (
                     <Link
-                      href={`/article/${a.slug}`}
+                      href={articlePublicPath(a)}
                       className="text-ink-soft underline hover:text-ink"
                     >
                       View

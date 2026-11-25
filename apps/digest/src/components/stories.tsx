@@ -1,11 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
-import { readingMinutes } from "@/lib/articles";
+import { articlePublicPath, readingMinutes } from "@/lib/articles";
 import { creditPeople, displayByline, seriesHref } from "@/lib/byline";
 import type { ArticleWithMeta } from "@/lib/types";
 
 function href(a: ArticleWithMeta) {
-  return `/article/${a.slug}`;
+  return articlePublicPath(a);
 }
 
 function CreditNames({ article }: { article: ArticleWithMeta }) {

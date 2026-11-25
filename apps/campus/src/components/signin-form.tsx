@@ -58,6 +58,15 @@ export function SignInForm() {
           />
         </label>
 
+        <p className="text-right text-sm">
+          <Link
+            href="/forgot-password"
+            className="font-semibold text-ink-soft underline underline-offset-2 hover:text-ink"
+          >
+            Forgot password?
+          </Link>
+        </p>
+
         {state && "error" in state && state.error && (
           <p className="border border-accent/30 bg-white px-3 py-2 text-sm text-accent">
             {state.error}

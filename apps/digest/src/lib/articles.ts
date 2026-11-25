@@ -117,14 +117,15 @@ export function excerpt(doc: unknown, maxLen = 180): string {
   return text.length > maxLen ? `${text.slice(0, maxLen).trimEnd()}…` : text;
 }
 
-export function slugify(title: string): string {
+export function slugify(title: string, maxLen = 80): string {
   return title
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 80);
+    .slice(0, maxLen)
+    .replace(/-+$/, "");
 }
 
 /** Slugs created before a real headline existed. */
@@ -133,9 +134,51 @@ export function isPlaceholderSlug(slug: string | null | undefined): boolean {
   return /^untitled-draft($|-)/i.test(slug);
 }
 
+/** Readable title stem for short public URLs (~40 chars). */
+export function articleTitleStem(title: string): string {
+  return slugify(title.trim(), 40) || "story";
+}
+
+/** Canonical public path: /a/{code}/{stem} when short_code exists. */
+export function articlePublicPath(a: {
+  short_code?: string | null;
+  slug: string;
+  title: string;
+}): string {
+  const code = a.short_code?.trim();
+  if (code) return `/a/${code}/${articleTitleStem(a.title)}`;
+  return `/article/${a.slug}`;
+}
+
 /** Public-facing slug from title + short unique suffix. */
 export function articleSlug(title: string, unique: string): string {
   const stem = slugify(title.trim()) || "story";
   const suffix = unique.replace(/[^a-z0-9]/gi, "").slice(0, 8).toLowerCase();
   return `${stem}-${suffix || Date.now().toString(36)}`.slice(0, 96);
+}
+
+/** Count cover + body images missing a description (for send gate). */
+export function countUntaggedImages(opts: {
+  coverUrl?: string | null;
+  coverCaption?: string | null;
+  body: unknown;
+}): number {
+  let n = 0;
+  if (opts.coverUrl?.trim() && !opts.coverCaption?.trim()) n += 1;
+
+  const walk = (node: { type?: string; attrs?: Record<string, unknown>; content?: unknown[] }) => {
+    if (node.type === "image") {
+      const tagged =
+        String(node.attrs?.title ?? "").trim() ||
+        String(node.attrs?.alt ?? "").trim();
+      if (!tagged) n += 1;
+    }
+    for (const child of node.content ?? []) {
+      if (child && typeof child === "object") walk(child as typeof node);
+    }
+  };
+  if (opts.body && typeof opts.body === "object") {
+    walk(opts.body as { type?: string; attrs?: Record<string, unknown>; content?: unknown[] });
+  }
+  return n;
 }

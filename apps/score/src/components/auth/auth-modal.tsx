@@ -210,6 +210,15 @@ export function AuthModal({
               />
             </label>
 
+            <p className="text-right text-sm">
+              <a
+                href={`${process.env.NEXT_PUBLIC_CAMPUS_URL ?? "http://localhost:3000"}/forgot-password`}
+                className="font-semibold text-white/70 underline underline-offset-2 hover:text-white"
+              >
+                Forgot password?
+              </a>
+            </p>
+
             {sessionExpired && !state?.error && (
               <p className="rounded-lg border border-amber-200/40 bg-amber-500/20 px-3 py-2 text-sm font-semibold text-white">
                 Your session expired after 2 hours. Sign in again to continue.
