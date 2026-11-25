@@ -6,6 +6,7 @@ import {
   Instagram,
   LogIn,
   LogOut,
+  EllipsisVertical,
   Menu,
   MessageCircle,
   Search,
@@ -64,6 +65,17 @@ export function IconBookmark({ title, ...props }: IconProps) {
 
 export function IconShare({ title, ...props }: IconProps) {
   return <Share aria-label={title} aria-hidden={title ? undefined : true} {...stroke} {...props} />;
+}
+
+export function IconMoreVertical({ title, ...props }: IconProps) {
+  return (
+    <EllipsisVertical
+      aria-label={title}
+      aria-hidden={title ? undefined : true}
+      {...stroke}
+      {...props}
+    />
+  );
 }
 
 /** X (Twitter) brand mark */

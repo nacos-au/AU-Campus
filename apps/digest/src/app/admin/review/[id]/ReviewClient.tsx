@@ -8,6 +8,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { RichText } from "@/components/RichText";
+import { IconMoreVertical } from "@/components/icons";
 import {
   applyReviewHighlights,
   captureAnchorFromSelection,
@@ -88,6 +89,7 @@ export function ReviewClient({
   const [savedFlash, setSavedFlash] = useState<string | null>(null);
   const [iconPop, setIconPop] = useState<IconPopover | null>(null);
   const [missedIds, setMissedIds] = useState<string[]>([]);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const hashHandled = useRef(false);
   const { confirm } = useConfirm();
 
@@ -824,14 +826,93 @@ export function ReviewClient({
                         : "border-rule-dark"
                 }`}
               >
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
-                  {mine ? "You" : c.profiles?.display_name} · {relative}
-                  <span className="font-normal"> · {absolute}</span>
-                  {done ? " · Resolved" : ""}
-                  {!c.anchor?.quote ? " · General note" : ""}
-                  {quoteMissing ? " · Quote not in draft" : ""}
-                  {active ? " · Focused" : ""}
-                </p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="min-w-0 text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+                    {mine ? "You" : c.profiles?.display_name} · {relative}
+                    <span className="font-normal"> · {absolute}</span>
+                    {done ? " · Resolved" : ""}
+                    {!c.anchor?.quote ? " · General note" : ""}
+                    {quoteMissing ? " · Quote not in draft" : ""}
+                  </p>
+                  {((canReview || isAuthor) || canMutate) && (
+                    <div className="relative shrink-0">
+                      <button
+                        type="button"
+                        aria-label="Comment actions"
+                        aria-expanded={menuOpenId === c.id}
+                        aria-haspopup="menu"
+                        className="flex h-7 w-7 items-center justify-center text-ink-soft hover:text-ink"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuOpenId((id) => (id === c.id ? null : c.id));
+                        }}
+                      >
+                        <IconMoreVertical className="h-4 w-4" />
+                      </button>
+                      {menuOpenId === c.id && (
+                        <>
+                          <button
+                            type="button"
+                            aria-label="Close menu"
+                            className="fixed inset-0 z-40 cursor-default"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setMenuOpenId(null);
+                            }}
+                          />
+                          <div
+                            role="menu"
+                            className="absolute right-0 top-8 z-50 min-w-[9rem] border border-rule-dark bg-paper py-1 shadow-lg"
+                          >
+                            {(canReview || isAuthor) && (
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="block w-full px-3 py-2 text-left text-[12px] font-semibold hover:bg-gray-50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setMenuOpenId(null);
+                                  void toggleResolved(c.id, !done);
+                                }}
+                              >
+                                {done ? "Reopen" : "Resolve"}
+                              </button>
+                            )}
+                            {canMutate && mine && editingId !== c.id && (
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="block w-full px-3 py-2 text-left text-[12px] font-semibold hover:bg-gray-50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setMenuOpenId(null);
+                                  setEditingId(c.id);
+                                  setEditBody(c.body);
+                                }}
+                              >
+                                Edit
+                              </button>
+                            )}
+                            {canMutate && (
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="block w-full px-3 py-2 text-left text-[12px] font-semibold text-red-700 hover:bg-red-50"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setMenuOpenId(null);
+                                  void removeComment(c.id);
+                                }}
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
                 {c.anchor?.quote && (
                   <button
                     type="button"
@@ -873,38 +954,6 @@ export function ReviewClient({
                 ) : (
                   <p className="mt-1.5 whitespace-pre-wrap">{c.body}</p>
                 )}
-                <div className="mt-2 flex flex-wrap gap-3">
-                  {(canReview || isAuthor) && (
-                    <button
-                      type="button"
-                      onClick={() => toggleResolved(c.id, !done)}
-                      className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft underline hover:text-ink"
-                    >
-                      {done ? "Reopen" : "Resolve"}
-                    </button>
-                  )}
-                  {canMutate && mine && editingId !== c.id && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingId(c.id);
-                        setEditBody(c.body);
-                      }}
-                      className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft underline hover:text-ink"
-                    >
-                      Edit
-                    </button>
-                  )}
-                  {canMutate && (
-                    <button
-                      type="button"
-                      onClick={() => void removeComment(c.id)}
-                      className="text-[11px] font-semibold uppercase tracking-wide text-red-700 underline hover:text-red-900"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
               </div>
             );
           })}
