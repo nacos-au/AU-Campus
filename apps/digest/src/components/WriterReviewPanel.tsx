@@ -79,7 +79,7 @@ export function WriterReviewPanel({
           </p>
         </div>
         <Link
-          href={`/admin/review/${articleId}`}
+          href={`/admin/review/${articleId}#review-thread`}
           className="text-[11px] font-semibold uppercase tracking-wider text-accent underline underline-offset-2"
         >
           Open full review
@@ -105,9 +105,12 @@ export function WriterReviewPanel({
                 {!c.anchor?.quote ? " · General note" : ""}
               </p>
               {c.anchor?.quote && (
-                <p className="mt-1 border-l-2 border-yellow-400 bg-yellow-50 px-2 py-1 text-xs italic">
+                <Link
+                  href={`/admin/review/${articleId}#review-c-${c.id}`}
+                  className="mt-1 block border-l-2 border-yellow-400 bg-yellow-50 px-2 py-1 text-xs italic hover:bg-yellow-100"
+                >
                   “{c.anchor.quote}”
-                </p>
+                </Link>
               )}
               <p className="mt-1.5 whitespace-pre-wrap">{c.body}</p>
               <button

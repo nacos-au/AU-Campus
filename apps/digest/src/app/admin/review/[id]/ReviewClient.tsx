@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { RichText } from "@/components/RichText";
 import {
   applyReviewHighlights,
+  captureAnchorFromSelection,
   formatReviewTimestamp,
   scrollToReviewHighlight,
   type HighlightSpec,
@@ -86,9 +87,25 @@ export function ReviewClient({
   const [editBody, setEditBody] = useState("");
   const [savedFlash, setSavedFlash] = useState<string | null>(null);
   const [iconPop, setIconPop] = useState<IconPopover | null>(null);
+  const [missedIds, setMissedIds] = useState<string[]>([]);
+  const hashHandled = useRef(false);
   const { confirm } = useConfirm();
 
   const showSelfAssignTools = isSuperAdmin && adminModeOn;
+
+  function focusThread(id: string) {
+    if (!id || id === "pending") return;
+    setActiveHighlightId(id);
+    if (bodyRef.current) scrollToReviewHighlight(bodyRef.current, id);
+    const scrollCard = () => {
+      const el = document.getElementById(`review-c-${id}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    };
+    requestAnimationFrame(() => {
+      scrollCard();
+      window.setTimeout(scrollCard, 120);
+    });
+  }
 
   useEffect(() => {
     setSectionId(String(initialSectionId));
@@ -154,37 +171,72 @@ export function ReviewClient({
 
   useEffect(() => {
     if (!bodyRef.current) return;
-    applyReviewHighlights(bodyRef.current, highlightSpecs);
-    if (activeHighlightId && activeHighlightId !== "pending") {
-      scrollToReviewHighlight(bodyRef.current, activeHighlightId);
+    const { missed } = applyReviewHighlights(bodyRef.current, highlightSpecs);
+    setMissedIds(missed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quoteKey]);
+
+  // After marks paint (or when focusing a comment), scroll mark + rail card into view
+  useEffect(() => {
+    if (!activeHighlightId || activeHighlightId === "pending") return;
+    const id = activeHighlightId;
+    const t = window.setTimeout(() => {
+      if (bodyRef.current) scrollToReviewHighlight(bodyRef.current, id);
+      document
+        .getElementById(`review-c-${id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 40);
+    return () => window.clearTimeout(t);
+  }, [activeHighlightId, quoteKey]);
+
+  // Deep links from writer panel: #review-c-{id} or #review-thread
+  useEffect(() => {
+    if (hashHandled.current || comments.length === 0) return;
+    const hash = window.location.hash.replace(/^#/, "");
+    if (!hash) {
+      hashHandled.current = true;
+      return;
+    }
+    if (hash === "review-thread") {
+      hashHandled.current = true;
+      document
+        .getElementById("review-thread")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    const m = /^review-c-(.+)$/.exec(hash);
+    if (m?.[1] && comments.some((c) => c.id === m[1])) {
+      hashHandled.current = true;
+      focusThread(m[1]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quoteKey, activeHighlightId]);
+  }, [articleId, comments]);
 
   useEffect(() => {
     const root = bodyRef.current;
     if (!root) return;
 
+    function popFromBtn(btn: HTMLElement, pinned: boolean): IconPopover {
+      const rect = btn.getBoundingClientRect();
+      return {
+        id: btn.dataset.reviewId ?? "",
+        body: btn.dataset.body ?? "",
+        time: btn.dataset.time ?? "",
+        author: btn.dataset.author ?? "",
+        top: rect.bottom + 8 + window.scrollY,
+        left: Math.min(
+          rect.left + window.scrollX,
+          window.scrollX + window.innerWidth - 280
+        ),
+        pinned,
+      };
+    }
+
     function onPointerOver(e: Event) {
       const t = e.target as HTMLElement | null;
       const btn = t?.closest?.("button[data-review-icon]") as HTMLElement | null;
       if (!btn) return;
-      setIconPop((prev) => {
-        if (prev?.pinned) return prev;
-        const rect = btn.getBoundingClientRect();
-        return {
-          id: btn.dataset.reviewId ?? "",
-          body: btn.dataset.body ?? "",
-          time: btn.dataset.time ?? "",
-          author: btn.dataset.author ?? "",
-          top: rect.bottom + 8 + window.scrollY,
-          left: Math.min(
-            rect.left + window.scrollX,
-            window.scrollX + window.innerWidth - 280
-          ),
-          pinned: false,
-        };
-      });
+      setIconPop((prev) => (prev?.pinned ? prev : popFromBtn(btn, false)));
     }
 
     function onPointerOut(e: Event) {
@@ -200,36 +252,25 @@ export function ReviewClient({
     function onClick(e: Event) {
       const t = e.target as HTMLElement | null;
       const btn = t?.closest?.("button[data-review-icon]") as HTMLElement | null;
-      if (!btn) return;
+      const mark = t?.closest?.("mark[data-review-id]") as HTMLElement | null;
+      const id = btn?.dataset.reviewId || mark?.dataset.reviewId || "";
+      if (!id || id === "pending") return;
       e.preventDefault();
       e.stopPropagation();
-      const id = btn.dataset.reviewId ?? "";
-      const rect = btn.getBoundingClientRect();
-      setIconPop((prev) => {
-        if (prev?.pinned && prev.id === id) return null;
-        return {
-          id,
-          body: btn.dataset.body ?? "",
-          time: btn.dataset.time ?? "",
-          author: btn.dataset.author ?? "",
-          top: rect.bottom + 8 + window.scrollY,
-          left: Math.min(
-            rect.left + window.scrollX,
-            window.scrollX + window.innerWidth - 280
-          ),
-          pinned: true,
-        };
-      });
-      setActiveHighlightId(id);
-      document
-        .getElementById(`review-c-${id}`)
-        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      if (btn) {
+        setIconPop((prev) => {
+          if (prev?.pinned && prev.id === id) return null;
+          return popFromBtn(btn, true);
+        });
+      }
+      focusThread(id);
     }
 
     function onDocClick(e: Event) {
       const t = e.target as HTMLElement | null;
       if (
         t?.closest?.("button[data-review-icon]") ||
+        t?.closest?.("mark[data-review-id]") ||
         t?.closest?.("[data-review-popover]")
       ) {
         return;
@@ -253,6 +294,8 @@ export function ReviewClient({
       document.removeEventListener("click", onDocClick);
       window.removeEventListener("keydown", onKey);
     };
+    // focusThread closes over stable setters / refs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quoteKey]);
 
   useEffect(() => {
@@ -275,24 +318,13 @@ export function ReviewClient({
   }
 
   function captureSelection() {
-    const sel = window.getSelection();
-    const t = sel?.toString().trim();
-    if (
-      t &&
-      sel?.anchorNode &&
-      bodyRef.current?.contains(sel.anchorNode) &&
-      t.length <= 400
-    ) {
-      const full = bodyRef.current.innerText || "";
-      const i = full.indexOf(t);
-      const prefix = i >= 0 ? full.slice(Math.max(0, i - 24), i) : "";
-      const suffix =
-        i >= 0 ? full.slice(i + t.length, i + t.length + 24) : "";
-      setQuote(t);
-      setQuotePrefix(prefix || null);
-      setQuoteSuffix(suffix || null);
-      setActiveHighlightId("pending");
-    }
+    if (!bodyRef.current) return;
+    const anchor = captureAnchorFromSelection(bodyRef.current);
+    if (!anchor?.quote) return;
+    setQuote(anchor.quote);
+    setQuotePrefix(anchor.prefix ?? null);
+    setQuoteSuffix(anchor.suffix ?? null);
+    setActiveHighlightId("pending");
   }
 
   async function post() {
@@ -300,6 +332,7 @@ export function ReviewClient({
     setBusy(true);
     setError(null);
     setSavedFlash(null);
+    const hadQuote = !!quote;
     const { data, error } = await supabase.rpc("add_review_comment", {
       p_article_id: articleId,
       p_body: text,
@@ -313,15 +346,19 @@ export function ReviewClient({
     setText("");
     clearPendingHighlight();
     setSavedFlash(
-      quote ? "Comment saved on highlight — see thread →" : "General note saved — see thread →"
+      hadQuote
+        ? "Comment saved on highlight."
+        : "General note saved."
     );
     await qc.invalidateQueries({ queryKey: ["review-comments", articleId] });
-    window.setTimeout(() => {
-      const el = document.getElementById(
-        newId ? `review-c-${newId}` : "review-thread"
-      );
-      el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }, 80);
+    await qc.refetchQueries({ queryKey: ["review-comments", articleId] });
+    if (newId) {
+      setActiveHighlightId(newId);
+    } else {
+      document
+        .getElementById("review-thread")
+        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
     window.setTimeout(() => setSavedFlash(null), 4000);
   }
 
@@ -482,7 +519,7 @@ export function ReviewClient({
   }
 
   return (
-    <div className="mt-4 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+    <div className="mt-4 grid gap-8 lg:grid-cols-[minmax(0,1fr)_24rem]">
       <article>
         {showSelfAssignTools && (
           <div className="mb-4 flex flex-wrap items-center gap-2 border border-rule-dark bg-gray-50 px-3 py-2 text-[11px]">
@@ -606,18 +643,33 @@ export function ReviewClient({
           id="review-thread"
           className="text-xs font-bold uppercase tracking-wider text-ink-soft"
         >
-          Review thread · {openCount} open
+          Comments · {openCount} open
         </h2>
         <p className="mt-1 text-[11px] text-ink-soft">
-          Comments land here (and as ! on highlighted lines). Version history is
-          below.
+          Highlighted text turns yellow with a comment icon. Click a mark or
+          icon to jump here.
         </p>
         {savedFlash && (
           <p className="mt-2 border border-rule-dark bg-gray-50 px-3 py-2 text-sm text-ink">
-            {savedFlash}
+            {savedFlash}{" "}
+            <button
+              type="button"
+              className="font-semibold underline"
+              onClick={() => {
+                if (activeHighlightId && activeHighlightId !== "pending") {
+                  focusThread(activeHighlightId);
+                } else {
+                  document
+                    .getElementById("review-thread")
+                    ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                }
+              }}
+            >
+              Show in list
+            </button>
           </p>
         )}
-        <div className="mt-3 max-h-[50vh] space-y-3 overflow-y-auto">
+        <div className="mt-3 max-h-[min(70vh,36rem)] space-y-3 overflow-y-auto lg:max-h-[calc(100vh-12rem)]">
           {comments.length === 0 && (
             <p className="text-sm text-ink-soft">No comments yet.</p>
           )}
@@ -625,17 +677,22 @@ export function ReviewClient({
             const mine = c.author_id === userId;
             const done = !!c.resolved;
             const canMutate = mine || canReview;
+            const active = activeHighlightId === c.id;
+            const quoteMissing =
+              !!c.anchor?.quote && !done && missedIds.includes(c.id);
             const { relative, absolute } = formatReviewTimestamp(c.created_at);
             return (
               <div
                 key={c.id}
                 id={`review-c-${c.id}`}
-                className={`border p-3 text-sm ${
-                  done
-                    ? "border-rule bg-gray-50/60 opacity-70"
-                    : mine
-                      ? "border-ink/30 bg-gray-50"
-                      : "border-rule-dark"
+                className={`border p-3 text-sm transition-shadow ${
+                  active
+                    ? "border-yellow-500 bg-yellow-50 shadow-[inset_3px_0_0_0_#eab308]"
+                    : done
+                      ? "border-rule bg-gray-50/60 opacity-70"
+                      : mine
+                        ? "border-ink/30 bg-gray-50"
+                        : "border-rule-dark"
                 }`}
               >
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
@@ -643,11 +700,12 @@ export function ReviewClient({
                   <span className="font-normal"> · {absolute}</span>
                   {done ? " · Resolved" : ""}
                   {!c.anchor?.quote ? " · General note" : ""}
+                  {quoteMissing ? " · Quote not in draft" : ""}
                 </p>
                 {c.anchor?.quote && (
                   <button
                     type="button"
-                    onClick={() => setActiveHighlightId(c.id)}
+                    onClick={() => focusThread(c.id)}
                     className="mt-1.5 block w-full border-l-2 border-yellow-400 bg-yellow-50 px-2 py-1 text-left text-xs italic hover:bg-yellow-100"
                   >
                     “{c.anchor.quote}”
