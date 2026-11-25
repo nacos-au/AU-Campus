@@ -60,8 +60,8 @@ body {
 /* Long-form article body typography */
 .article-body {
   font-family: var(--font-serif);
-  font-size: 1.1875rem;
-  line-height: 1.75;
+  font-size: 1.125rem;
+  line-height: 1.7;
   display: flow-root;
 }
 .article-body p {

@@ -121,8 +121,6 @@ export default async function HomePage() {
   const remaining = articles.filter((a) => !usedIds.has(a.id));
   /** Fill under the 2-up so the main column matches a tall Breaking/Top rail. */
   const underFeatures = remaining.slice(0, showRail ? 8 : 0);
-  const underIds = new Set(underFeatures.map((a) => a.id));
-  const deskPool = remaining.filter((a) => !underIds.has(a.id));
 
   const sectionHighlight = new Map<number, ArticleWithMeta>();
   for (const s of slots.filter((x) => x.kind === "section_highlight")) {
@@ -219,13 +217,23 @@ export default async function HomePage() {
 
       {sections.map((section) => {
         const highlight = sectionHighlight.get(section.id);
-        const others = deskPool
-          .filter(
-            (a) =>
-              a.sections?.slug === section.slug &&
-              a.id !== highlight?.id
-          )
-          .slice(0, highlight ? 3 : 4);
+        const inDesk = articles.filter(
+          (a) =>
+            a.section_id === section.id || a.sections?.slug === section.slug
+        );
+        // Prefer pieces not already used above; fall back so the desk never
+        // looks empty when it has published work.
+        const unused = inDesk.filter(
+          (a) => !usedIds.has(a.id) && a.id !== highlight?.id
+        );
+        const usedInDesk = inDesk.filter(
+          (a) =>
+            usedIds.has(a.id) && a.id !== highlight?.id
+        );
+        const others = [...unused, ...usedInDesk].slice(
+          0,
+          highlight ? 3 : 4
+        );
         const first = highlight ?? others[0];
         const more = highlight ? others : others.slice(1);
         if (!first) return null;

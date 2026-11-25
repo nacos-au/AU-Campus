@@ -2,9 +2,9 @@
 
 export const COVER_ACCEPT = "image/png,image/jpeg,image/webp";
 export const COVER_SOURCE_MAX_BYTES = 25 * 1024 * 1024;
-export const COVER_OUTPUT_WIDTH = 1600;
-export const COVER_OUTPUT_HEIGHT = 900;
-export const COVER_OUTPUT_MAX_BYTES = 2 * 1024 * 1024;
+export const COVER_OUTPUT_WIDTH = 1280;
+export const COVER_OUTPUT_HEIGHT = 720;
+export const COVER_OUTPUT_MAX_BYTES = 1.2 * 1024 * 1024;
 export const COVER_ASPECT = 16 / 9;
 
 const ALLOWED = new Set(["image/png", "image/jpeg", "image/webp"]);
@@ -68,7 +68,7 @@ async function canvasToBlob(
 }
 
 /**
- * Crop to 16:9 and export WebP (JPEG fallback) at 1600×900.
+ * Crop to 16:9 and export WebP (JPEG fallback) at 1280×720.
  * Steps quality down only to stay under the size cap.
  */
 export async function exportCoverCrop(

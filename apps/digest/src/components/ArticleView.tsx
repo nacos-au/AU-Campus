@@ -51,6 +51,7 @@ export function ArticleView({
                 alt={article.cover_caption?.trim() || article.title}
                 fill
                 priority
+                quality={80}
                 sizes="(max-width: 768px) 100vw, 768px"
                 className="object-cover"
               />
@@ -61,8 +62,8 @@ export function ArticleView({
         <h1
           className={`font-serif font-bold leading-tight ${
             hasCover
-              ? "mt-6 text-3xl sm:text-5xl sm:leading-tight"
-              : "mt-3 text-[2rem] sm:text-[3.25rem] sm:leading-[1.12]"
+              ? "mt-6 text-3xl sm:text-4xl sm:leading-tight"
+              : "mt-3 text-[1.85rem] sm:text-[2.75rem] sm:leading-[1.12]"
           }`}
         >
           {article.title}
@@ -71,7 +72,7 @@ export function ArticleView({
         {article.dek && (
           <p
             className={`mt-4 font-serif leading-snug text-ink-soft ${
-              hasCover ? "text-xl" : "text-xl sm:text-2xl"
+              hasCover ? "text-lg sm:text-xl" : "text-lg sm:text-xl"
             }`}
           >
             {article.dek}

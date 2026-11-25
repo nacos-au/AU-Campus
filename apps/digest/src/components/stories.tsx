@@ -118,6 +118,7 @@ export function LeadStory({ article }: { article: ArticleWithMeta }) {
               alt={article.title}
               fill
               priority
+              quality={75}
               sizes="(max-width: 1024px) 100vw, 66vw"
               className="object-cover"
             />
@@ -165,6 +166,7 @@ export function LeadStory({ article }: { article: ArticleWithMeta }) {
               alt={article.title}
               fill
               priority
+              quality={75}
               sizes="100vw"
               className="object-cover"
             />
@@ -195,6 +197,7 @@ export function StoryCard({
               src={article.cover_url!}
               alt={article.title}
               fill
+              quality={70}
               sizes="(max-width: 640px) 100vw, 33vw"
               className="object-cover"
             />

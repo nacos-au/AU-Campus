@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/client";
 import { articlePublicPath } from "@/lib/articles";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
 import type { ArticleStatus, ArticleWithMeta, Section } from "@/lib/types";
+import { ReoptimizeImagesPanel } from "./ReoptimizeImagesPanel";
 
 interface Row extends ArticleWithMeta {
   article_revisions:
@@ -250,10 +251,23 @@ export function ArticlesTable({
     onSettled: refresh,
   });
 
-  const removeDraft = useMutation({
+  const removeArticle = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("articles").delete().eq("id", id);
-      if (error) throw error;
+      const { error } = await supabase.rpc("delete_article", {
+        p_article_id: id,
+      });
+      if (!error) return;
+      const missingFn =
+        /could not find the function|PGRST202|does not exist/i.test(
+          error.message
+        );
+      if (!missingFn) throw error;
+      // Fallback for DBs that have not applied the RPC yet (own drafts only).
+      const { error: delErr } = await supabase
+        .from("articles")
+        .delete()
+        .eq("id", id);
+      if (delErr) throw delErr;
     },
     onError: (e: Error) => setError(e.message),
     onSettled: refresh,
@@ -416,6 +430,8 @@ export function ArticlesTable({
           </button>
         ))}
       </div>
+
+      {isStaff && <ReoptimizeImagesPanel />}
 
       {error && (
         <p className="mt-4 border border-accent/30 bg-accent-soft px-3 py-2 text-sm text-accent">
@@ -720,7 +736,7 @@ export function ArticlesTable({
                             danger: true,
                           })
                         )
-                          removeDraft.mutate(a.id);
+                          removeArticle.mutate(a.id);
                       }}
                       className="text-red-700 underline hover:text-red-900"
                     >
@@ -729,6 +745,7 @@ export function ArticlesTable({
                   )}
 
                   {a.status !== "archived" &&
+                    a.status !== "withdrawn" &&
                     isStaff && (
                       <button
                         onClick={async () => {
@@ -748,18 +765,21 @@ export function ArticlesTable({
                       </button>
                     )}
 
-                  {mine && a.status === "draft" && isStaff && (
+                  {isStaff && (
                     <button
                       onClick={async () => {
                         if (
                           await confirm({
                             title: `Delete “${a.title}”?`,
-                            body: "This permanently removes the draft. Prefer Archive if you might restore it.",
-                            confirmLabel: "Delete draft",
+                            body:
+                              a.status === "published"
+                                ? "Permanently removes this live story and related review data. Prefer Archive if you might restore it."
+                                : "This permanently removes the piece. It cannot be restored.",
+                            confirmLabel: "Delete forever",
                             danger: true,
                           })
                         )
-                          removeDraft.mutate(a.id);
+                          removeArticle.mutate(a.id);
                       }}
                       className="text-ink-soft underline hover:text-red-900"
                     >
