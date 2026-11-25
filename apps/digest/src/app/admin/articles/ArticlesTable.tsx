@@ -765,7 +765,7 @@ export function ArticlesTable({
                       </button>
                     )}
 
-                  {isStaff && (
+                  {isAdmin && (
                     <button
                       onClick={async () => {
                         if (

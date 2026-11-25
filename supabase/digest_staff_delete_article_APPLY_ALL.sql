@@ -1,5 +1,5 @@
 -- =============================================================================
--- Digest: staff can permanently delete any article (mock cleanup).
+-- Digest: admins can permanently delete any article (mock cleanup).
 -- Authors keep draft-only delete via RLS. Safe to re-run.
 -- =============================================================================
 
@@ -22,8 +22,8 @@ begin
     raise exception 'Article not found';
   end if;
 
-  if private.is_digest_editor(actor) then
-    null; -- staff may delete any piece
+  if private.is_digest_admin(actor) then
+    null; -- admins may delete any piece
   elsif a.author_id = actor and a.status = 'draft' then
     null; -- author may delete own draft
   else

@@ -1,4 +1,4 @@
--- Staff (and draft authors) can permanently delete articles via RPC.
+-- Admins (and draft authors) can permanently delete articles via RPC.
 
 create or replace function public.delete_article(p_article_id uuid)
 returns void
@@ -19,10 +19,10 @@ begin
     raise exception 'Article not found';
   end if;
 
-  if private.is_digest_editor(actor) then
-    null;
+  if private.is_digest_admin(actor) then
+    null; -- admins may delete any piece
   elsif a.author_id = actor and a.status = 'draft' then
-    null;
+    null; -- author may delete own draft
   else
     raise exception 'You cannot delete this article';
   end if;
