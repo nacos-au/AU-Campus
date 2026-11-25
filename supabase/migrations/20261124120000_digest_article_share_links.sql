@@ -408,6 +408,8 @@ begin
 end;
 $$;
 
+drop function if exists public.revoke_article_share_link(uuid);
+
 create or replace function public.revoke_article_share_link(p_link_id uuid)
 returns void
 language plpgsql
