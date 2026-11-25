@@ -1,12 +1,35 @@
-# Digest Sports — Article Idea Calendar
+# Digest — Article Idea Calendar
 
-Series frame (optional branding): **Pitch & Court** / *On the Ground at AUO*  
-Section: **Sports**  
-Status: Near-term pack **1–7** for editorial sign-off; priority next **18** + **NPUGA history**; remaining ideas held for later.
+Planning board for Digest pieces across sections. Sports still has the densest near-term pack; Campus / Academics ideas sit alongside.
+
+**Status:** Sports near-term pack **1–7** for editorial sign-off; priority next sports **18** + **NPUGA history**; Campus gratitude piece planned (no draft yet).
 
 ---
 
-## Source honesty (read before drafting)
+## Campus & campus life
+
+### C1. Privileges we walk past — gratitude without surrender
+- **Working title:** *Achievers With Wi-Fi*
+- **Alt titles:** *Before We Point Fingers* · *What We Still Get to Have* · *The Privileges We Walk Past* · *Still Asking — Still Naming What’s Here*
+- **Section:** Campus (not Sports)
+- **Format:** Reflective campus essay (~800–1,200 words)
+- **Angle:** Students (and Digest) are quick to name what is broken. Fair. This piece flips the camera without shutting that down: name the things that *are* here — starting with school-provided Wi-Fi — and sit in the contrast between Achievers *with* that access and Achievers *without* it, long enough to elicit a little gratefulness. Then widen to other quiet privileges on campus (power patterns that hold, spaces that open, services people treat as default). Close honest: we can still want more amenities, infrastructure, and support — and still admit the good that is already being done.
+- **Tone:** Warm, clear-eyed, not PR. No “stop complaining.” Gratitude as perspective, not obedience.
+- **Do / don’t:**
+  - **Do** use Wi-Fi as the concrete hinge (with vs without); list 3–6 other lived privileges students recognize.
+  - **Do** keep the ask for more alive in the same breath as appreciation.
+  - **Don’t** invent amenities; don’t dunk on critics; don’t turn it into an admin press release.
+- **Research:** Lived campus notes; optional 3–4 short student lines (“what would a week without X feel like?”); light fact-check on what the school actually provides vs rumor.
+- **Publish:** Flexible — good companion whenever campus frustration is loud, or after a Sports/facilities critique so Digest isn’t only pressure.
+- **Draft:** Not started (calendar only).
+
+---
+
+## Sports
+
+Series frame (optional branding): **Pitch & Court** / *On the Ground at AUO*
+
+### Source honesty (read before drafting sports)
 
 Claims below that cite history are **leads for research**, not locked facts for publication. Re-verify with Sports Director / coaches / athletes before print.
 
@@ -22,13 +45,13 @@ Claims below that cite history are **leads for research**, not locked facts for 
 
 ---
 
-## Superior brief (one-liners) — pass-through copy
+### Superior brief (one-liners) — Sports pass-through
 
 1. **The Sound of Achievers Sports** — The feel of sports on campus right now: crowds, training nights, and why people show up.
-2. **When Achievers Owned the Court** — Our biggest sports wins and moments worth remembering (verified before print).
+2. **The Moments We Still Point To** — Biggest verified sports wins/moments worth remembering (not “court”-locked; pitch + courts). Alts: When Achievers Made the Noise · Pride We Can Prove.
 3. **The Ones Who Carry the Jersey** — Short profiles of the athletes defining football, basketball, and volleyball this season.
-4. **After Preseason** — What the finished football preseason revealed about form, surprises, and who matters next.
-5. **Three Sports, One Campus** — A single snapshot of football, basketball, and volleyball mid-tournament — and what to watch next.
+4. **The Season So Far** *(easy week combo)* — Football preseason read + live Inter-Faculty snapshot for football, volleyball, basketball in one data-led piece. (Can still split later into old Arts 4–5 if needed.)
+5. **Three Sports, One Campus** — Optional deeper mid-season roundup if Art. 4 combo needs a follow-up.
 6. **Survive, Don’t Thrive** — Honest look at facilities and how we stack up vs peer schools — pressure on the institution, pride for students.
 7. **Sports Director Q&A** — Sit-down on the calendar, resources, and the path from surviving to building athletes.
 
@@ -36,9 +59,12 @@ Claims below that cite history are **leads for research**, not locked facts for 
 18. **Freshers’ Guide to AUO Sports** — Where to watch, when games run, how Score works, how not to miss finals.  
 21. **NPUGA: The Games That Made Private-University Sport** — History of NPUGA, why it matters, and Achievers’ place in it (including our past medal runs).
 
+**Campus (see above):**  
+C1. **Achievers With Wi-Fi** — Name campus privileges (Wi-Fi hinge) without surrendering the ask for more.
+
 ---
 
-## Near-term pack (Articles 1–7)
+### Near-term pack — Sports (Articles 1–7)
 
 Keep **1–5 order**. Article **6** is facilities/peer standing. Article **7** is Sports Director Q&A.
 
@@ -51,9 +77,12 @@ Keep **1–5 order**. Article **6** is facilities/peer standing. Article **7** i
 - **Publish:** Week 1 (ASAP).
 
 ### 2. Memory & pride — greatest achievements
-- **Working title:** *When Achievers Owned the Court: Medals Worth Remembering*
+- **Working title:** *The Moments We Still Point To*
+- **Alt titles:** *When Achievers Made the Noise* · *Pride We Can Prove* · *The Days We Still Talk About* · *When Achievers Were the Story*
+- **Avoid:** “Owned the Court” — too court-locked; piece covers pitch + courts.
 - **Format:** Reported history (~900–1,200 words)
-- **Angle:** Shared sports memory for freshers and new Digest readers — NPUGA volleyball era (pending verify), Niger-Delta 2025 cohort, Ondo basketball final run. Pride without pretending the program has always been elite.
+- **Angle:** Shared sports memory for freshers and new Digest readers — NPUGA era (pending verify), Niger-Delta 2025 cohort, Ondo basketball final run. Pride without pretending the program has always been elite.
+- **Draft file:** `docs/digest-drafts/japheth-moments-we-still-point-to.md` (structure + FILL slots)
 - **Research:** Sports Director/coaches; archive clips; confirm every named medal before print.
 - **Publish:** Week 1–2.
 - **Depends on:** Source verification table above.
@@ -65,19 +94,21 @@ Keep **1–5 order**. Article **6** is facilities/peer standing. Article **7** i
 - **Research:** 10–15 min interviews; dept/level; defining moment; portrait plan.
 - **Publish:** Week 2.
 
-### 4. Football chapter — post-preseason
-- **Working title:** *After Preseason: What the Football Season Already Told Us*
-- **Format:** Season analysis / wrap-into-preview (~800–1,100 words)
-- **Angle:** Preseason done — surprises, form, who matters in the main competition. Tie Digest ↔ Score data.
-- **Research:** Final table/results; 1 coach + 2 captains; official competition name/dates.
-- **Publish:** As soon as preseason results are locked (can swap with 3 if results land first).
+### 4. Easy week — preseason + live big three *(combo)*
+- **Working title:** *The Season So Far*
+- **Alt titles:** *Preseason to Present* · *Where the Big Three Stand*
+- **Format:** Data-led roundup (~800–1,100 words)
+- **Angle:** Football preseason takeaways + current Inter-Faculty picture for football, volleyball, and basketball in one sitting. Useful, fast, shippable this week.
+- **Draft file:** `docs/digest-drafts/japheth-season-so-far.md` (structure + FILL slots)
+- **Research:** Score/organizer tables; competition names; next fixtures; optional one quote per sport.
+- **Publish:** This week (as soon as tables are usable).
 
-### 5. Triple header — mid-season state of play
+### 5. Triple header — deeper mid-season (optional follow-up)
 - **Working title:** *Three Sports, One Campus: Football, Basketball, Volleyball Right Now*
 - **Format:** Roundup (~900–1,200 words)
-- **Angle:** One sitting snapshot of all three tournaments; fixtures that matter; rivalry heat; “what to watch this week” ending (template for repeats).
+- **Angle:** Deeper snapshot if Art. 4 combo needs a second pass mid-bracket; fixtures that matter; rivalry heat; “what to watch this week.”
 - **Research:** Score + organizers; one quote per sport; next 7–10 day schedule; one photo per venue if possible.
-- **Publish:** When all three have enough games to say something real.
+- **Publish:** When brackets deepen beyond Art. 4.
 
 ### 6. Peer standing & facilities — constructive accountability *(new)*
 - **Working title:** *Survive, Don’t Thrive: Where Achievers Sports Stands — and What It Would Take to Climb*
@@ -112,7 +143,7 @@ Keep **1–5 order**. Article **6** is facilities/peer standing. Article **7** i
 
 ---
 
-## Priority next (pull forward soon)
+### Priority next — Sports (pull forward soon)
 
 ### 18. Freshers’ guide to watching AUO sports
 - **Working title:** *How to Watch Sports at Achievers*
@@ -129,7 +160,7 @@ Keep **1–5 order**. Article **6** is facilities/peer standing. Article **7** i
 
 ---
 
-## Later pipeline (remainder)
+### Later pipeline — Sports (remainder)
 
 Pull forward when tournaments, access, or news make them timely.
 
@@ -171,24 +202,25 @@ If Art. 6 sparks response: progress check, student petition, admin reply — onl
 
 ---
 
-## Suggested publish sequence
+### Suggested publish sequence
 
 | Order | Piece | When |
 | --- | --- | --- |
-| 1 | Atmosphere opener | Week 1 |
-| 2 | Greatest achievements | Week 1–2 (after source checks) |
-| 3 | Athlete package | Week 2 |
-| 4 | Football post-preseason | When results locked (swappable with 3) |
-| 5 | Triple-sport roundup | Mid-tournaments |
-| 6 | Survive / thrive facilities + peers | After 1–5 (min after 2+3) |
-| 7 | Sports Director Q&A | After Art. 6 |
-| 18 | Freshers’ guide | During live tournaments (flexible) |
-| 21 | NPUGA history | After Art. 2 checks / when NPUGA is topical |
-| 8–20 | Remaining pipeline | As news and capacity allow |
+| S1 | Atmosphere opener | Week 1 |
+| S2 | Moments We Still Point To | Week 1–2 (after source checks) |
+| S3 | Athlete package | Week 2 |
+| S4 | Season So Far (preseason + IF big three) | This week — easy ship |
+| S5 | Triple-sport deep roundup | Optional mid-bracket follow-up |
+| S6 | Survive / thrive facilities + peers | After 1–5 (min after 2+3) |
+| S7 | Sports Director Q&A | After Art. 6 |
+| C1 | Achievers With Wi-Fi (Campus) | Flexible — good when frustration is loud, or after a critique piece |
+| S18 | Freshers’ guide | During live tournaments (flexible) |
+| S21 | NPUGA history | After Art. 2 checks / when NPUGA is topical |
+| S8–20 | Remaining sports pipeline | As news and capacity allow |
 
 ---
 
-## Shared research checklist (launch set)
+### Shared research checklist — Sports launch set
 
 - [ ] Sports Director (or acting) sit-down — history, current year, facilities right of reply  
 - [ ] One coach each: football, basketball, volleyball  
@@ -201,13 +233,19 @@ If Art. 6 sparks response: progress check, student petition, admin reply — onl
 
 ---
 
-## Open decisions
+### Open decisions — Sports
 
 1. Series branding on bylines (*Pitch & Court*) vs standalone Sports titles  
 2. Exact competition names for Arts 4–5  
 3. Must-include athletes / achievements for Arts 2–3  
 4. Art. 6 peer schools to name (recommend: state rivals AAUA + FUTA; one private with known sports plant e.g. ABUAD — only with fair, checked comparisons)
 
+### Open decisions — Campus C1
+
+1. Final title (*Achievers With Wi-Fi* vs softer alt)  
+2. Privilege list beyond Wi-Fi (lock 3–6 lived items before draft)  
+3. Whether to pair publish after Sports Art. 6 (balance critique + gratitude) or run standalone
+
 ---
 
-*Last updated: planning pass for Digest Sports launch. Drafting starts only after titles/angles above are signed off.*
+*Last updated: Digest calendar expanded beyond Sports; Campus C1 (Wi-Fi / privileges) added — planning only, no draft yet.*
