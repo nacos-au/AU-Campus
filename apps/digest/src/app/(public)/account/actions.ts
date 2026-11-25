@@ -67,5 +67,56 @@ export async function updateDisplayName(
   revalidatePath("/", "layout");
   revalidatePath("/account");
   revalidatePath("/account/settings");
+  if (parsed.username) {
+    revalidatePath(`/author/${parsed.username}`);
+  }
+  return { ok: true };
+}
+
+export async function updateAvatarUrl(
+  avatarUrl: string | null
+): Promise<ProfileSettingsState> {
+  if (!hasSupabaseConfig()) {
+    return { error: "Supabase is not configured." };
+  }
+
+  const supabase = await createAuthClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Sign in required." };
+
+  const { data: me } = await supabase
+    .from("profiles")
+    .select("role, username")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const role = (me as { role?: string; username?: string | null } | null)?.role;
+  if (!role || !["writer", "editor", "admin"].includes(role)) {
+    return { error: "Only writers and editors can set a profile photo." };
+  }
+
+  if (avatarUrl !== null) {
+    const ok =
+      typeof avatarUrl === "string" &&
+      avatarUrl.length < 2000 &&
+      (/^https?:\/\//i.test(avatarUrl) || avatarUrl.startsWith("/"));
+    if (!ok) return { error: "Invalid photo URL." };
+  }
+
+  const { error } = await supabase
+    .from("profiles")
+    .update({ avatar_url: avatarUrl })
+    .eq("id", user.id);
+
+  if (error) return { error: error.message };
+
+  const username = (me as { username?: string | null } | null)?.username;
+  revalidatePath("/", "layout");
+  revalidatePath("/account");
+  revalidatePath("/account/settings");
+  revalidatePath("/admin", "layout");
+  if (username) revalidatePath(`/author/${username}`);
   return { ok: true };
 }

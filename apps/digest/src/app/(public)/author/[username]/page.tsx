@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { CompactStory } from "@/components/stories";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { ARTICLE_PUBLIC_SELECT } from "@/lib/articles";
 import { site } from "@/lib/site";
 import type { ArticleSeries, ArticleWithMeta, Profile } from "@/lib/types";
@@ -38,9 +39,11 @@ export default async function AuthorPage({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, display_name, username, bio, role")
+    .select("id, display_name, username, bio, role, avatar_url")
     .eq("username", username)
-    .maybeSingle<Pick<Profile, "id" | "display_name" | "username" | "bio" | "role">>();
+    .maybeSingle<
+      Pick<Profile, "id" | "display_name" | "username" | "bio" | "role" | "avatar_url">
+    >();
 
   if (!profile) notFound();
 
@@ -130,10 +133,19 @@ export default async function AuthorPage({
         <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-soft">
           Contributor · {site.name}
         </p>
-        <h1 className="mt-3 font-serif text-4xl font-bold tracking-tight sm:text-5xl">
-          {profile.display_name}
-        </h1>
-        <p className="mt-2 text-sm text-ink-soft">@{profile.username}</p>
+        <div className="mt-4 flex items-center gap-4">
+          <ProfileAvatar
+            url={profile.avatar_url}
+            name={profile.display_name}
+            size="lg"
+          />
+          <div className="min-w-0">
+            <h1 className="font-serif text-4xl font-bold tracking-tight sm:text-5xl">
+              {profile.display_name}
+            </h1>
+            <p className="mt-2 text-sm text-ink-soft">@{profile.username}</p>
+          </div>
+        </div>
         {profile.bio && (
           <p className="mt-5 max-w-xl font-serif text-lg leading-snug text-ink-soft">
             {profile.bio}

@@ -86,6 +86,7 @@ export async function SiteHeader() {
               compact
               email={user.email}
               displayName={profile?.display_name ?? ""}
+              avatarUrl={profile?.avatar_url}
               showAdminRole={showAdminRole}
               signOutAction={signOut}
               newsroom={isWriter}
@@ -164,8 +165,12 @@ export async function SiteHeader() {
                 compact
                 email={user.email}
                 displayName={profile?.display_name ?? ""}
+                avatarUrl={profile?.avatar_url}
                 showAdminRole={showAdminRole}
                 signOutAction={signOut}
+                newsroom={isWriter}
+                adminMode={elevated}
+                exitAdminAction={elevated ? exitAdminModeAction : undefined}
               />
             ) : (
               <Link

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AdminModeToggle } from "./AdminModeToggle";
 import { NotificationBell } from "./NotificationBell";
+import { ProfileAvatar } from "./ProfileAvatar";
 
 export interface AdminNavItem {
   href: string;
@@ -44,6 +45,7 @@ export function AdminNav({
   items,
   masthead,
   displayName,
+  avatarUrl = null,
   role,
   exitAction,
   canElevate = false,
@@ -53,6 +55,7 @@ export function AdminNav({
   items: AdminNavItem[];
   masthead: string;
   displayName: string;
+  avatarUrl?: string | null;
   role: string;
   exitAction: () => Promise<void>;
   canElevate?: boolean;
@@ -66,13 +69,6 @@ export function AdminNav({
 
   const isActive = (href: string) =>
     href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
-
-  const initials = displayName
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
 
   const navList = (
     <ul className="space-y-0.5">
@@ -105,12 +101,16 @@ export function AdminNav({
         </div>
       )}
       <div className="flex items-center gap-3">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-[11px] font-bold text-paper">
-          {initials || "·"}
-        </span>
+        <ProfileAvatar url={avatarUrl} name={displayName} size="sm" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-semibold">{displayName}</p>
           <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-soft">{role}</p>
+          <Link
+            href="/account/settings"
+            className="text-[10px] font-semibold uppercase tracking-wider text-accent hover:text-accent-hover"
+          >
+            Edit photo
+          </Link>
         </div>
         <form action={exitAction}>
           <button

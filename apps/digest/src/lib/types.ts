@@ -34,6 +34,8 @@ export interface Profile {
   username?: string | null;
   email?: string | null;
   bio?: string | null;
+  /** Public URL in the `avatars` bucket — shown small only, never full-view. */
+  avatar_url?: string | null;
   role: Role;
   /** Underlying newsroom ladder before Admin Mode elevation. */
   base_role?: Role;

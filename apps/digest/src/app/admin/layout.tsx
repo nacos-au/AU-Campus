@@ -43,6 +43,7 @@ export default async function AdminLayout({
         items={items}
         masthead={site.masthead}
         displayName={profile.display_name}
+        avatarUrl={profile.avatar_url}
         role={deskRole}
         exitAction={leaveNewsroomAction}
         canElevate={canElevate}

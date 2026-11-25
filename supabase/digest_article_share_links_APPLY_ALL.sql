@@ -4,8 +4,6 @@
 -- Additive only. Does not alter submit / review_approve / collaborators.
 -- =============================================================================
 
-create extension if not exists pgcrypto with schema extensions;
-
 create table if not exists public.article_share_links (
   id uuid primary key default gen_random_uuid(),
   article_id uuid not null references public.articles (id) on delete cascade,
@@ -171,13 +169,8 @@ begin
   where article_id = p_article_id
     and revoked_at is null;
 
-  -- search_path is empty: qualify pgcrypto (Supabase installs it in extensions)
-  tok := translate(
-    encode(extensions.gen_random_bytes(24), 'base64'),
-    '+/',
-    '-_'
-  );
-  tok := rtrim(tok, '=');
+  -- search_path is empty: use pg_catalog gen_random_uuid (no pgcrypto)
+  tok := replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');
 
   if p_mode = 'snapshot' then
     snap := private.capture_article_share_snapshot(p_article_id);

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
 import { IconClose, IconUser } from "./icons";
+import { ProfileAvatar } from "./ProfileAvatar";
 
 function firstName(displayName: string, email: string): string {
   const fromName = displayName.trim().split(/\s+/)[0];
@@ -29,6 +30,7 @@ function Chevron() {
 type Props = {
   email: string;
   displayName: string;
+  avatarUrl?: string | null;
   /** Only shown for Digest admin role */
   showAdminRole: boolean;
   signOutAction: () => Promise<void>;
@@ -45,6 +47,7 @@ const CLOSE_MS = 320;
 export function ProfileMenu({
   email,
   displayName,
+  avatarUrl = null,
   showAdminRole,
   signOutAction,
   newsroom = false,
@@ -98,7 +101,11 @@ export function ProfileMenu({
             : "inline-flex items-center gap-1.5 border border-ink px-3 py-1.5 font-semibold uppercase tracking-wider text-ink transition-colors hover:bg-ink hover:text-paper"
         }
       >
-        <IconUser className={compact ? "h-6 w-6" : "h-3.5 w-3.5"} />
+        {compact && avatarUrl ? (
+          <ProfileAvatar url={avatarUrl} name={displayName} size="sm" />
+        ) : (
+          <IconUser className={compact ? "h-6 w-6" : "h-3.5 w-3.5"} />
+        )}
         {!compact && (
           <>
             <span>Account</span>
@@ -142,9 +149,7 @@ export function ProfileMenu({
 
             <div className="flex flex-1 flex-col overflow-y-auto px-5 pb-8">
               <div className="flex flex-col items-center pt-6 text-center">
-                <span className="flex h-20 w-20 items-center justify-center rounded-full bg-[#f0f0f0] text-ink/50">
-                  <IconUser className="h-10 w-10" />
-                </span>
+                <ProfileAvatar url={avatarUrl} name={displayName} size="lg" />
                 <h2 id={titleId} className="mt-5 font-serif text-[1.75rem] font-bold leading-tight tracking-tight text-ink">
                   {greeting}
                 </h2>
