@@ -138,7 +138,6 @@ export function ReviewClient({
     },
   });
 
-  const openCount = comments.filter((c) => !c.resolved).length;
   const body = useMemo(() => <RichText doc={content.body} />, [content.body]);
 
   const highlightSpecs: HighlightSpec[] = useMemo(() => {
@@ -207,21 +206,7 @@ export function ReviewClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   });
 
-  // Keep the active mark visually focused after (re)paint
-  useLayoutEffect(() => {
-    const root = bodyRef.current;
-    if (!root) return;
-    root.querySelectorAll("mark.review-mark--focused").forEach((m) => {
-      m.classList.remove("review-mark--focused");
-    });
-    if (!activeHighlightId || activeHighlightId === "pending") return;
-    const mark = root.querySelector(
-      `mark[data-review-id="${CSS.escape(activeHighlightId)}"]`
-    );
-    mark?.classList.add("review-mark--focused");
-  }, [activeHighlightId, quoteKey]);
-
-  // After marks paint (or when focusing a comment), scroll mark + rail card into view
+  // After marks paint (or when selecting a comment), scroll mark + rail card into view
   useEffect(() => {
     if (!activeHighlightId || activeHighlightId === "pending") return;
     const id = activeHighlightId;
@@ -708,12 +693,7 @@ export function ReviewClient({
           className="flex w-full items-center justify-between gap-3 px-1 py-1 text-left"
         >
           <span className="text-[11px] font-bold uppercase tracking-wider text-ink">
-            Comments · {openCount} open
-            {comments.length > 0 ? (
-              <span className="ml-2 font-normal normal-case tracking-normal text-ink-soft">
-                {comments.length} total
-              </span>
-            ) : null}
+            Comments
           </span>
           <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-accent">
             View ↓
@@ -743,11 +723,6 @@ export function ReviewClient({
                 </option>
               ))}
             </select>
-            <p className="mt-1.5 text-[11px] text-ink-soft">
-              {state === "published"
-                ? "Move desk updates the live story immediately."
-                : "Change desk here — no need to open Edit."}
-            </p>
           </div>
         )}
 
@@ -755,12 +730,8 @@ export function ReviewClient({
           id="review-thread"
           className="text-xs font-bold uppercase tracking-wider text-ink-soft"
         >
-          Comments · {openCount} open
+          Comments
         </h2>
-        <p className="mt-1 text-[11px] text-ink-soft">
-          Highlighted text turns yellow with a comment icon. Click a mark or
-          icon to jump here.
-        </p>
         {savedFlash && (
           <p className="mt-2 border border-rule-dark bg-gray-50 px-3 py-2 text-sm text-ink">
             {savedFlash}{" "}
@@ -789,7 +760,6 @@ export function ReviewClient({
             const mine = c.author_id === userId;
             const done = !!c.resolved;
             const canMutate = mine || canReview;
-            const active = activeHighlightId === c.id;
             const quoteMissing =
               !!c.anchor?.quote && !done && missedIds.includes(c.id);
             const { relative, absolute } = formatReviewTimestamp(c.created_at);
@@ -816,14 +786,12 @@ export function ReviewClient({
                     focusThread(c.id);
                   }
                 }}
-                className={`border p-3 text-sm transition-shadow ${
-                  active
-                    ? "border-yellow-500 bg-yellow-50 shadow-[inset_3px_0_0_0_#eab308] ring-1 ring-yellow-400/60"
-                    : done
-                      ? "border-rule bg-gray-50/60 opacity-70"
-                      : mine
-                        ? "border-ink/30 bg-gray-50"
-                        : "border-rule-dark"
+                className={`border p-3 text-sm ${
+                  done
+                    ? "border-rule bg-gray-50/60 opacity-70"
+                    : mine
+                      ? "border-ink/30 bg-gray-50"
+                      : "border-rule-dark"
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
