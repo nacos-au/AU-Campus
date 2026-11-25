@@ -1,12 +1,15 @@
 import type { LucideProps } from "lucide-react";
 import {
+  Bookmark,
   Facebook,
+  Heart,
   Instagram,
   LogIn,
   LogOut,
   Menu,
   MessageCircle,
   Search,
+  Share2,
   User,
   X as LucideClose,
   Youtube,
@@ -47,6 +50,20 @@ export function IconComment({ title, ...props }: IconProps) {
   return (
     <MessageCircle aria-label={title} aria-hidden={title ? undefined : true} {...stroke} {...props} />
   );
+}
+
+export function IconHeart({ title, ...props }: IconProps) {
+  return <Heart aria-label={title} aria-hidden={title ? undefined : true} {...stroke} {...props} />;
+}
+
+export function IconBookmark({ title, ...props }: IconProps) {
+  return (
+    <Bookmark aria-label={title} aria-hidden={title ? undefined : true} {...stroke} {...props} />
+  );
+}
+
+export function IconShare({ title, ...props }: IconProps) {
+  return <Share2 aria-label={title} aria-hidden={title ? undefined : true} {...stroke} {...props} />;
 }
 
 /** X (Twitter) brand mark */
