@@ -19,6 +19,16 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
+  const path = request.nextUrl.pathname;
+  const needsAuth = PROTECTED_PREFIXES.some((p) => path.startsWith(p));
+  // Skip Auth round-trip on anonymous public pages — big win on slow networks.
+  const hasSbCookie = request.cookies
+    .getAll()
+    .some((c) => c.name.startsWith("sb-") && c.name.includes("auth-token"));
+  if (!needsAuth && !hasSbCookie) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   try {
@@ -48,9 +58,6 @@ export async function updateSession(request: NextRequest) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-
-    const path = request.nextUrl.pathname;
-    const needsAuth = PROTECTED_PREFIXES.some((p) => path.startsWith(p));
 
     if (!user && needsAuth) {
       const url = request.nextUrl.clone();

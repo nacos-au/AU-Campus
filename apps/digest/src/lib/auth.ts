@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createAuthClient } from "@/lib/supabase/auth-client";
@@ -9,6 +10,9 @@ import type { Profile, Role } from "@/lib/types";
 import { ROLE_RANK, can } from "@/lib/roles";
 
 export { ROLE_RANK, can } from "@/lib/roles";
+
+const PROFILE_COLUMNS =
+  "id, display_name, role, avatar_url, is_super_admin, verification_level, created_at, username";
 
 /**
  * Score-style elevation:
@@ -38,10 +42,13 @@ async function readAdminMode(): Promise<boolean> {
   }
 }
 
-export async function getSessionProfile(): Promise<{
+/**
+ * Deduped per RSC request so admin layout + page don't each hit Auth/DB.
+ */
+export const getSessionProfile = cache(async (): Promise<{
   user: { id: string; email: string } | null;
   profile: Profile | null;
-}> {
+}> => {
   const supabase = hasSupabaseConfig()
     ? await createAuthClient()
     : await createClient();
@@ -51,7 +58,11 @@ export async function getSessionProfile(): Promise<{
   if (!user) return { user: null, profile: null };
 
   const [{ data: profile }, { data: digestRole }, adminMode] = await Promise.all([
-    supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
+    supabase
+      .from("profiles")
+      .select(PROFILE_COLUMNS)
+      .eq("id", user.id)
+      .maybeSingle(),
     supabase
       .from("app_roles")
       .select("role")
@@ -111,7 +122,7 @@ export async function getSessionProfile(): Promise<{
       }),
     },
   };
-}
+});
 
 /** Redirects unless the current user holds at least `minRole`. */
 export async function requireRole(minRole: Role) {

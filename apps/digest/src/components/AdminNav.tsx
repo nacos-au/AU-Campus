@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   BookOpen,
@@ -49,6 +49,54 @@ function ExitIcon({ className = "h-5 w-5" }: { className?: string }) {
   return <LogOut className={className} strokeWidth={1.75} aria-hidden />;
 }
 
+function NavLinkPendingDot({ show }: { show: boolean }) {
+  const { pending } = useLinkStatus();
+  if (!show && !pending) return null;
+  return (
+    <span
+      className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-accent"
+      aria-hidden
+    />
+  );
+}
+
+function NavLink({
+  href,
+  label,
+  icon,
+  active,
+  pendingHref,
+  onNavigate,
+}: {
+  href: string;
+  label: string;
+  icon: keyof typeof ICONS;
+  active: boolean;
+  pendingHref: string | null;
+  onNavigate: (href: string) => void;
+}) {
+  const pending = pendingHref === href;
+  const showActive = active || pending;
+
+  return (
+    <Link
+      href={href}
+      prefetch
+      onClick={() => onNavigate(href)}
+      aria-current={showActive ? "page" : undefined}
+      className={`flex items-center gap-3 rounded-sm px-3 py-2 text-[13px] font-semibold transition-colors ${
+        showActive
+          ? "bg-accent-soft text-accent"
+          : "text-ink-soft hover:bg-gray-50 hover:text-ink"
+      }`}
+    >
+      <Icon name={icon} />
+      <span className="flex-1">{label}</span>
+      {!active ? <NavLinkPendingDot show={pending} /> : null}
+    </Link>
+  );
+}
+
 export function AdminNav({
   items,
   masthead,
@@ -72,32 +120,36 @@ export function AdminNav({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
 
-  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    setOpen(false);
+    setPendingHref(null);
+  }, [pathname]);
 
   const isActive = (href: string) =>
     href === "/admin" ? pathname === "/admin" : pathname.startsWith(href);
 
+  function onNavigate(href: string) {
+    if (isActive(href)) return;
+    startTransition(() => setPendingHref(href));
+  }
+
   const navList = (
     <ul className="space-y-0.5">
-      {items.map((i) => {
-        const active = isActive(i.href);
-        return (
-          <li key={i.href}>
-            <Link
-              href={i.href}
-              className={`flex items-center gap-3 rounded-sm px-3 py-2 text-[13px] font-semibold transition-colors ${
-                active
-                  ? "bg-accent-soft text-accent"
-                  : "text-ink-soft hover:bg-gray-50 hover:text-ink"
-              }`}
-            >
-              <Icon name={i.icon} />
-              {i.label}
-            </Link>
-          </li>
-        );
-      })}
+      {items.map((i) => (
+        <li key={i.href}>
+          <NavLink
+            href={i.href}
+            label={i.label}
+            icon={i.icon}
+            active={isActive(i.href)}
+            pendingHref={pendingHref}
+            onNavigate={onNavigate}
+          />
+        </li>
+      ))}
     </ul>
   );
 
