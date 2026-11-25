@@ -59,10 +59,10 @@ export function TeamManager({
   const setRole = useMutation({
     mutationFn: async (vars: { id: string; role: Role; label: string }) => {
       setPendingRoleId(vars.id);
-      const { error } = await supabase
-        .from("profiles")
-        .update({ role: vars.role })
-        .eq("id", vars.id);
+      const { error } = await supabase.rpc("set_newsroom_role", {
+        p_user_id: vars.id,
+        p_role: vars.role,
+      });
       if (error) throw error;
       return vars;
     },

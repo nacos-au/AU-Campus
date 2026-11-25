@@ -37,6 +37,7 @@ export type Capability =
   | "manage_editions"
   | "manage_ads"
   | "preview_paid_editions"
+  | "promote_writers"
   | "manage_roles"
   | "view_revenue";
 
@@ -56,6 +57,7 @@ const RANK_FOR: Record<Capability, Role> = {
   manage_editions: "editor",
   manage_ads: "editor",
   preview_paid_editions: "editor",
+  promote_writers: "editor",
   manage_roles: "admin",
   view_revenue: "admin",
 };
@@ -71,7 +73,7 @@ export const ROLE_SUMMARIES: Record<Role, string> = {
   writer:
     "Everything a reader can do, plus write and edit their own drafts, submit for review, upload covers, and delete their own drafts.",
   editor:
-    "Everything a writer can do, plus approve articles assigned to them, feature and unpublish, manage sections, paid editions, ads, talent, and forums. Own articles need another editor — unless they are the only editor.",
+    "Everything a writer can do, plus approve articles assigned to them, feature and unpublish, manage sections, paid editions, ads, talent, and forums, and promote readers to writers. Own articles need another editor — unless they are the only editor.",
   admin:
-    "Everything an editor can do, plus assign roles, reassign articles, and view sales. Own articles need another editor — unless they are the only admin/editor.",
+    "Everything an editor can do, plus assign any newsroom role, reassign articles, and view sales. Own articles need another editor — unless they are the only admin/editor.",
 };
