@@ -3,6 +3,7 @@ import type { SportId } from "@/lib/utils/sport";
 import { TeamCrest } from "@/components/ui/team-crest";
 import { cn } from "@/lib/utils/cn";
 import { formatEventType, type DemoMatchEvent } from "@/lib/data/demo-match-details";
+import { displayMatchTime } from "@/lib/match/timeline";
 
 function displayEventType(event: DemoMatchEvent): string {
   if (event.event_type === "penalty_scored") return "Penalty goal";
@@ -26,21 +27,35 @@ export function MatchEventsList({
         {events.length === 0 ? (
           <p className="p-8 text-center opacity-70">No events yet</p>
         ) : (
-          events.map((event) => (
+          events.map((event) => {
+            const matchTimeLabel = displayMatchTime(event.match_time);
+            const playerLabel = [event.player.first_name, event.player.last_name]
+              .filter(Boolean)
+              .join(" ")
+              .trim();
+            return (
             <div key={event.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-4 hover:bg-wrapper">
-              <span className="w-14 shrink-0 text-sm opacity-60">{event.match_time}</span>
+              {matchTimeLabel ? (
+                <span className="w-14 shrink-0 text-sm opacity-60">{matchTimeLabel}</span>
+              ) : null}
               <TeamCrest
                 code={event.team_code}
                 logoUrl={event.team_logo_url}
                 alt={event.team_name}
                 size="sm"
               />
-              <Link
-                href={`/players/${event.player.id}?sport=${sport}`}
-                className="font-display font-bold hover:underline"
-              >
-                {event.player.first_name} {event.player.last_name}
-              </Link>
+              {playerLabel ? (
+                event.player.id ? (
+                  <Link
+                    href={`/players/${event.player.id}?sport=${sport}`}
+                    className="font-display font-bold hover:underline"
+                  >
+                    {playerLabel}
+                  </Link>
+                ) : (
+                  <span className="font-display font-bold">{playerLabel}</span>
+                )
+              ) : null}
               <span className="hidden text-xs font-semibold uppercase tracking-wide opacity-50 sm:inline">
                 {event.team_name}
               </span>
@@ -62,7 +77,8 @@ export function MatchEventsList({
                 <span className="text-xs opacity-60">assist: {String(event.details.assist_player_name)}</span>
               )}
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </section>

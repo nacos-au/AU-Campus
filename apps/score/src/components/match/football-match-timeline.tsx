@@ -13,6 +13,7 @@ import {
   playerShortName,
   type TimelineItem,
 } from "@/lib/match/football-timeline";
+import { displayMatchTime } from "@/lib/match/timeline";
 import type { SportId } from "@/lib/utils/sport";
 import { cn } from "@/lib/utils/cn";
 
@@ -123,9 +124,15 @@ function TimelineEventRow({
     ["corner", "foul", "offside", "shot_on_target"].includes(event.event_type) && !event.player.id;
   const isDisallowed =
     event.event_type === "disallowed_goal" || event.event_type === "disallowed";
+  const shortName = playerShortName(event.player.first_name, event.player.last_name);
+  const hasPlayerName = Boolean(
+    (event.player.first_name ?? "").trim() || (event.player.last_name ?? "").trim()
+  );
   const playerName = isTeamAction
     ? event.team_name || eventTypeLabel(event.event_type)
-    : playerShortName(event.player.first_name, event.player.last_name);
+    : hasPlayerName
+      ? shortName
+      : "";
   const assistName =
     event.details?.assist_player_name != null
       ? String(event.details.assist_player_name)
@@ -144,7 +151,10 @@ function TimelineEventRow({
         ? "OG"
         : event.event_type === "shot_on_target"
           ? "SOT"
-          : undefined;
+          : !hasPlayerName &&
+              (event.event_type === "goal" || event.event_type === "penalty_scored")
+            ? eventTypeLabel(event.event_type)
+            : undefined;
   const secondary = isSub
     ? inName
       ? `${outName ?? playerName} → ${inName}`
@@ -152,11 +162,12 @@ function TimelineEventRow({
     : assistName ?? actionLabel;
 
   const icon = <EventIcon event={event} />;
-  const time = (
+  const matchTimeLabel = displayMatchTime(event.match_time);
+  const time = matchTimeLabel ? (
     <span className="w-11 shrink-0 font-display text-xs font-bold tabular-nums text-accent sm:w-12 sm:text-sm">
-      {event.match_time}
+      {matchTimeLabel}
     </span>
-  );
+  ) : null;
 
   if (isHome) {
     return (
@@ -215,20 +226,28 @@ function PlayerBlock({
   trailingBefore?: boolean;
   align?: "left" | "right";
 }) {
+  const primaryLabel = primary.trim();
   return (
     <div className={cn("min-w-0 text-xs sm:text-sm", align === "right" ? "text-right" : "text-left")}>
       {trailing && trailingBefore && (
         <span className="mr-1.5 text-accent/50">{trailing}</span>
       )}
-      {playerId ? (
-        <Link href={`/players/${playerId}?sport=${sport}`} className="font-display font-bold text-accent hover:underline">
-          {primary}
-        </Link>
-      ) : (
-        <span className="font-display font-bold text-accent">{primary}</span>
-      )}
+      {primaryLabel ? (
+        playerId ? (
+          <Link href={`/players/${playerId}?sport=${sport}`} className="font-display font-bold text-accent hover:underline">
+            {primaryLabel}
+          </Link>
+        ) : (
+          <span className="font-display font-bold text-accent">{primaryLabel}</span>
+        )
+      ) : null}
       {secondary && (
-        <span className={cn("ml-1.5", secondaryMuted ? "text-accent/40" : "text-accent/60")}>
+        <span
+          className={cn(
+            primaryLabel ? "ml-1.5" : undefined,
+            secondaryMuted ? "text-accent/40" : "text-accent/60"
+          )}
+        >
           {secondary}
         </span>
       )}

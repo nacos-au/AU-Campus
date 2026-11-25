@@ -165,7 +165,7 @@ export async function reconcileMatchResult(
       period:
         g.period ??
         (minute != null ? (minute <= 45 ? "half_1" : "half_2") : "full_time"),
-      match_time: minute != null ? String(minute) : "?",
+      match_time: minute != null ? String(minute) : "",
       details,
     });
     if ("error" in created) return created;

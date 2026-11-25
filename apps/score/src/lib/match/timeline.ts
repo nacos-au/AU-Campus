@@ -8,6 +8,13 @@ export interface TimelineMarker {
   teamCode: string;
 }
 
+/** Public clock label — omit unknown/manual placeholders like "?" entirely. */
+export function displayMatchTime(matchTime: string | null | undefined): string | null {
+  const t = (matchTime ?? "").trim();
+  if (!t || t === "?" || t === "—" || t.toLowerCase() === "unknown") return null;
+  return t;
+}
+
 /** Parse "12'", "90+3'", "ET 105'", "Q3 02:14" into approximate minute 0–120 for football */
 export function parseEventMinute(matchTime: string, sport: string): number {
   if (sport !== "football") return 0;
