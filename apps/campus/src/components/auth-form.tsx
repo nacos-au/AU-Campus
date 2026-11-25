@@ -1,13 +1,22 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signUp, type AuthState } from "@/app/actions/auth";
 import { PasswordInput } from "@/components/password-input";
-import { SCORE_URL } from "@/lib/urls";
+import { DIGEST_URL, SCORE_URL } from "@/lib/urls";
 import { USERNAME_HINT, USERNAME_MAX } from "@/lib/username";
 
-/** Campus is signup-only — sign in happens on AU Score. */
+function AuthBrandRow() {
+  return (
+    <p className="text-center text-[11px] font-bold uppercase tracking-[0.14em] text-ink-soft">
+      AU Campus · AU Digest · AU Score
+    </p>
+  );
+}
+
+/** Account creation on Campus — then pick Digest or Score on /welcome. */
 export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/";
@@ -19,29 +28,68 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
   if (mode === "signin") {
     return (
       <div className="mx-auto w-full max-w-md text-center">
-        <h1 className="font-display text-3xl font-extrabold tracking-tight text-ink">
-          Sign in on AU Score
+        <AuthBrandRow />
+        <h1 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-ink">
+          Sign in
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-          AU Campus is for creating accounts. Sign in from AU Score with the same credentials.
+          Use Campus sign-in for the Office, or open Digest / Score with the same email and
+          password.
         </p>
-        <a
-          href={`${SCORE_URL}/?auth=signin`}
+        <Link
+          href={`/signin${next && next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`}
           className="mt-8 inline-flex rounded-full bg-accent px-6 py-3 font-display text-sm font-bold text-white transition hover:bg-accent-hover"
         >
-          Open AU Score
-        </a>
+          Continue to sign in
+        </Link>
+      </div>
+    );
+  }
+
+  if (state && "pendingConfirm" in state && state.pendingConfirm) {
+    return (
+      <div className="mx-auto w-full max-w-md text-center">
+        <AuthBrandRow />
+        <h1 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-ink">
+          Check your email
+        </h1>
+        <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+          We created your account
+          {state.email ? (
+            <>
+              {" "}
+              for <span className="font-semibold text-ink">{state.email}</span>
+            </>
+          ) : null}
+          . Confirm the message in your inbox, then sign in on Digest or Score with the same
+          password.
+        </p>
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+          <a
+            href={`${SCORE_URL}/?auth=signin${state.email ? `&email=${encodeURIComponent(state.email)}` : ""}`}
+            className="inline-flex justify-center border border-ink px-5 py-3 text-xs font-bold uppercase tracking-wider text-ink hover:bg-ink hover:text-white"
+          >
+            AU Score
+          </a>
+          <a
+            href={`${DIGEST_URL}/login${state.email ? `?email=${encodeURIComponent(state.email)}` : ""}`}
+            className="inline-flex justify-center border border-ink px-5 py-3 text-xs font-bold uppercase tracking-wider text-ink hover:bg-ink hover:text-white"
+          >
+            AU Digest
+          </a>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="mx-auto w-full max-w-md">
-      <h1 className="font-display text-3xl font-extrabold tracking-tight text-ink">
+      <AuthBrandRow />
+      <h1 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-ink">
         Create your account
       </h1>
       <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-        One AU Campus account unlocks AU Digest, AU Score, and future student apps.
+        One AU Campus account for Digest, Score, and Campus — same email and password everywhere.
       </p>
 
       <form action={formAction} className="mt-8 space-y-4">
@@ -120,7 +168,7 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
           />
         </label>
 
-        {state?.error && (
+        {state && "error" in state && state.error && (
           <p className="border border-accent/30 bg-white px-3 py-2 text-sm text-accent">
             {state.error}
           </p>
@@ -137,12 +185,12 @@ export function AuthForm({ mode }: { mode: "signin" | "signup" }) {
 
       <p className="mt-6 text-center text-sm text-ink-soft">
         Already have an account?{" "}
-        <a
-          href={`${SCORE_URL}/?auth=signin`}
+        <Link
+          href="/signin"
           className="font-semibold text-ink underline underline-offset-2"
         >
-          Sign in on AU Score
-        </a>
+          Sign in
+        </Link>
       </p>
     </div>
   );

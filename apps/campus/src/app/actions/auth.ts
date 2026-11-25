@@ -3,10 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { welcomeUrl } from "@/lib/auth-destinations";
 import { hasSupabaseConfig, CAMPUS_URL, DIGEST_URL, SCORE_URL } from "@/lib/urls";
 import { validateUsername } from "@/lib/username";
 
-export type AuthState = { error: string } | null;
+export type AuthState =
+  | { error: string }
+  | { pendingConfirm: true; email: string }
+  | null;
 
 function safeNext(raw: FormDataEntryValue | null): string {
   const next = typeof raw === "string" ? raw : "/";
@@ -77,10 +81,7 @@ export async function signUp(
       return { error: error.message };
     }
     if (!data.session) {
-      return {
-        error:
-          "Account created, but email confirmation is still on in Supabase. Turn off “Confirm email” under Authentication → Providers → Email, or confirm your inbox.",
-      };
+      return { pendingConfirm: true, email };
     }
 
     if (data.user) {
@@ -94,12 +95,22 @@ export async function signUp(
         })
         .eq("id", data.user.id);
     }
+
+    const { cookies } = await import("next/headers");
+    const store = await cookies();
+    store.set("au_auth_session_started", String(Date.now()), {
+      path: "/",
+      maxAge: 60 * 60 * 2,
+      sameSite: "lax",
+      httpOnly: true,
+    });
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Sign-up failed." };
   }
 
   revalidatePath("/", "layout");
-  redirect(safeNext(formData.get("next")));
+  const next = safeNext(formData.get("next"));
+  redirect(welcomeUrl(next === "/" ? null : next));
 }
 
 export async function signIn(

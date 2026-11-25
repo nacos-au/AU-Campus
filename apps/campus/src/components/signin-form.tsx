@@ -9,14 +9,27 @@ import { PasswordInput } from "@/components/password-input";
 export function SignInForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/";
+  const emailPrefill = searchParams.get("email") ?? "";
+  const reason = searchParams.get("reason");
   const [state, formAction, pending] = useActionState<AuthState, FormData>(signIn, null);
 
   return (
     <div className="mx-auto w-full max-w-md">
-      <h1 className="font-display text-3xl font-extrabold tracking-tight text-ink">Sign in</h1>
-      <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-        Use your campus account. Super admins can open the Office after signing in.
+      <p className="text-center text-[11px] font-bold uppercase tracking-[0.14em] text-ink-soft">
+        AU Campus · AU Digest · AU Score
       </p>
+      <h1 className="mt-4 font-display text-3xl font-extrabold tracking-tight text-ink">
+        Sign in
+      </h1>
+      <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+        Same email and password across AU apps. Super admins can open the Office after signing
+        in.
+      </p>
+      {reason === "session_expired" && (
+        <p className="mt-4 border border-rule bg-white px-3 py-2 text-sm text-ink-soft">
+          Your session ended. Sign in again to continue.
+        </p>
+      )}
 
       <form action={formAction} className="mt-8 space-y-4">
         <input type="hidden" name="next" value={next} />
@@ -27,6 +40,7 @@ export function SignInForm() {
             name="email"
             type="email"
             required
+            defaultValue={emailPrefill}
             autoComplete="email"
             className="mt-1 w-full border border-rule bg-white px-4 py-3 text-sm text-ink focus:border-accent focus:outline-none"
           />
@@ -44,7 +58,7 @@ export function SignInForm() {
           />
         </label>
 
-        {state?.error && (
+        {state && "error" in state && state.error && (
           <p className="border border-accent/30 bg-white px-3 py-2 text-sm text-accent">
             {state.error}
           </p>
@@ -61,7 +75,10 @@ export function SignInForm() {
 
       <p className="mt-6 text-center text-sm text-ink-soft">
         New here?{" "}
-        <Link href="/signup" className="font-semibold text-ink underline underline-offset-2">
+        <Link
+          href={`/signup${next && next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`}
+          className="font-semibold text-ink underline underline-offset-2"
+        >
           Create an account
         </Link>
       </p>

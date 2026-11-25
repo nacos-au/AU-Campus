@@ -18,20 +18,27 @@ export function AuthEntryButton() {
   const authParam = searchParams.get("auth");
   const reasonParam = searchParams.get("reason");
   const nextParam = searchParams.get("next") ?? "/";
+  const emailParam = searchParams.get("email") ?? "";
 
   const [open, setOpen] = useState(false);
   const [expiredNotice, setExpiredNotice] = useState(false);
 
   useEffect(() => {
     if (authParam === "signup") {
-      window.location.href = `${CAMPUS}/signup`;
+      const returnTo =
+        typeof window !== "undefined"
+          ? `${window.location.origin}${nextParam.startsWith("/") ? nextParam : "/"}`
+          : "/";
+      const url = new URL(`${CAMPUS}/signup`);
+      url.searchParams.set("next", returnTo);
+      window.location.href = url.toString();
       return;
     }
     if (authParam === "signin" || authParam === "1") {
       setOpen(true);
       if (reasonParam === "session_expired") setExpiredNotice(true);
     }
-  }, [authParam, reasonParam]);
+  }, [authParam, reasonParam, nextParam]);
 
   function clearAuthQuery() {
     const params = new URLSearchParams(searchParams.toString());
@@ -57,6 +64,7 @@ export function AuthEntryButton() {
       <AuthModal
         open={open}
         next={nextParam.startsWith("/") ? nextParam : "/"}
+        email={emailParam}
         sessionExpired={expiredNotice}
         onClose={() => {
           setOpen(false);

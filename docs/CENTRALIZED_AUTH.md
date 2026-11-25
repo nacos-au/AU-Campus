@@ -28,7 +28,7 @@ Same credentials everywhere. Sessions are still **per-origin cookies** until a s
 | `matric_number` | Reserved for L2 IRL link — **not** required at signup |
 | `app_roles` | Per-app privilege rows (`campus` \| `digest` \| `score`) |
 
-Signup (Campus hub and Score Join modal) creates a **soft** account: name + username + email + password. No matric gate at signup.
+Signup is **Campus-only** (`/signup`). After create, users land on Campus `/welcome` (white) and choose **AU Score** or **AU Digest**, then sign in once on that app with the same credentials (cookies are still per-origin until parent-domain SSO). Soft account: name + username + email + password. No matric gate at signup.
 
 ---
 
@@ -131,7 +131,7 @@ Until then: ship soft accounts freely; do not trust self-asserted matric.
 | `*.vercel.app` | Separate cookies |
 | `campus.example.edu` + `digest.` + `score.` under one parent | Set cookie `Domain=.example.edu` + shared Site URL / redirect allowlist in Supabase |
 
-Same credentials ≠ automatic SSO until a shared parent domain exists. Document this in onboarding UX.
+Same credentials ≠ automatic SSO until a shared parent domain exists. The `/welcome` destination picker and email-prefilled sign-in CTAs make that explicit.
 
 ---
 

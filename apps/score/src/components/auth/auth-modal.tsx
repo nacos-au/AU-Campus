@@ -16,8 +16,10 @@ import { cn } from "@/lib/utils/cn";
 
 const CLOSE_MS = 280;
 const LOGO_SRC = "/AU Logo.webp";
-const CAMPUS_SIGNUP =
+const CAMPUS_URL =
   process.env.NEXT_PUBLIC_CAMPUS_URL?.replace(/\/$/, "") || "http://localhost:3000";
+const SCORE_URL =
+  process.env.NEXT_PUBLIC_SCORE_URL?.replace(/\/$/, "") || "http://localhost:3002";
 
 type Props = {
   open: boolean;
@@ -25,6 +27,7 @@ type Props = {
   /** @deprecated Signup is Campus-only — ignored */
   initialMode?: "signin" | "signup";
   next?: string;
+  email?: string;
   sessionExpired?: boolean;
 };
 
@@ -56,8 +59,17 @@ export function AuthModal({
   open,
   onClose,
   next = "/",
+  email = "",
   sessionExpired = false,
 }: Props) {
+  const campusSignupHref = (() => {
+    const url = new URL("/signup", CAMPUS_URL);
+    const returnTo = next.startsWith("http")
+      ? next
+      : `${SCORE_URL}${next.startsWith("/") ? next : `/${next}`}`;
+    url.searchParams.set("next", returnTo);
+    return url.toString();
+  })();
   const router = useRouter();
   const titleId = useId();
   const [mounted, setMounted] = useState(false);
@@ -165,7 +177,9 @@ export function AuthModal({
           >
             Sign in
           </h2>
-          <p className="mt-2 text-sm text-white/65">Welcome back to AU Score</p>
+          <p className="mt-2 text-sm text-white/65">
+            Same email and password across AU apps.
+          </p>
 
           <form action={formAction} className="mt-6 flex flex-1 flex-col gap-4">
             <input type="hidden" name="next" value={next} />
@@ -178,6 +192,7 @@ export function AuthModal({
                 required
                 autoComplete="email"
                 placeholder="Enter email address"
+                defaultValue={email}
                 className={fieldClass}
               />
             </label>
@@ -219,11 +234,14 @@ export function AuthModal({
           <p className="mt-5 text-center text-sm text-white/60">
             New here?{" "}
             <a
-              href={`${CAMPUS_SIGNUP}/signup`}
+              href={campusSignupHref}
               className="font-display font-bold text-white underline underline-offset-2"
             >
               Create an account on AU Campus
             </a>
+          </p>
+          <p className="mt-2 text-center text-[11px] uppercase tracking-[0.12em] text-white/40">
+            AU Campus · AU Digest · AU Score
           </p>
         </div>
 

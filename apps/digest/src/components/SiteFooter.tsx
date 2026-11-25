@@ -21,9 +21,15 @@ const SOCIALS = [
   { label: "TikTok", href: "#", Icon: IconTikTok },
 ] as const;
 
-const CAMPUS_SIGNUP =
-  (process.env.NEXT_PUBLIC_CAMPUS_URL ?? "http://localhost:3000").replace(/\/$/, "") +
-  "/signup";
+const CAMPUS_URL = (process.env.NEXT_PUBLIC_CAMPUS_URL ?? "http://localhost:3000").replace(
+  /\/$/,
+  ""
+);
+const DIGEST_URL = (process.env.NEXT_PUBLIC_DIGEST_URL ?? "http://localhost:3001").replace(
+  /\/$/,
+  ""
+);
+const CAMPUS_SIGNUP = `${CAMPUS_URL}/signup?next=${encodeURIComponent(`${DIGEST_URL}/`)}`;
 
 function Column({
   heading,

@@ -4,8 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createAuthClient } from "@/lib/supabase/auth-client";
 import { hasSupabaseConfig } from "@/lib/demo-mode";
-import { validateUsername } from "@/lib/username";
-import type { Database } from "@/lib/types/supabase";
 
 export type AuthState = { error: string } | null;
 
@@ -32,20 +30,6 @@ function safeNext(raw: FormDataEntryValue | null): string {
   }
 
   return "/";
-}
-
-async function assertUsernameAvailable(
-  supabase: Awaited<ReturnType<typeof createAuthClient>>,
-  username: string
-): Promise<string | null> {
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("username", username)
-    .maybeSingle();
-  if (error) return error.message;
-  if (data) return "That username is already taken.";
-  return null;
 }
 
 export async function signIn(
@@ -93,70 +77,20 @@ export async function signIn(
   redirect(safeNext(formData.get("next")));
 }
 
+/** Accounts are created on AU Campus only. */
 export async function signUp(
   _prev: AuthState,
   formData: FormData
 ): Promise<AuthState> {
-  if (!hasSupabaseConfig()) {
-    return {
-      error:
-        "Score is missing Supabase keys. Add NEXT_PUBLIC_SUPABASE_URL and ANON_KEY to apps/score/.env.local, then restart the Score dev server.",
-    };
-  }
-
-  const email = String(formData.get("email") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-  const displayName = String(formData.get("display_name") ?? "").trim();
-  const parsed = validateUsername(String(formData.get("username") ?? ""));
-
-  if (!email || !password) return { error: "Email and password are required." };
-  if (!displayName) return { error: "Full name is required." };
-  if (!parsed.ok) return { error: parsed.error };
-  if (password.length < 8) return { error: "Password must be at least 8 characters." };
-
-  try {
-    const supabase = await createAuthClient();
-    const taken = await assertUsernameAvailable(supabase, parsed.username);
-    if (taken) return { error: taken };
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { display_name: displayName, username: parsed.username },
-      },
-    });
-    if (error) {
-      if (/duplicate|unique|username/i.test(error.message)) {
-        return { error: "That username is already taken." };
-      }
-      return { error: error.message };
-    }
-    if (!data.session) {
-      return {
-        error:
-          "Account created, but email confirmation is still on in Supabase. Turn off “Confirm email” under Authentication → Providers → Email, or confirm your inbox.",
-      };
-    }
-
-    if (data.user) {
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({
-          username: parsed.username,
-          display_name: displayName,
-        } satisfies Database["public"]["Tables"]["profiles"]["Update"])
-        .eq("id", data.user.id);
-      if (profileError && /unique|duplicate/i.test(profileError.message)) {
-        return { error: "That username is already taken." };
-      }
-    }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : "Sign-up failed." };
-  }
-
-  revalidatePath("/", "layout");
-  redirect(safeNext(formData.get("next")));
+  const campus =
+    process.env.NEXT_PUBLIC_CAMPUS_URL?.replace(/\/$/, "") || "http://localhost:3000";
+  const score =
+    process.env.NEXT_PUBLIC_SCORE_URL?.replace(/\/$/, "") || "http://localhost:3002";
+  const next = safeNext(formData.get("next"));
+  const returnTo = next.startsWith("http") ? next : `${score}${next.startsWith("/") ? next : `/${next}`}`;
+  const url = new URL("/signup", campus);
+  url.searchParams.set("next", returnTo);
+  redirect(url.toString());
 }
 
 export async function signOut(): Promise<void> {
