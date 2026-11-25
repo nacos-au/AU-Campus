@@ -358,10 +358,12 @@ export function captureAnchorFromSelection(
 }
 
 function wrapRange(range: Range, spec: HighlightSpec) {
+  const pending = spec.id === "pending";
   const mark = document.createElement("mark");
   mark.dataset.reviewId = spec.id;
-  mark.className =
-    spec.id === "pending" ? "review-mark review-mark--pending" : "review-mark";
+  mark.className = pending
+    ? "review-mark review-mark--pending"
+    : "review-mark";
   try {
     range.surroundContents(mark);
   } catch {
@@ -370,8 +372,6 @@ function wrapRange(range: Range, spec: HighlightSpec) {
     range.insertNode(mark);
   }
 
-  if (spec.id === "pending") return;
-
   const btn = document.createElement("button");
   btn.type = "button";
   btn.dataset.reviewIcon = "1";
@@ -379,8 +379,13 @@ function wrapRange(range: Range, spec: HighlightSpec) {
   btn.dataset.body = spec.body ?? "";
   btn.dataset.time = spec.timeLabel ?? "";
   btn.dataset.author = spec.authorLabel ?? "";
-  btn.setAttribute("aria-label", "Open review comment");
-  btn.className = "review-mark-icon";
+  btn.setAttribute(
+    "aria-label",
+    pending ? "Pending review comment" : "Open review comment"
+  );
+  btn.className = pending
+    ? "review-mark-icon review-mark-icon--pending"
+    : "review-mark-icon";
   /* Lucide MessageCircle path (DOM injection — no React tree here) */
   btn.innerHTML =
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>';

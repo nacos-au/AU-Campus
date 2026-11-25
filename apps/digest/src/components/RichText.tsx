@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { memo, type ReactNode } from "react";
 
 interface Mark {
   type: string;
@@ -95,7 +95,10 @@ function renderNode(node: Node, key: number): ReactNode {
 }
 
 /** Server-side renderer for Tiptap JSON documents. */
-export function RichText({ doc }: { doc: unknown }) {
+function RichTextInner({ doc }: { doc: unknown }) {
   if (!doc || typeof doc !== "object") return null;
   return <div className="article-body">{renderNode(doc as Node, 0)}</div>;
 }
+
+/** Memoized so parent re-renders do not recreate the DOM and wipe review marks. */
+export const RichText = memo(RichTextInner);

@@ -4,7 +4,7 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { RichText } from "@/components/RichText";
@@ -179,15 +179,34 @@ export function ReviewClient({
     .map((s) => `${s.id}:${s.quote}:${s.prefix ?? ""}:${s.suffix ?? ""}`)
     .join("\u0000");
 
-  useEffect(() => {
-    if (!bodyRef.current) return;
-    const { missed } = applyReviewHighlights(bodyRef.current, highlightSpecs);
-    setMissedIds(missed);
+  function paintHighlights() {
+    const root = bodyRef.current;
+    if (!root) return;
+    const { missed } = applyReviewHighlights(root, highlightSpecs);
+    const nextKey = missed.join("\0");
+    setMissedIds((prev) => (prev.join("\0") === nextKey ? prev : missed));
+  }
+
+  useLayoutEffect(() => {
+    paintHighlights();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quoteKey]);
 
+  // Recover if a parent re-render wiped imperative marks while quoteKey stayed put
+  useLayoutEffect(() => {
+    const root = bodyRef.current;
+    if (!root || highlightSpecs.length === 0) return;
+    const missing = highlightSpecs.some(
+      (s) =>
+        !!s.quote &&
+        !root.querySelector(`mark[data-review-id="${CSS.escape(s.id)}"]`)
+    );
+    if (missing) paintHighlights();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  });
+
   // Keep the active mark visually focused after (re)paint
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = bodyRef.current;
     if (!root) return;
     root.querySelectorAll("mark.review-mark--focused").forEach((m) => {
@@ -360,29 +379,56 @@ export function ReviewClient({
     setBusy(true);
     setError(null);
     setSavedFlash(null);
+    const bodyText = text.trim();
     const hadQuote = !!quote;
+    const anchor = quote
+      ? { quote, prefix: quotePrefix ?? undefined, suffix: quoteSuffix ?? undefined }
+      : null;
     const { data, error } = await supabase.rpc("add_review_comment", {
       p_article_id: articleId,
-      p_body: text,
-      p_anchor: quote
-        ? { quote, prefix: quotePrefix, suffix: quoteSuffix }
-        : null,
+      p_body: bodyText,
+      p_anchor: anchor,
     });
     setBusy(false);
     if (error) return setError(error.message);
     const newId = typeof data === "string" ? data : null;
     setText("");
-    clearPendingHighlight();
+
+    // Optimistic insert before clearing pending so quoteKey never goes empty
+    // for this highlight (avoids clearMarks wiping the only visible mark).
+    if (newId) {
+      const optimistic: ReviewComment = {
+        id: newId,
+        article_id: articleId,
+        author_id: userId,
+        body: bodyText,
+        anchor,
+        resolved: false,
+        resolved_at: null,
+        resolved_by: null,
+        created_at: new Date().toISOString(),
+        profiles: { display_name: "You" },
+      };
+      qc.setQueryData<ReviewComment[]>(
+        ["review-comments", articleId],
+        (prev) => {
+          const list = prev ?? [];
+          if (list.some((c) => c.id === newId)) return list;
+          return [...list, optimistic];
+        }
+      );
+      clearPendingHighlight();
+      setActiveHighlightId(newId);
+    } else {
+      clearPendingHighlight();
+    }
+
     setSavedFlash(
-      hadQuote
-        ? "Comment saved on highlight."
-        : "General note saved."
+      hadQuote ? "Comment saved on highlight." : "General note saved."
     );
     await qc.invalidateQueries({ queryKey: ["review-comments", articleId] });
     await qc.refetchQueries({ queryKey: ["review-comments", articleId] });
-    if (newId) {
-      setActiveHighlightId(newId);
-    } else {
+    if (!newId) {
       document
         .getElementById("review-thread")
         ?.scrollIntoView({ behavior: "smooth", block: "nearest" });

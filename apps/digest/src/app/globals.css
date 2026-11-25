@@ -143,6 +143,9 @@ body {
 .review-mark-icon:hover {
   background: var(--accent);
 }
+.review-mark-icon--pending {
+  background: color-mix(in srgb, var(--ink) 55%, transparent);
+}
 
 /* Inline images: left (text wraps), center, wide */
 .article-figure {
