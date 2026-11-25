@@ -6,13 +6,7 @@ import { IconBookmark, IconHeart, IconShare } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
 
 const btnBase =
-  "inline-flex h-10 w-10 shrink-0 items-center justify-center border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
-
-function tone(active: boolean) {
-  return active
-    ? "border-ink bg-ink text-paper"
-    : "border-ink bg-paper text-ink hover:bg-ink hover:text-paper";
-}
+  "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink transition-colors hover:text-ink-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
 
 export function LikeShare({
   articleId,
@@ -114,43 +108,51 @@ export function LikeShare({
   }
 
   return (
-    <div className="mt-10 flex flex-wrap items-center gap-3 border-y border-rule py-4">
-      <div className="flex items-center gap-2">
+    <div className="mt-10 flex flex-wrap items-center gap-1 border-y border-rule py-4">
+      <div className="flex items-center gap-1">
         <button
           type="button"
           onClick={toggleLike}
           aria-pressed={liked}
           aria-label={liked ? "Unlike" : "Like"}
-          className={`${btnBase} ${tone(liked)}`}
+          className={btnBase}
         >
-          <IconHeart className="h-5 w-5" fill={liked ? "currentColor" : "none"} />
+          <IconHeart
+            className="h-6 w-6"
+            fill={liked ? "currentColor" : "none"}
+            strokeWidth={1.75}
+          />
         </button>
-        <span className="min-w-[1ch] text-xs font-semibold tabular-nums text-ink-soft">
+        <span className="min-w-[1ch] pr-2 text-xs font-semibold tabular-nums text-ink-soft">
           {likes}
         </span>
       </div>
       <button
         type="button"
-        onClick={toggleSave}
-        aria-pressed={saved}
-        aria-label={saved ? "Remove from saved" : "Save"}
-        className={`${btnBase} ${tone(saved)}`}
+        onClick={share}
+        aria-label="Share"
+        className={btnBase}
       >
-        <IconBookmark className="h-5 w-5" fill={saved ? "currentColor" : "none"} />
+        <IconShare className="h-6 w-6" strokeWidth={1.75} />
       </button>
       <button
         type="button"
-        onClick={share}
-        aria-label="Share"
-        className={`${btnBase} ${tone(false)}`}
+        onClick={toggleSave}
+        aria-pressed={saved}
+        aria-label={saved ? "Remove from saved" : "Save"}
+        className={btnBase}
       >
-        <IconShare className="h-5 w-5" />
+        <IconBookmark
+          className="h-6 w-6"
+          fill={saved ? "currentColor" : "none"}
+          strokeWidth={1.75}
+        />
       </button>
-      {msg && <span className="text-xs text-ink-soft">{msg}</span>}
+      {msg && <span className="ml-2 text-xs text-ink-soft">{msg}</span>}
       {saved && !msg && (
         <Link
           href="/account/saved"
-          className="text-xs font-semibold text-ink-soft underline hover:text-ink"
+          className="ml-2 text-xs font-semibold text-ink-soft underline hover:text-ink"
         >
           View saved
         </Link>

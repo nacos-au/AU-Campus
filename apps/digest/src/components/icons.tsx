@@ -9,7 +9,7 @@ import {
   Menu,
   MessageCircle,
   Search,
-  Share2,
+  Share,
   User,
   X as LucideClose,
   Youtube,
@@ -63,7 +63,7 @@ export function IconBookmark({ title, ...props }: IconProps) {
 }
 
 export function IconShare({ title, ...props }: IconProps) {
-  return <Share2 aria-label={title} aria-hidden={title ? undefined : true} {...stroke} {...props} />;
+  return <Share aria-label={title} aria-hidden={title ? undefined : true} {...stroke} {...props} />;
 }
 
 /** X (Twitter) brand mark */
