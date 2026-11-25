@@ -12,7 +12,7 @@ import { ROLE_RANK, can } from "@/lib/roles";
 export { ROLE_RANK, can } from "@/lib/roles";
 
 const PROFILE_COLUMNS =
-  "id, display_name, role, avatar_url, is_super_admin, verification_level, created_at, username";
+  "id, display_name, role, avatar_url, desk_credit, is_super_admin, verification_level, created_at, username, bio";
 
 /**
  * Score-style elevation:

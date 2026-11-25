@@ -3,9 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { createAuthClient } from "@/lib/supabase/auth-client";
 import { hasSupabaseConfig } from "@/lib/demo-mode";
+import type { DeskCredit } from "@/lib/types";
 import { validateUsername } from "@/lib/username";
 
 export type ProfileSettingsState = { ok?: boolean; error?: string } | null;
+
+function parseDeskCredit(raw: FormDataEntryValue | null): DeskCredit | null {
+  const v = String(raw ?? "").trim();
+  if (v === "writer" || v === "editor") return v;
+  return null;
+}
 
 export async function updateDisplayName(
   _prev: ProfileSettingsState,
@@ -18,6 +25,10 @@ export async function updateDisplayName(
   const displayName = String(formData.get("display_name") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
   const parsed = validateUsername(String(formData.get("username") ?? ""));
+  const hasDeskField = formData.has("desk_credit");
+  const deskCredit = hasDeskField
+    ? parseDeskCredit(formData.get("desk_credit"))
+    : undefined;
 
   if (!displayName) {
     return { error: "Display name is required." };
@@ -29,6 +40,9 @@ export async function updateDisplayName(
     return { error: "Bio must be 500 characters or fewer." };
   }
   if (!parsed.ok) return { error: parsed.error };
+  if (hasDeskField && deskCredit == null) {
+    return { error: "Public credit must be Writer or Editor." };
+  }
 
   const supabase = await createAuthClient();
   const {
@@ -44,13 +58,16 @@ export async function updateDisplayName(
     .maybeSingle();
   if (clash) return { error: "That username is already taken." };
 
+  const patch: Record<string, unknown> = {
+    display_name: displayName,
+    username: parsed.username,
+    bio: bio || null,
+  };
+  if (deskCredit) patch.desk_credit = deskCredit;
+
   const { error } = await supabase
     .from("profiles")
-    .update({
-      display_name: displayName,
-      username: parsed.username,
-      bio: bio || null,
-    })
+    .update(patch)
     .eq("id", user.id);
 
   if (error) {

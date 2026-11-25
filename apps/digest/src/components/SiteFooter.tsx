@@ -13,12 +13,13 @@ import {
   IconYouTube,
 } from "./icons";
 
+/** Visible marks only — links paused until social accounts are ready. */
 const SOCIALS = [
-  { label: "X", href: "#", Icon: IconX },
-  { label: "Instagram", href: "#", Icon: IconInstagram },
-  { label: "Facebook", href: "#", Icon: IconFacebook },
-  { label: "YouTube", href: "#", Icon: IconYouTube },
-  { label: "TikTok", href: "#", Icon: IconTikTok },
+  { label: "X", Icon: IconX },
+  { label: "Instagram", Icon: IconInstagram },
+  { label: "Facebook", Icon: IconFacebook },
+  { label: "YouTube", Icon: IconYouTube },
+  { label: "TikTok", Icon: IconTikTok },
 ] as const;
 
 const CAMPUS_URL = (process.env.NEXT_PUBLIC_CAMPUS_URL ?? "http://localhost:3000").replace(
@@ -110,16 +111,15 @@ export async function SiteFooter() {
           </div>
 
           <ul className="flex shrink-0 items-center gap-5" aria-label={t("follow")}>
-            {SOCIALS.map(({ label, href, Icon }) => (
+            {SOCIALS.map(({ label, Icon }) => (
               <li key={label}>
-                <a
-                  href={href}
-                  aria-label={label}
-                  title={label}
-                  className="block text-ink-soft transition-colors hover:text-ink"
+                <span
+                  aria-label={`${label} (coming soon)`}
+                  title={`${label} — coming soon`}
+                  className="block cursor-default text-ink-soft"
                 >
                   <Icon className="h-[18px] w-[18px]" />
-                </a>
+                </span>
               </li>
             ))}
           </ul>

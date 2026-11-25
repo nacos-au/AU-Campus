@@ -2,10 +2,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { AdSlot } from "@/components/AdSlot";
 import { ImageInfo } from "@/components/ImageInfo";
+import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { RichText } from "@/components/RichText";
 import { LikeShare } from "@/components/LikeShare";
 import { CompactStory } from "@/components/stories";
-import { creditPeople, displayByline, seriesHref } from "@/lib/byline";
+import {
+  creditPeople,
+  deskCreditLine,
+  displayByline,
+  seriesHref,
+} from "@/lib/byline";
 import { readingMinutes } from "@/lib/articles";
 import { digestFeatures } from "@/lib/features";
 import type { ArticleWithMeta } from "@/lib/types";
@@ -23,10 +29,12 @@ export function ArticleView({
 }) {
   const credit = displayByline(article);
   const people = creditPeople(article);
+  const primary = people[0] ?? null;
   const series = article.article_series;
   const seriesLink = seriesHref(series);
   const aliasCredit = article.byline_mode === "alias";
   const hasCover = Boolean(article.cover_url);
+  const showCreditBlock = Boolean(credit) && !aliasCredit && Boolean(primary);
 
   return (
     <div className="py-8">
@@ -79,57 +87,75 @@ export function ArticleView({
           </p>
         )}
 
+        {showCreditBlock && primary && (
+          <div className="mt-6 flex items-center gap-3">
+            {primary.username ? (
+              <Link
+                href={`/author/${primary.username}`}
+                className="shrink-0"
+                title={primary.display_name}
+              >
+                <ProfileAvatar
+                  url={primary.avatar_url}
+                  name={primary.display_name}
+                  size="md"
+                />
+              </Link>
+            ) : (
+              <ProfileAvatar
+                url={primary.avatar_url}
+                name={primary.display_name}
+                size="md"
+              />
+            )}
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-ink">
+                By{" "}
+                {people.map((p, i) => {
+                  const sep =
+                    i === 0 ? null : i === people.length - 1 ? " and " : ", ";
+                  return (
+                    <span key={`${p.display_name}-${i}`}>
+                      {sep}
+                      {p.username ? (
+                        <Link
+                          href={`/author/${p.username}`}
+                          className="underline decoration-ink/30 underline-offset-2 hover:text-accent hover:decoration-accent"
+                        >
+                          {p.display_name}
+                        </Link>
+                      ) : (
+                        <span>{p.display_name}</span>
+                      )}
+                    </span>
+                  );
+                })}
+              </p>
+              <p className="mt-0.5 text-sm text-ink-soft">
+                {deskCreditLine(primary)}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {aliasCredit && credit && (
+          <p className="mt-6 text-sm font-semibold text-ink">By {credit}</p>
+        )}
+
         <div
-          className={`mt-6 flex flex-wrap items-center gap-x-4 gap-y-1 py-3 text-xs text-ink-soft ${
+          className={`mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 py-3 text-xs text-ink-soft ${
             hasCover
               ? "border-y border-rule"
               : "border-t border-ink border-b border-rule"
           }`}
         >
-          {(credit || series) && (
-            <span>
-              {credit && (
-                <>
-                  By{" "}
-                  {aliasCredit ? (
-                    <span className="font-semibold text-ink">{credit}</span>
-                  ) : (
-                    people.map((p, i) => {
-                      const sep =
-                        i === 0 ? null : i === people.length - 1 ? " and " : ", ";
-                      return (
-                        <span key={`${p.display_name}-${i}`}>
-                          {sep}
-                          {p.username ? (
-                            <Link
-                              href={`/author/${p.username}`}
-                              className="font-semibold text-ink hover:text-accent"
-                            >
-                              {p.display_name}
-                            </Link>
-                          ) : (
-                            <span className="font-semibold text-ink">
-                              {p.display_name}
-                            </span>
-                          )}
-                        </span>
-                      );
-                    })
-                  )}
-                </>
-              )}
-              {credit && series && seriesLink && (
-                <span className="text-ink-soft"> · </span>
-              )}
-              {series && seriesLink && (
-                <Link
-                  href={seriesLink}
-                  className="font-semibold text-ink hover:text-accent"
-                >
-                  {series.title}
-                </Link>
-              )}
-            </span>
+          {series && seriesLink && (
+            <Link
+              href={seriesLink}
+              className="font-semibold text-ink hover:text-accent"
+            >
+              {series.title}
+            </Link>
           )}
           <span>{published}</span>
           {article.content_updated_at &&

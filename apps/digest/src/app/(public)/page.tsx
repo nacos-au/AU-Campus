@@ -119,8 +119,13 @@ export default async function HomePage() {
       .map((a) => a!.id)
   );
   const remaining = articles.filter((a) => !usedIds.has(a.id));
-  /** Fill under the 2-up so the main column matches a tall Breaking/Top rail. */
-  const underFeatures = remaining.slice(0, showRail ? 8 : 0);
+  /** Match under-2-up list length to Top News (else Breaking) so columns end together. */
+  const underCap = showTopNews
+    ? topNews.length
+    : showBreaking
+      ? breaking.length
+      : 0;
+  const underFeatures = remaining.slice(0, underCap);
 
   const sectionHighlight = new Map<number, ArticleWithMeta>();
   for (const s of slots.filter((x) => x.kind === "section_highlight")) {

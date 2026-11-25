@@ -3,10 +3,14 @@ import type {
   ArticleCollaborator,
   ArticleSeries,
   BylineMode,
+  DeskCredit,
   Profile,
+  Role,
 } from "@/lib/types";
+import { site } from "@/lib/site";
 
-type CreditPerson = Pick<Profile, "display_name" | "username">;
+export type CreditPerson = Pick<Profile, "display_name" | "username"> &
+  Partial<Pick<Profile, "avatar_url" | "desk_credit" | "role" | "base_role">>;
 
 function collaboratorPeople(
   rows: ArticleCollaborator[] | null | undefined
@@ -31,7 +35,13 @@ export function creditPeople(
   const owner = article.profiles?.display_name
     ? article.profiles
     : article.byline?.trim()
-      ? { display_name: article.byline.trim(), username: null }
+      ? {
+          display_name: article.byline.trim(),
+          username: null,
+          avatar_url: null,
+          desk_credit: null,
+          role: "writer" as Role,
+        }
       : null;
   const others = collaboratorPeople(article.article_collaborators);
   return owner ? [owner, ...others] : others;
@@ -55,6 +65,36 @@ export function displayByline(
   if (names.length === 1) return names[0];
   if (names.length === 2) return `${names[0]} and ${names[1]}`;
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
+/**
+ * Resolve public desk title. Never returns admin.
+ * Null desk_credit: writer→writer, editor→editor, admin→writer.
+ */
+export function resolveDeskCredit(
+  person:
+    | Partial<Pick<Profile, "desk_credit" | "role" | "base_role">>
+    | null
+    | undefined
+): DeskCredit {
+  if (person?.desk_credit === "writer" || person?.desk_credit === "editor") {
+    return person.desk_credit;
+  }
+  const ladder = person?.base_role ?? person?.role;
+  if (ladder === "editor") return "editor";
+  return "writer";
+}
+
+/** e.g. "Writer at AUSA Digest" */
+export function deskCreditLine(
+  person:
+    | Partial<Pick<Profile, "desk_credit" | "role" | "base_role">>
+    | null
+    | undefined
+): string {
+  const desk = resolveDeskCredit(person);
+  const label = desk === "editor" ? "Editor" : "Writer";
+  return `${label} at ${site.name}`;
 }
 
 export function seriesHref(

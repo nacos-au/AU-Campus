@@ -28,6 +28,9 @@ export type WeeklyIssueStatus =
   | "archived";
 export type WeeklySlotKind = "lead" | "second" | "rail" | "inside";
 
+/** Public byline desk title — never admin. */
+export type DeskCredit = "writer" | "editor";
+
 export interface Profile {
   id: string;
   display_name: string;
@@ -36,6 +39,11 @@ export interface Profile {
   bio?: string | null;
   /** Public URL in the `avatars` bucket — shown small only, never full-view. */
   avatar_url?: string | null;
+  /**
+   * Public credit line on articles: writer | editor only.
+   * Independent of Admin Mode / elevated role.
+   */
+  desk_credit?: DeskCredit | null;
   role: Role;
   /** Underlying newsroom ladder before Admin Mode elevation. */
   base_role?: Role;
@@ -99,12 +107,14 @@ export interface Article {
 export interface ArticleCollaborator {
   user_id: string;
   credit_order: number;
-  profiles?: Pick<Profile, "display_name" | "username"> | null;
+  profiles?: (Pick<Profile, "display_name" | "username"> &
+    Partial<Pick<Profile, "avatar_url" | "desk_credit" | "role">>) | null;
 }
 
 export interface ArticleWithMeta extends Article {
   sections: Pick<Section, "slug" | "name"> | null;
-  profiles: Pick<Profile, "display_name" | "username"> | null;
+  profiles: (Pick<Profile, "display_name" | "username"> &
+    Partial<Pick<Profile, "avatar_url" | "desk_credit" | "role">>) | null;
   article_series?: Pick<ArticleSeries, "id" | "slug" | "title"> | null;
   article_collaborators?: ArticleCollaborator[] | null;
   assignee?: Pick<Profile, "display_name"> | null;

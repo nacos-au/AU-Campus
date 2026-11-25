@@ -1,6 +1,6 @@
 /** Public list/detail select — includes author, co-authors, optional series. */
 export const ARTICLE_PUBLIC_SELECT =
-  "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username), article_series(id, slug, title), article_collaborators(user_id, credit_order, profiles(display_name, username))";
+  "*, sections(slug, name), profiles!articles_author_id_fkey(display_name, username, avatar_url, desk_credit, role), article_series(id, slug, title), article_collaborators(user_id, credit_order, profiles(display_name, username, avatar_url, desk_credit, role))";
 
 interface TiptapNode {
   type?: string;

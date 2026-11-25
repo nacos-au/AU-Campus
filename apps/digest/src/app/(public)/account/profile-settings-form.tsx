@@ -5,6 +5,7 @@ import {
   updateDisplayName,
   type ProfileSettingsState,
 } from "./actions";
+import type { DeskCredit } from "@/lib/types";
 import { USERNAME_HINT, USERNAME_MAX } from "@/lib/username";
 
 export function ProfileSettingsForm({
@@ -12,11 +13,15 @@ export function ProfileSettingsForm({
   username,
   email,
   bio,
+  deskCredit,
+  showDeskCredit = false,
 }: {
   displayName: string;
   username: string;
   email: string;
   bio: string;
+  deskCredit: DeskCredit;
+  showDeskCredit?: boolean;
 }) {
   const [state, formAction, pending] = useActionState<ProfileSettingsState, FormData>(
     updateDisplayName,
@@ -76,6 +81,39 @@ export function ProfileSettingsForm({
           Shown on your public author page.
         </span>
       </label>
+
+      {showDeskCredit && (
+        <fieldset className="block">
+          <legend className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+            Public credit
+          </legend>
+          <p className="mt-1 text-[12px] text-ink-soft">
+            Shown under your name on articles. Admin Mode does not change this.
+          </p>
+          <div className="mt-2 flex flex-col gap-2">
+            {(
+              [
+                { value: "writer", label: "Writer at AUSA Digest" },
+                { value: "editor", label: "Editor at AUSA Digest" },
+              ] as const
+            ).map((opt) => (
+              <label
+                key={opt.value}
+                className="flex cursor-pointer items-center gap-2 text-sm text-ink"
+              >
+                <input
+                  type="radio"
+                  name="desk_credit"
+                  value={opt.value}
+                  defaultChecked={deskCredit === opt.value}
+                  className="accent-ink"
+                />
+                {opt.label}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
 
       <label className="block">
         <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">

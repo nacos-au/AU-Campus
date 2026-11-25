@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getSessionProfile, hasRole } from "@/lib/auth";
+import { resolveDeskCredit } from "@/lib/byline";
 import { ProfileSettingsForm } from "../profile-settings-form";
 import { ProfilePhotoSection } from "../profile-photo-section";
 
@@ -13,6 +14,16 @@ export default async function AccountSettingsPage() {
 
   const isAdmin = hasRole(profile, "admin");
   const canEditPhoto = hasRole(profile, "writer");
+  const showDeskCredit = hasRole(profile, "writer");
+  const deskCredit = resolveDeskCredit(
+    profile
+      ? {
+          desk_credit: profile.desk_credit,
+          role: profile.base_role ?? profile.role,
+          base_role: profile.base_role,
+        }
+      : null
+  );
 
   return (
     <div className="mx-auto max-w-3xl py-8">
@@ -48,6 +59,8 @@ export default async function AccountSettingsPage() {
         username={profile?.username ?? ""}
         email={user.email}
         bio={profile?.bio ?? ""}
+        deskCredit={deskCredit}
+        showDeskCredit={showDeskCredit}
       />
     </div>
   );
