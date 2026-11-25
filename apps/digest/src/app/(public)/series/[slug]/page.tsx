@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { CompactStory } from "@/components/stories";
 import { ARTICLE_PUBLIC_SELECT } from "@/lib/articles";
+import { socialMetadata } from "@/lib/og";
 import type { ArticleSeries, ArticleWithMeta } from "@/lib/types";
 
 export async function generateMetadata({
@@ -18,7 +19,14 @@ export async function generateMetadata({
     .select("title")
     .eq("slug", slug)
     .maybeSingle();
-  return { title: data?.title ? `${data.title} · Series` : "Series" };
+  const title = data?.title ? `${data.title} · Series` : "Series";
+  return {
+    title,
+    ...socialMetadata({
+      title,
+      brandSubtitle: data?.title ?? "Series",
+    }),
+  };
 }
 
 export default async function SeriesPage({

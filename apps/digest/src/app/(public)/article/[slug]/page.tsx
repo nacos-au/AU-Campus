@@ -11,6 +11,7 @@ import { creditPeople, displayByline, seriesHref } from "@/lib/byline";
 import { CompactStory } from "@/components/stories";
 import { ARTICLE_PUBLIC_SELECT, readingMinutes } from "@/lib/articles";
 import { digestFeatures } from "@/lib/features";
+import { socialMetadata } from "@/lib/og";
 import type { ArticleWithMeta } from "@/lib/types";
 
 export const revalidate = 60;
@@ -37,12 +38,14 @@ export async function generateMetadata({
   return {
     title: article.title,
     description: article.dek ?? undefined,
-    openGraph: {
+    ...socialMetadata({
       title: article.title,
-      description: article.dek ?? undefined,
-      images: article.cover_url ? [article.cover_url] : undefined,
+      description: article.dek,
+      // Cover only — never personal avatar_url (alias or personal bylines).
+      image: article.cover_url,
+      brandSubtitle: article.title,
       type: "article",
-    },
+    }),
   };
 }
 

@@ -1,6 +1,7 @@
 -- =============================================================================
--- Digest private draft share links. Safe to re-run.
--- Fixes: "Sharing is unavailable until the database update is applied."
+-- Digest private draft share links (multi-link). Safe to re-run.
+-- - Token via gen_random_uuid (no pgcrypto)
+-- - Many active links per article; deactivate_article_share_link(link_id)
 -- Additive only. Does not alter submit / review_approve / collaborators.
 -- =============================================================================
 
@@ -15,12 +16,15 @@ create table if not exists public.article_share_links (
   revoked_at timestamptz
 );
 
-create unique index if not exists article_share_links_one_active
-  on public.article_share_links (article_id)
-  where revoked_at is null;
+-- Multi-link: many active shares per article (deactivate individually).
+drop index if exists article_share_links_one_active;
 
 create index if not exists article_share_links_article_idx
   on public.article_share_links (article_id);
+
+create index if not exists article_share_links_active_idx
+  on public.article_share_links (article_id)
+  where revoked_at is null;
 
 create table if not exists public.article_share_claims (
   article_id uuid not null references public.articles (id) on delete cascade,
@@ -164,11 +168,7 @@ begin
     raise exception 'Only unpublished pieces can be shared privately';
   end if;
 
-  update public.article_share_links
-  set revoked_at = now()
-  where article_id = p_article_id
-    and revoked_at is null;
-
+  -- Multi-link: do not revoke existing active links.
   -- search_path is empty: use pg_catalog gen_random_uuid (no pgcrypto)
   tok := replace(gen_random_uuid()::text || gen_random_uuid()::text, '-', '');
 
@@ -388,7 +388,8 @@ begin
 end;
 $$;
 
-create or replace function public.revoke_article_share_link(p_article_id uuid)
+-- Prefer deactivate_article_share_link(link_id). Keep old name as alias for link_id.
+create or replace function public.deactivate_article_share_link(p_link_id uuid)
 returns void
 language plpgsql
 security definer
@@ -396,14 +397,34 @@ set search_path = ''
 as $$
 declare
   actor uuid := auth.uid();
+  link public.article_share_links;
 begin
-  if not private.can_manage_article_share(p_article_id, actor) then
+  if actor is null then
+    raise exception 'Not authenticated';
+  end if;
+  select * into link from public.article_share_links where id = p_link_id;
+  if not found then
+    raise exception 'Share link not found';
+  end if;
+  if not private.can_manage_article_share(link.article_id, actor) then
     raise exception 'Not allowed';
   end if;
   update public.article_share_links
   set revoked_at = now()
-  where article_id = p_article_id
+  where id = p_link_id
     and revoked_at is null;
+end;
+$$;
+
+-- Legacy name: now deactivates a single link by id (not all links for an article).
+create or replace function public.revoke_article_share_link(p_link_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform public.deactivate_article_share_link(p_link_id);
 end;
 $$;
 
@@ -444,6 +465,9 @@ grant execute on function public.open_shared_article(uuid) to authenticated;
 
 revoke all on function public.revoke_article_share_claim(uuid, uuid) from public;
 grant execute on function public.revoke_article_share_claim(uuid, uuid) to authenticated;
+
+revoke all on function public.deactivate_article_share_link(uuid) from public;
+grant execute on function public.deactivate_article_share_link(uuid) to authenticated;
 
 revoke all on function public.revoke_article_share_link(uuid) from public;
 grant execute on function public.revoke_article_share_link(uuid) to authenticated;

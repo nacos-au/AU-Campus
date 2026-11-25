@@ -5,12 +5,20 @@ import type { Metadata } from "next";
 import { RichText } from "@/components/RichText";
 import { digestFeatures } from "@/lib/features";
 import { requireRole } from "@/lib/auth";
+import { socialMetadata } from "@/lib/og";
+import { site } from "@/lib/site";
 import { createAuthClient } from "@/lib/supabase/auth-client";
 
 export const metadata: Metadata = {
   title: "Private draft",
+  description: `Shared draft · ${site.name}`,
   robots: { index: false, follow: false },
   referrer: "no-referrer",
+  ...socialMetadata({
+    title: `Private draft · ${site.name}`,
+    description: `Shared draft · ${site.name}`,
+    brandSubtitle: "Private draft",
+  }),
 };
 
 interface ShareView {

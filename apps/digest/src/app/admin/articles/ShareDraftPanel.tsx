@@ -7,6 +7,8 @@ import { digestFeatures } from "@/lib/features";
 
 type ShareMode = "live" | "snapshot";
 
+const MAX_ACTIVE_LINKS = 20;
+
 interface ActiveLink {
   id: string;
   token: string;
@@ -20,6 +22,19 @@ interface ClaimRow {
   created_at: string;
   link_id: string;
   profiles: { display_name: string; username: string | null } | null;
+}
+
+function CopyIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth={1.75} aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2m-6 12h8a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2Z" />
+    </svg>
+  );
+}
+
+function shareUrlFor(token: string): string {
+  if (typeof window === "undefined") return `/share/a/${token}`;
+  return `${window.location.origin}/share/a/${token}`;
 }
 
 export function ShareDraftPanel({
@@ -37,10 +52,10 @@ export function ShareDraftPanel({
   const qc = useQueryClient();
   const [mode, setMode] = useState<ShareMode>("live");
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const linkQuery = useQuery({
-    queryKey: ["article-share-link", articleId],
+  const linksQuery = useQuery({
+    queryKey: ["article-share-links", articleId],
     enabled: open && digestFeatures.draftShare,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -48,9 +63,9 @@ export function ShareDraftPanel({
         .select("id, token, mode, created_at, snapshot")
         .eq("article_id", articleId)
         .is("revoked_at", null)
-        .maybeSingle();
+        .order("created_at", { ascending: false });
       if (error) throw error;
-      return data as ActiveLink | null;
+      return (data ?? []) as ActiveLink[];
     },
   });
 
@@ -81,7 +96,7 @@ export function ShareDraftPanel({
     },
     onSuccess: () => {
       setError(null);
-      qc.invalidateQueries({ queryKey: ["article-share-link", articleId] });
+      qc.invalidateQueries({ queryKey: ["article-share-links", articleId] });
       qc.invalidateQueries({ queryKey: ["article-share-claims", articleId] });
     },
     onError: (e: Error) => {
@@ -97,24 +112,25 @@ export function ShareDraftPanel({
     },
   });
 
-  const rotateLink = useMutation({
-    mutationFn: async () => {
-      const { error: revErr } = await supabase.rpc("revoke_article_share_link", {
-        p_article_id: articleId,
-      });
-      if (revErr) throw revErr;
-      const { data, error } = await supabase.rpc("create_article_share_link", {
-        p_article_id: articleId,
-        p_mode: mode,
+  const deactivateLink = useMutation({
+    mutationFn: async (linkId: string) => {
+      const { error } = await supabase.rpc("deactivate_article_share_link", {
+        p_link_id: linkId,
       });
       if (error) throw error;
-      return data;
     },
     onSuccess: () => {
       setError(null);
-      qc.invalidateQueries({ queryKey: ["article-share-link", articleId] });
+      qc.invalidateQueries({ queryKey: ["article-share-links", articleId] });
     },
-    onError: (e: Error) => setError(e.message),
+    onError: (e: Error) => {
+      const msg = e.message || "Could not deactivate link";
+      if (/could not find the function/i.test(msg) || /schema cache/i.test(msg)) {
+        setError("Sharing is unavailable until the database update is applied.");
+      } else {
+        setError(msg);
+      }
+    },
   });
 
   const revokeClaim = useMutation({
@@ -133,151 +149,157 @@ export function ShareDraftPanel({
 
   if (!open || !digestFeatures.draftShare) return null;
 
-  const active = linkQuery.data;
-  const shareUrl =
-    typeof window !== "undefined" && active?.token
-      ? `${window.location.origin}/share/a/${active.token}`
-      : "";
+  const links = linksQuery.data ?? [];
+  const atCap = links.length >= MAX_ACTIVE_LINKS;
+  const claims = (claimsQuery.data ?? []).filter((c) => c.user_id !== userId);
 
-  async function copyLink() {
-    if (!shareUrl) return;
+  async function copyLink(linkId: string, token: string) {
+    const url = shareUrlFor(token);
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(url);
+      setCopiedId(linkId);
+      window.setTimeout(() => setCopiedId((id) => (id === linkId ? null : id)), 2000);
     } catch {
       setError("Could not copy — select the link and copy manually.");
     }
   }
-
-  const claims = (claimsQuery.data ?? []).filter((c) => c.user_id !== userId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-4 sm:items-center">
       <div
         role="dialog"
         aria-labelledby="share-draft-title"
-        className="max-h-[90vh] w-full max-w-md overflow-y-auto border border-rule-dark bg-paper p-5 shadow-lg"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto border border-rule-dark bg-paper shadow-lg"
       >
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-3 border-b border-ink px-5 py-4">
           <div>
             <h2
               id="share-draft-title"
-              className="font-serif text-xl font-bold"
+              className="font-serif text-xl font-bold tracking-tight"
             >
               Share draft
             </h2>
             <p className="mt-1 text-sm text-ink-soft">
-              Copy a private link. People with a Digest account who open it are
-              listed below — view only. You can revoke anytime.
+              Private links for Digest accounts — view only. Add several; deactivate
+              any one when you are done with it.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-ink-soft hover:text-ink"
+            className="text-2xl leading-none text-ink-soft hover:text-ink"
             aria-label="Close"
           >
             ×
           </button>
         </div>
 
-        <div className="mt-4 space-y-2">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">
-            Link mode
-          </p>
-          <div className="flex gap-2">
+        <div className="flex flex-wrap items-end justify-between gap-3 border-b border-rule px-5 py-3">
+          <div className="flex gap-1">
             {(
               [
-                {
-                  id: "live" as const,
-                  label: "Live updates",
-                  hint: "They see edits until revoked",
-                },
-                {
-                  id: "snapshot" as const,
-                  label: "Snapshot",
-                  hint: "Frozen copy from now",
-                },
+                { id: "live" as const, label: "Live" },
+                { id: "snapshot" as const, label: "Snapshot" },
               ] as const
             ).map((opt) => (
               <button
                 key={opt.id}
                 type="button"
                 onClick={() => setMode(opt.id)}
-                className={`flex-1 border px-3 py-2 text-left text-xs ${
+                className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider ${
                   mode === opt.id
-                    ? "border-ink bg-ink text-paper"
-                    : "border-rule-dark hover:border-ink"
+                    ? "bg-ink text-paper"
+                    : "text-ink-soft hover:text-ink"
                 }`}
               >
-                <span className="block font-semibold uppercase tracking-wider">
-                  {opt.label}
-                </span>
-                <span
-                  className={`mt-0.5 block ${
-                    mode === opt.id ? "text-paper/80" : "text-ink-soft"
-                  }`}
-                >
-                  {opt.hint}
-                </span>
+                {opt.label}
               </button>
             ))}
           </div>
+          <button
+            type="button"
+            disabled={createLink.isPending || atCap}
+            onClick={() => createLink.mutate(mode)}
+            className="bg-accent px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white hover:bg-accent-hover disabled:opacity-50"
+          >
+            {createLink.isPending ? "Adding…" : "Add link"}
+          </button>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          {!active ? (
-            <button
-              type="button"
-              disabled={createLink.isPending}
-              onClick={() => createLink.mutate(mode)}
-              className="bg-accent px-3 py-2 text-xs font-semibold uppercase tracking-wider text-white hover:bg-accent-hover disabled:opacity-50"
-            >
-              {createLink.isPending ? "Creating…" : "Create link"}
-            </button>
+        {atCap && (
+          <p className="border-b border-rule px-5 py-2 text-[12px] text-ink-soft">
+            Limit of {MAX_ACTIVE_LINKS} active links. Deactivate one to add another.
+          </p>
+        )}
+
+        <div className="px-5">
+          {linksQuery.isLoading ? (
+            <p className="py-6 text-sm text-ink-soft">Loading links…</p>
+          ) : links.length === 0 ? (
+            <p className="py-6 text-sm text-ink-soft">
+              No active links yet. Choose Live or Snapshot, then Add link.
+            </p>
           ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => void copyLink()}
-                className="bg-ink px-3 py-2 text-xs font-semibold uppercase tracking-wider text-paper hover:bg-accent"
-              >
-                {copied ? "Copied" : "Copy link"}
-              </button>
-              <button
-                type="button"
-                disabled={rotateLink.isPending}
-                onClick={() => rotateLink.mutate()}
-                className="border border-ink px-3 py-2 text-xs font-semibold uppercase tracking-wider hover:bg-ink hover:text-paper disabled:opacity-50"
-              >
-                {rotateLink.isPending ? "Rotating…" : "Rotate link"}
-              </button>
-            </>
+            <ul className="divide-y divide-rule">
+              {links.map((link) => {
+                const url = shareUrlFor(link.token);
+                const copied = copiedId === link.id;
+                return (
+                  <li key={link.id} className="py-3">
+                    <div className="flex items-stretch gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void copyLink(link.id, link.token)}
+                        className="min-w-0 flex-1 text-left"
+                        title="Tap to copy"
+                      >
+                        <span className="block break-all font-mono text-[11px] leading-snug text-ink underline-offset-2 hover:underline">
+                          {url}
+                        </span>
+                        <span className="mt-1 block text-[10px] font-semibold uppercase tracking-wider text-ink-soft">
+                          {link.mode === "live" ? "Live" : "Snapshot"}
+                          {" · "}
+                          {new Date(link.created_at).toLocaleString()}
+                          {link.mode === "snapshot" && link.snapshot?.captured_at
+                            ? ` · Frozen ${new Date(link.snapshot.captured_at).toLocaleString()}`
+                            : ""}
+                          {copied ? " · Copied" : ""}
+                        </span>
+                      </button>
+                      <div className="flex shrink-0 flex-col items-end justify-center gap-2 border-l border-rule pl-2">
+                        <button
+                          type="button"
+                          onClick={() => void copyLink(link.id, link.token)}
+                          className="flex h-8 w-8 items-center justify-center text-ink-soft hover:text-ink"
+                          aria-label={copied ? "Copied" : "Copy link"}
+                          title={copied ? "Copied" : "Copy link"}
+                        >
+                          <CopyIcon />
+                        </button>
+                        <button
+                          type="button"
+                          disabled={deactivateLink.isPending}
+                          onClick={() => deactivateLink.mutate(link.id)}
+                          className="text-[10px] font-bold uppercase tracking-wider text-red-700 hover:text-red-900 disabled:opacity-50"
+                        >
+                          Deactivate
+                        </button>
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
 
-        {active && (
-          <div className="mt-3 border border-rule bg-gray-50 p-3">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">
-              Active · {active.mode === "live" ? "Live" : "Snapshot"}
-              {active.mode === "snapshot" && active.snapshot?.captured_at
-                ? ` · ${new Date(active.snapshot.captured_at).toLocaleString()}`
-                : ""}
-            </p>
-            <p className="mt-1 break-all font-mono text-[11px] text-ink">
-              {shareUrl || `/share/a/${active.token}`}
-            </p>
-          </div>
-        )}
-
         {error && (
-          <p className="mt-3 border border-accent/30 bg-accent-soft px-3 py-2 text-sm text-accent">
+          <p className="mx-5 mb-3 border border-accent/30 bg-accent-soft px-3 py-2 text-sm text-accent">
             {error}
           </p>
         )}
 
-        <div className="mt-5 border-t border-rule pt-4">
+        <div className="border-t border-ink px-5 py-4">
           <h3 className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">
             Who has access
           </h3>
@@ -285,7 +307,7 @@ export function ShareDraftPanel({
             <p className="mt-2 text-sm text-ink-soft">Loading…</p>
           ) : claims.length === 0 ? (
             <p className="mt-2 text-sm text-ink-soft">
-              Nobody has opened the link yet.
+              Nobody has opened a link yet.
             </p>
           ) : (
             <ul className="mt-2 divide-y divide-rule">

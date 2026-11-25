@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CompactStory } from "@/components/stories";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { ARTICLE_PUBLIC_SELECT } from "@/lib/articles";
+import { socialMetadata } from "@/lib/og";
 import { site } from "@/lib/site";
 import type { ArticleSeries, ArticleWithMeta, Profile } from "@/lib/types";
 
@@ -21,11 +22,19 @@ export async function generateMetadata({
     .eq("username", username)
     .maybeSingle();
   const name = (data as { display_name?: string } | null)?.display_name;
+  const title = name ? `${name} · Contributor` : `@${username}`;
+  const description = name
+    ? `Stories by ${name} in ${site.name}.`
+    : undefined;
   return {
-    title: name ? `${name} · Contributor` : `@${username}`,
-    description: name
-      ? `Stories by ${name} in ${site.name}.`
-      : undefined,
+    title,
+    description,
+    // Brand card only — never use personal avatar_url for social previews.
+    ...socialMetadata({
+      title,
+      description,
+      brandSubtitle: name ?? username,
+    }),
   };
 }
 

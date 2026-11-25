@@ -8,6 +8,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
 import { isRtlLocale } from "@/i18n/locales";
 import { site } from "@/lib/site";
+import { brandOgImage, siteOrigin, socialMetadata } from "@/lib/og";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { GoogleAnalytics } from "@/components/GoogleAnalytics";
 import "./globals.css";
@@ -29,11 +30,17 @@ const masthead = Averia_Serif_Libre({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteOrigin()),
   title: {
     default: `${site.name} — ${site.university}`,
     template: `%s — ${site.name}`,
   },
   description: site.tagline,
+  ...socialMetadata({
+    title: site.name,
+    description: site.tagline,
+    image: brandOgImage(),
+  }),
 };
 
 export default async function RootLayout({
