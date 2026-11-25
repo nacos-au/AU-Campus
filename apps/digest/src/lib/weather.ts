@@ -17,7 +17,7 @@ export type WeatherSnapshot = {
   reading: string;
 };
 
-/** Plain-language reading of Owo conditions for students. */
+/** Plain-language reading of Achievers campus conditions for students. */
 export function interpretWeather(
   tempC: number,
   condition: WeatherCondition
@@ -30,15 +30,15 @@ export function interpretWeather(
         : tempC >= 26
           ? "A comfortable warm day for classes, courts, and walking the grounds."
           : tempC >= 22
-            ? "Mild for Owo — pleasant for long lectures and evening training."
+            ? "Mild on campus — pleasant for long lectures and evening training."
             : "Cooler than usual — a light layer will feel good between buildings.";
 
   const sky: Record<WeatherCondition, string> = {
-    clear: "Skies are clear over Owo.",
-    partly: "Expect mixed sun and cloud.",
-    cloud: "Cloud cover is keeping the sun soft.",
-    fog: "Visibility is low in the mist — give yourself extra travel time.",
-    drizzle: "Light drizzle is in the air — pack a cover for books and phones.",
+    clear: "Skies are clear over Achievers.",
+    partly: "Expect mixed sun and cloud across campus.",
+    cloud: "Cloud cover is keeping the sun soft on the grounds.",
+    fog: "Visibility is low in the mist — give yourself extra time between halls.",
+    drizzle: "Light drizzle on campus — pack a cover for books and phones.",
     rain: "Rain is in play — waterproof bags and careful footing on the paths.",
     storm: "Thunderstorm risk — delay open-field sessions if lightning is near.",
     snow: "Unusual cold precipitation — treat outdoor plans with care.",
@@ -47,8 +47,14 @@ export function interpretWeather(
   return `${sky[condition]} ${heat}`;
 }
 
-/** Achievers University / Owo, Ondo. */
-export const OWO_COORDS = { lat: 7.196, lon: 5.586 } as const;
+/**
+ * Achievers University campus (Idasen / Uteh Road).
+ * Pin is the main campus footprint, not downtown Owo.
+ */
+export const CAMPUS_COORDS = { lat: 7.168824, lon: 5.589172 } as const;
+
+/** @deprecated Use CAMPUS_COORDS */
+export const OWO_COORDS = CAMPUS_COORDS;
 
 function mapWmo(code: number): { condition: WeatherCondition; label: string } {
   if (code === 0) return { condition: "clear", label: "Clear" };
@@ -64,11 +70,11 @@ function mapWmo(code: number): { condition: WeatherCondition; label: string } {
   return { condition: "cloud", label: "Cloudy" };
 }
 
-export async function fetchOwoWeather(): Promise<WeatherSnapshot | null> {
+export async function fetchCampusWeather(): Promise<WeatherSnapshot | null> {
   try {
     const url = new URL("https://api.open-meteo.com/v1/forecast");
-    url.searchParams.set("latitude", String(OWO_COORDS.lat));
-    url.searchParams.set("longitude", String(OWO_COORDS.lon));
+    url.searchParams.set("latitude", String(CAMPUS_COORDS.lat));
+    url.searchParams.set("longitude", String(CAMPUS_COORDS.lon));
     url.searchParams.set("current", "temperature_2m,weather_code");
     url.searchParams.set("timezone", "Africa/Lagos");
 
@@ -98,3 +104,6 @@ export async function fetchOwoWeather(): Promise<WeatherSnapshot | null> {
     return null;
   }
 }
+
+/** @deprecated Use fetchCampusWeather */
+export const fetchOwoWeather = fetchCampusWeather;

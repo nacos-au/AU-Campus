@@ -195,7 +195,7 @@ export async function SiteFooter() {
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-xs text-ink-soft">
           <p>
             © {new Date().getFullYear()} {site.name}, {site.university}.{" "}
-            {t("rights")} Weather for Owo via{" "}
+            {t("rights")} Campus weather via{" "}
             <a
               href="https://open-meteo.com/"
               className="underline-offset-2 hover:text-ink hover:underline"

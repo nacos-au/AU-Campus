@@ -1,5 +1,5 @@
 import { WeatherIcon } from "@/components/WeatherIcon";
-import { fetchOwoWeather } from "@/lib/weather";
+import { fetchCampusWeather } from "@/lib/weather";
 
 type Props = {
   className?: string;
@@ -12,10 +12,10 @@ export async function WeatherBadge({
   showPlace = false,
   size = "sm",
 }: Props) {
-  const weather = await fetchOwoWeather();
+  const weather = await fetchCampusWeather();
   if (!weather) return null;
 
-  const title = `${weather.label} in Owo · ${weather.tempC}°C · ${weather.attribution}`;
+  const title = `${weather.label} on Achievers campus · ${weather.tempC}°C · ${weather.attribution}`;
   const iconClass = size === "lg" ? "h-6 w-6 shrink-0" : "h-4 w-4 shrink-0";
   const tempClass =
     size === "lg"
@@ -32,7 +32,7 @@ export async function WeatherBadge({
       <span className={tempClass}>
         {weather.tempC}°
         {showPlace ? (
-          <span className="ml-1 font-medium text-ink-soft">Owo</span>
+          <span className="ml-1 font-medium text-ink-soft">Campus</span>
         ) : null}
       </span>
     </span>

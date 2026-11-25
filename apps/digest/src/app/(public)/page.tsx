@@ -14,7 +14,7 @@ import {
 import { ARTICLE_PUBLIC_SELECT } from "@/lib/articles";
 import { todaysFact, todaysWord } from "@/lib/campus-lore";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
-import { fetchOwoWeather } from "@/lib/weather";
+import { fetchCampusWeather } from "@/lib/weather";
 import type {
   ArticleWithMeta,
   CampusFact,
@@ -58,7 +58,7 @@ export default async function HomePage() {
         .eq("active", true)
         .order("sort_order")
         .order("created_at"),
-      fetchOwoWeather(),
+      fetchCampusWeather(),
     ]);
 
   const fact = todaysFact((factsData ?? []) as CampusFact[]);

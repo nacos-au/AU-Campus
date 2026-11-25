@@ -9,12 +9,12 @@ type Props = {
 /** Large interpretive weather block for the home rail (above Breaking). */
 export function WeatherPanel({
   weather,
-  placeLabel = "Owo, Ondo",
+  placeLabel = "Achievers campus",
 }: Props) {
   return (
     <div className="mb-6 hidden border-b border-rule pb-6 lg:block">
       <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-ink-soft">
-        Campus weather
+        On campus
       </p>
       <div className="mt-3 flex items-start gap-4">
         <WeatherIcon
