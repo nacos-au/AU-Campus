@@ -95,12 +95,13 @@ export function LikeShare({
 
   async function share() {
     const url = window.location.href;
+    const clipboard = title.trim() ? `${title.trim()}\n${url}` : url;
     try {
       if (navigator.share) {
-        await navigator.share({ title, url });
+        await navigator.share({ title, text: title, url });
         return;
       }
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(clipboard);
       setMsg("Link copied.");
     } catch {
       /* user dismissed */

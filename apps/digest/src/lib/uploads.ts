@@ -11,9 +11,15 @@ const AVATAR_MIME = new Set(["image/png", "image/jpeg", "image/webp"]);
 export async function uploadCover(
   supabase: SupabaseClient,
   file: File,
-  folder: "articles" | "editions" | "ads"
+  folder: "articles" | "editions" | "ads",
+  /** Optional post/story slug fragment so the object path is recognizable. */
+  nameHint?: string | null
 ): Promise<string> {
-  const path = `${folder}/${crypto.randomUUID()}-${sanitize(file.name)}`;
+  const hint = nameHint?.trim()
+    ? sanitize(nameHint.trim().toLowerCase().replace(/\s+/g, "-")).slice(0, 48)
+    : "";
+  const prefix = hint ? `${hint}-` : "";
+  const path = `${folder}/${prefix}${crypto.randomUUID()}-${sanitize(file.name)}`;
   const { error } = await supabase.storage.from("covers").upload(path, file);
   if (error) throw new Error(error.message);
   return supabase.storage.from("covers").getPublicUrl(path).data.publicUrl;

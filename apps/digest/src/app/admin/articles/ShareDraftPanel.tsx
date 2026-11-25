@@ -36,15 +36,19 @@ function shareUrlFor(token: string): string {
 
 export function ShareDraftPanel({
   articleId,
+  articleTitle,
   userId,
   open,
   onClose,
 }: {
   articleId: string;
+  /** Headline used to label links and clipboard text. */
+  articleTitle?: string;
   userId: string;
   open: boolean;
   onClose: () => void;
 }) {
+  const postLabel = (articleTitle ?? "").trim() || "Untitled draft";
   const supabase = useMemo(() => createClient(), []);
   const qc = useQueryClient();
   const [mode, setMode] = useState<ShareMode>("live");
@@ -152,8 +156,9 @@ export function ShareDraftPanel({
 
   async function copyLink(linkId: string, token: string) {
     const url = shareUrlFor(token);
+    const clipboard = `${postLabel}\n${url}`;
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(clipboard);
       setCopiedId(linkId);
       window.setTimeout(() => setCopiedId((id) => (id === linkId ? null : id)), 2000);
     } catch {
@@ -176,6 +181,9 @@ export function ShareDraftPanel({
             >
               Share draft
             </h2>
+            <p className="mt-1 font-serif text-sm font-semibold text-ink">
+              {postLabel}
+            </p>
             <p className="mt-1 text-sm text-ink-soft">
               Private links for Digest accounts — view only. Add several; deactivate
               any one when you are done with it.
@@ -250,7 +258,10 @@ export function ShareDraftPanel({
                         className="min-w-0 flex-1 text-left"
                         title="Tap to copy"
                       >
-                        <span className="block break-all font-mono text-[11px] leading-snug text-ink underline-offset-2 hover:underline">
+                        <span className="block truncate text-sm font-semibold text-ink">
+                          {postLabel}
+                        </span>
+                        <span className="mt-0.5 block break-all font-mono text-[11px] leading-snug text-ink-soft underline-offset-2 hover:underline">
                           {url}
                         </span>
                         <span className="mt-1 block text-[10px] font-semibold uppercase tracking-wider text-ink-soft">

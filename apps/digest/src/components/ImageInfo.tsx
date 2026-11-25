@@ -1,12 +1,37 @@
 "use client";
 
-import { useEffect, useId, useState, type ReactNode } from "react";
-import { Info } from "lucide-react";
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from "react";
+import { Info, Loader2 } from "lucide-react";
+
+function MediaSpinner() {
+  return (
+    <div
+      className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center bg-rule/80"
+      aria-hidden
+    >
+      <Loader2
+        className="h-7 w-7 animate-spin text-ink-soft"
+        strokeWidth={1.75}
+      />
+      <span className="sr-only">Loading image</span>
+    </div>
+  );
+}
 
 /**
  * Image description control: hover/focus shows a one-line preview;
  * click/tap toggles the full description under the media.
- * Renders nothing interactive when description is empty (legacy images).
+ * Always shows a spinner until the underlying <img> / Next Image has loaded.
  *
  * Pass sizing classes (e.g. aspect-video) via `className` — they apply to
  * the media shell so Next/Image `fill` keeps a real height.
@@ -22,6 +47,8 @@ export function ImageInfo({
 }) {
   const text = (description ?? "").trim();
   const [open, setOpen] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const mediaRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
 
   useEffect(() => {
@@ -33,14 +60,56 @@ export function ImageInfo({
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  if (!text) {
-    return <div className={`relative ${className}`.trim()}>{children}</div>;
-  }
+  useEffect(() => {
+    setLoaded(false);
+    const root = mediaRef.current;
+    if (!root) return;
+    const img = root.querySelector("img");
+    if (!img) {
+      setLoaded(true);
+      return;
+    }
+    if (img.complete && img.naturalWidth > 0) {
+      setLoaded(true);
+      return;
+    }
+    const done = () => setLoaded(true);
+    img.addEventListener("load", done);
+    img.addEventListener("error", done);
+    return () => {
+      img.removeEventListener("load", done);
+      img.removeEventListener("error", done);
+    };
+  }, [children]);
 
-  return (
-    <div>
-      <div className={`relative ${className}`.trim()}>
-        {children}
+  const markLoaded = () => setLoaded(true);
+
+  const media = Children.map(children, (child) => {
+    if (!isValidElement(child)) return child;
+    const el = child as ReactElement<Record<string, unknown>>;
+    const prevOnLoad = el.props.onLoad as
+      | ((e: unknown) => void)
+      | undefined;
+    const prevComplete = el.props.onLoadingComplete as
+      | ((img: HTMLImageElement) => void)
+      | undefined;
+    return cloneElement(el, {
+      onLoad: (e: unknown) => {
+        markLoaded();
+        prevOnLoad?.(e);
+      },
+      onLoadingComplete: (img: HTMLImageElement) => {
+        markLoaded();
+        prevComplete?.(img);
+      },
+    });
+  });
+
+  const shell = (
+    <div ref={mediaRef} className={`relative ${className}`.trim()}>
+      {media}
+      {!loaded && <MediaSpinner />}
+      {text ? (
         <button
           type="button"
           aria-expanded={open}
@@ -56,10 +125,20 @@ export function ImageInfo({
             aria-hidden
           />
           <span className="max-w-0 overflow-hidden whitespace-nowrap text-[11px] leading-tight text-ink-soft opacity-0 transition-[max-width,opacity] duration-200 group-hover:max-w-[16rem] group-hover:opacity-100 group-focus-visible:max-w-[16rem] group-focus-visible:opacity-100">
-            <span className="inline-block max-w-[16rem] truncate pl-0.5">{text}</span>
+            <span className="inline-block max-w-[16rem] truncate pl-0.5">
+              {text}
+            </span>
           </span>
         </button>
-      </div>
+      ) : null}
+    </div>
+  );
+
+  if (!text) return shell;
+
+  return (
+    <div>
+      {shell}
       {open && (
         <p
           id={panelId}

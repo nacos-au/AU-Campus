@@ -9,6 +9,7 @@ import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import ImageExt from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extensions";
+import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { articleSlug, isPlaceholderSlug, slugify } from "@/lib/articles";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
@@ -512,12 +513,21 @@ export function ArticleComposer({
     onError: (e: Error) => setError(e.message),
   });
 
+  function uploadNameHint() {
+    return title.trim() || article?.slug || null;
+  }
+
   async function uploadInline(file: File | undefined, replace = false) {
     if (!file || !editor) return;
     setUploading(true);
     setError(null);
     try {
-      const url = await uploadCover(supabase, file, "articles");
+      const url = await uploadCover(
+        supabase,
+        file,
+        "articles",
+        uploadNameHint()
+      );
       if (replace && editor.isActive("image")) {
         editor
           .chain()
@@ -545,7 +555,9 @@ export function ArticleComposer({
     if (!file) return;
     setUploading(true);
     try {
-      setCoverUrl(await uploadCover(supabase, file, "articles"));
+      setCoverUrl(
+        await uploadCover(supabase, file, "articles", uploadNameHint())
+      );
       dirtyRef.current = true;
     } catch (e) {
       setError((e as Error).message);
@@ -762,8 +774,16 @@ export function ArticleComposer({
           <Btn title="Strikethrough" active={ui?.strike} onClick={() => { editor?.chain().focus().toggleStrike().run(); markDirty(); }}><s>S</s></Btn>
           <Sep />
           <Btn title="Link" active={ui?.link} onClick={setLink}>🔗</Btn>
-          <Btn title="Insert image" onClick={() => fileRef.current?.click()}>
-            {uploading ? "…" : "🖼"}
+          <Btn
+            title={uploading ? "Uploading image…" : "Insert image"}
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+          >
+            {uploading ? (
+              <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.75} />
+            ) : (
+              "🖼"
+            )}
           </Btn>
           <Sep />
           <Btn title="Bullet list" active={ui?.bullet} onClick={() => { editor?.chain().focus().toggleBulletList().run(); markDirty(); }}>•</Btn>
@@ -1061,7 +1081,7 @@ export function ArticleComposer({
                   </div>
                 </div>
                 {coverUrl ? (
-                  <div className="mt-2 border border-rule">
+                  <div className="relative mt-2 border border-rule">
                     <ImageInfo
                       description={coverCaption}
                       className="aspect-video w-full overflow-hidden"
@@ -1073,6 +1093,22 @@ export function ArticleComposer({
                         className="object-cover"
                       />
                     </ImageInfo>
+                    {uploading && (
+                      <div className="absolute inset-0 z-20 flex items-center justify-center bg-paper/70">
+                        <Loader2
+                          className="h-8 w-8 animate-spin text-ink-soft"
+                          strokeWidth={1.75}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ) : uploading ? (
+                  <div className="relative mt-2 flex aspect-video w-full items-center justify-center border border-rule bg-rule/40">
+                    <Loader2
+                      className="h-8 w-8 animate-spin text-ink-soft"
+                      strokeWidth={1.75}
+                    />
+                    <span className="sr-only">Uploading cover</span>
                   </div>
                 ) : (
                   <p className="mt-2 text-sm text-ink-soft">
@@ -1289,6 +1325,7 @@ export function ArticleComposer({
       {article?.id && (
         <ShareDraftPanel
           articleId={article.id}
+          articleTitle={title.trim() || article.title}
           userId={userId}
           open={showShare}
           onClose={() => setShowShare(false)}
