@@ -108,8 +108,8 @@ export default async function ReviewPage({
           Version history
         </h2>
         <p className="mt-1 max-w-2xl text-sm text-ink-soft">
-          Snapshots of what went live (and what changed). Writers and editors can
-          both see this trail — same idea as a desk CMS at a major paper.
+          Seamless with the review thread above — snapshots of what went live and
+          what changed. Writers and editors both see this trail.
         </p>
         <div className="mt-4">
           <VersionHistory articleId={id} />

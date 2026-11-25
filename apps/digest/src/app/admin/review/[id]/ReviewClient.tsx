@@ -10,10 +10,21 @@ import { createClient } from "@/lib/supabase/client";
 import { RichText } from "@/components/RichText";
 import {
   applyReviewHighlights,
+  formatReviewTimestamp,
   scrollToReviewHighlight,
   type HighlightSpec,
 } from "@/lib/review-highlights";
 import type { ReviewComment, RevisionPayload, Section } from "@/lib/types";
+
+type IconPopover = {
+  id: string;
+  body: string;
+  time: string;
+  author: string;
+  top: number;
+  left: number;
+  pinned: boolean;
+};
 
 const STATE_LABELS: Record<string, string> = {
   draft: "Draft",
@@ -73,6 +84,8 @@ export function ReviewClient({
   const [deskBusy, setDeskBusy] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBody, setEditBody] = useState("");
+  const [savedFlash, setSavedFlash] = useState<string | null>(null);
+  const [iconPop, setIconPop] = useState<IconPopover | null>(null);
   const { confirm } = useConfirm();
 
   const showSelfAssignTools = isSuperAdmin && adminModeOn;
@@ -96,17 +109,27 @@ export function ReviewClient({
     },
   });
 
+  const openCount = comments.filter((c) => !c.resolved).length;
   const body = useMemo(() => <RichText doc={content.body} />, [content.body]);
 
   const highlightSpecs: HighlightSpec[] = useMemo(() => {
     const specs: HighlightSpec[] = comments
       .filter((c) => !c.resolved && c.anchor?.quote)
-      .map((c) => ({
-        id: c.id,
-        quote: c.anchor!.quote!,
-        prefix: c.anchor?.prefix ?? null,
-        suffix: c.anchor?.suffix ?? null,
-      }));
+      .map((c) => {
+        const { relative, absolute } = formatReviewTimestamp(c.created_at);
+        return {
+          id: c.id,
+          quote: c.anchor!.quote!,
+          prefix: c.anchor?.prefix ?? null,
+          suffix: c.anchor?.suffix ?? null,
+          body: c.body,
+          timeLabel: `${relative} · ${absolute}`,
+          authorLabel:
+            c.author_id === userId
+              ? "You"
+              : (c.profiles?.display_name ?? "Editor"),
+        };
+      });
     if (quote && activeHighlightId === "pending") {
       specs.unshift({
         id: "pending",
@@ -116,7 +139,14 @@ export function ReviewClient({
       });
     }
     return specs;
-  }, [comments, quote, quotePrefix, quoteSuffix, activeHighlightId]);
+  }, [
+    comments,
+    quote,
+    quotePrefix,
+    quoteSuffix,
+    activeHighlightId,
+    userId,
+  ]);
 
   const quoteKey = highlightSpecs
     .map((s) => `${s.id}:${s.quote}:${s.prefix ?? ""}:${s.suffix ?? ""}`)
@@ -130,6 +160,100 @@ export function ReviewClient({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quoteKey, activeHighlightId]);
+
+  useEffect(() => {
+    const root = bodyRef.current;
+    if (!root) return;
+
+    function onPointerOver(e: Event) {
+      const t = e.target as HTMLElement | null;
+      const btn = t?.closest?.("button[data-review-icon]") as HTMLElement | null;
+      if (!btn) return;
+      setIconPop((prev) => {
+        if (prev?.pinned) return prev;
+        const rect = btn.getBoundingClientRect();
+        return {
+          id: btn.dataset.reviewId ?? "",
+          body: btn.dataset.body ?? "",
+          time: btn.dataset.time ?? "",
+          author: btn.dataset.author ?? "",
+          top: rect.bottom + 8 + window.scrollY,
+          left: Math.min(
+            rect.left + window.scrollX,
+            window.scrollX + window.innerWidth - 280
+          ),
+          pinned: false,
+        };
+      });
+    }
+
+    function onPointerOut(e: Event) {
+      const ev = e as PointerEvent;
+      const t = ev.target as HTMLElement | null;
+      const btn = t?.closest?.("button[data-review-icon]") as HTMLElement | null;
+      if (!btn) return;
+      const related = ev.relatedTarget as HTMLElement | null;
+      if (related?.closest?.("[data-review-popover]")) return;
+      setIconPop((prev) => (prev?.pinned ? prev : null));
+    }
+
+    function onClick(e: Event) {
+      const t = e.target as HTMLElement | null;
+      const btn = t?.closest?.("button[data-review-icon]") as HTMLElement | null;
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const id = btn.dataset.reviewId ?? "";
+      const rect = btn.getBoundingClientRect();
+      setIconPop((prev) => {
+        if (prev?.pinned && prev.id === id) return null;
+        return {
+          id,
+          body: btn.dataset.body ?? "",
+          time: btn.dataset.time ?? "",
+          author: btn.dataset.author ?? "",
+          top: rect.bottom + 8 + window.scrollY,
+          left: Math.min(
+            rect.left + window.scrollX,
+            window.scrollX + window.innerWidth - 280
+          ),
+          pinned: true,
+        };
+      });
+      setActiveHighlightId(id);
+      document
+        .getElementById(`review-c-${id}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    function onDocClick(e: Event) {
+      const t = e.target as HTMLElement | null;
+      if (
+        t?.closest?.("button[data-review-icon]") ||
+        t?.closest?.("[data-review-popover]")
+      ) {
+        return;
+      }
+      setIconPop((prev) => (prev?.pinned ? null : prev));
+    }
+
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setIconPop(null);
+    }
+
+    root.addEventListener("pointerover", onPointerOver);
+    root.addEventListener("pointerout", onPointerOut);
+    root.addEventListener("click", onClick);
+    document.addEventListener("click", onDocClick);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      root.removeEventListener("pointerover", onPointerOver);
+      root.removeEventListener("pointerout", onPointerOut);
+      root.removeEventListener("click", onClick);
+      document.removeEventListener("click", onDocClick);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [quoteKey]);
 
   useEffect(() => {
     if (!canReview) return;
@@ -175,7 +299,8 @@ export function ReviewClient({
     if (!text.trim()) return;
     setBusy(true);
     setError(null);
-    const { error } = await supabase.rpc("add_review_comment", {
+    setSavedFlash(null);
+    const { data, error } = await supabase.rpc("add_review_comment", {
       p_article_id: articleId,
       p_body: text,
       p_anchor: quote
@@ -184,9 +309,20 @@ export function ReviewClient({
     });
     setBusy(false);
     if (error) return setError(error.message);
+    const newId = typeof data === "string" ? data : null;
     setText("");
     clearPendingHighlight();
-    qc.invalidateQueries({ queryKey: ["review-comments", articleId] });
+    setSavedFlash(
+      quote ? "Comment saved on highlight — see thread →" : "General note saved — see thread →"
+    );
+    await qc.invalidateQueries({ queryKey: ["review-comments", articleId] });
+    window.setTimeout(() => {
+      const el = document.getElementById(
+        newId ? `review-c-${newId}` : "review-thread"
+      );
+      el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 80);
+    window.setTimeout(() => setSavedFlash(null), 4000);
   }
 
   async function saveEdit(id: string) {
@@ -405,6 +541,35 @@ export function ReviewClient({
         >
           {body}
         </div>
+        {iconPop && (
+          <div
+            data-review-popover
+            className="fixed z-[60] w-64 border border-rule-dark bg-paper p-3 shadow-lg"
+            style={{
+              top: iconPop.top - window.scrollY,
+              left: Math.max(8, iconPop.left - window.scrollX),
+            }}
+            onPointerLeave={() => {
+              if (!iconPop.pinned) setIconPop(null);
+            }}
+          >
+            <p className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">
+              {iconPop.author}
+              {iconPop.time ? ` · ${iconPop.time}` : ""}
+              {iconPop.pinned ? " · Pinned" : ""}
+            </p>
+            <p className="mt-1.5 whitespace-pre-wrap text-sm">{iconPop.body}</p>
+            {iconPop.pinned && (
+              <button
+                type="button"
+                className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-ink-soft underline"
+                onClick={() => setIconPop(null)}
+              >
+                Close
+              </button>
+            )}
+          </div>
+        )}
       </article>
 
       <aside className="lg:sticky lg:top-4 lg:self-start">
@@ -437,9 +602,21 @@ export function ReviewClient({
           </div>
         )}
 
-        <h2 className="text-xs font-bold uppercase tracking-wider text-ink-soft">
-          Review thread
+        <h2
+          id="review-thread"
+          className="text-xs font-bold uppercase tracking-wider text-ink-soft"
+        >
+          Review thread · {openCount} open
         </h2>
+        <p className="mt-1 text-[11px] text-ink-soft">
+          Comments land here (and as ! on highlighted lines). Version history is
+          below.
+        </p>
+        {savedFlash && (
+          <p className="mt-2 border border-rule-dark bg-gray-50 px-3 py-2 text-sm text-ink">
+            {savedFlash}
+          </p>
+        )}
         <div className="mt-3 max-h-[50vh] space-y-3 overflow-y-auto">
           {comments.length === 0 && (
             <p className="text-sm text-ink-soft">No comments yet.</p>
@@ -448,6 +625,7 @@ export function ReviewClient({
             const mine = c.author_id === userId;
             const done = !!c.resolved;
             const canMutate = mine || canReview;
+            const { relative, absolute } = formatReviewTimestamp(c.created_at);
             return (
               <div
                 key={c.id}
@@ -461,9 +639,10 @@ export function ReviewClient({
                 }`}
               >
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
-                  {mine ? "You" : c.profiles?.display_name} ·{" "}
-                  {new Date(c.created_at).toLocaleString()}
+                  {mine ? "You" : c.profiles?.display_name} · {relative}
+                  <span className="font-normal"> · {absolute}</span>
                   {done ? " · Resolved" : ""}
+                  {!c.anchor?.quote ? " · General note" : ""}
                 </p>
                 {c.anchor?.quote && (
                   <button

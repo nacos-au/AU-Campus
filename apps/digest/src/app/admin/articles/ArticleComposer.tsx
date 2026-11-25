@@ -16,6 +16,7 @@ import { uploadCover } from "@/lib/uploads";
 import { locales, localeNames } from "@/i18n/locales";
 import { RichText } from "@/components/RichText";
 import { useConfirm } from "@/components/ConfirmDialog";
+import { WriterReviewPanel } from "@/components/WriterReviewPanel";
 import type {
   Article,
   ArticleSeries,
@@ -669,8 +670,21 @@ export function ArticleComposer({
       {locked && (
         <p className="mx-4 mt-4 border border-rule-dark bg-gray-50 px-3 py-2 text-sm text-ink-soft sm:mx-0">
           This piece is with the editor. You can edit again if they send it
-          back.
+          back. Use{" "}
+          <Link
+            href={article ? `/admin/review/${article.id}` : "/admin/articles"}
+            className="font-semibold text-accent underline underline-offset-2"
+          >
+            Feedback
+          </Link>{" "}
+          to read comments and version history.
         </p>
+      )}
+
+      {article?.status === "awaiting_writer" && (
+        <div className="mx-4 mt-4 sm:mx-0">
+          <WriterReviewPanel articleId={article.id} userId={userId} />
+        </div>
       )}
 
       {!preview && !locked && (

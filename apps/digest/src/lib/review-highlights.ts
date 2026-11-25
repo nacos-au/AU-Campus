@@ -6,9 +6,16 @@ export type HighlightAnchor = {
   suffix?: string | null;
 };
 
-export type HighlightSpec = HighlightAnchor & { id: string };
+export type HighlightSpec = HighlightAnchor & {
+  id: string;
+  /** Shown in hover popover */
+  body?: string;
+  timeLabel?: string;
+  authorLabel?: string;
+};
 
 function clearMarks(root: HTMLElement) {
+  root.querySelectorAll("button[data-review-icon]").forEach((b) => b.remove());
   root.querySelectorAll("mark[data-review-id]").forEach((m) => {
     const parent = m.parentNode;
     if (!parent) return;
@@ -34,7 +41,6 @@ function collectTextNodes(root: HTMLElement): Text[] {
   return out;
 }
 
-/** Build absolute offsets across concatenated text nodes. */
 function findRange(
   root: HTMLElement,
   anchor: HighlightAnchor
@@ -110,19 +116,44 @@ function findRange(
   }
 }
 
-function wrapRange(range: Range, id: string) {
+function wrapRange(range: Range, spec: HighlightSpec) {
+  if (spec.id === "pending") {
+    const mark = document.createElement("mark");
+    mark.dataset.reviewId = spec.id;
+    mark.className = "bg-yellow-200";
+    try {
+      range.surroundContents(mark);
+    } catch {
+      const frag = range.extractContents();
+      mark.appendChild(frag);
+      range.insertNode(mark);
+    }
+    return;
+  }
+
   const mark = document.createElement("mark");
-  mark.dataset.reviewId = id;
-  mark.className = "bg-yellow-200 cursor-pointer";
-  mark.title = "Review highlight";
+  mark.dataset.reviewId = spec.id;
+  mark.className = "bg-yellow-200";
   try {
     range.surroundContents(mark);
   } catch {
-    // Selection crossed element boundaries — extract and wrap
     const frag = range.extractContents();
     mark.appendChild(frag);
     range.insertNode(mark);
   }
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.dataset.reviewIcon = "1";
+  btn.dataset.reviewId = spec.id;
+  btn.dataset.body = spec.body ?? "";
+  btn.dataset.time = spec.timeLabel ?? "";
+  btn.dataset.author = spec.authorLabel ?? "";
+  btn.setAttribute("aria-label", "Review comment");
+  btn.className =
+    "ml-0.5 inline-flex h-4 w-4 translate-y-[-1px] items-center justify-center rounded-full bg-ink text-[9px] font-bold leading-none text-paper align-middle hover:bg-accent";
+  btn.textContent = "!";
+  mark.after(btn);
 }
 
 export function applyReviewHighlights(
@@ -134,7 +165,7 @@ export function applyReviewHighlights(
     if (!spec.quote) continue;
     const range = findRange(root, spec);
     if (!range) continue;
-    wrapRange(range, spec.id);
+    wrapRange(range, spec);
   }
 }
 
@@ -147,4 +178,25 @@ export function scrollToReviewHighlight(root: HTMLElement, id: string) {
       el.classList.remove("ring-2", "ring-yellow-500");
     }, 1200);
   }
+}
+
+export function formatReviewTimestamp(iso: string): {
+  relative: string;
+  absolute: string;
+} {
+  const d = new Date(iso);
+  const absolute = d.toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const diff = Date.now() - d.getTime();
+  const mins = Math.floor(diff / 60_000);
+  let relative: string;
+  if (mins < 1) relative = "Just now";
+  else if (mins < 60) relative = `${mins} min ago`;
+  else if (mins < 60 * 24) relative = `${Math.floor(mins / 60)} hr ago`;
+  else relative = `${Math.floor(mins / (60 * 24))} d ago`;
+  return { relative, absolute };
 }
