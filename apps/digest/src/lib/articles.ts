@@ -126,3 +126,16 @@ export function slugify(title: string): string {
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
 }
+
+/** Slugs created before a real headline existed. */
+export function isPlaceholderSlug(slug: string | null | undefined): boolean {
+  if (!slug) return true;
+  return /^untitled-draft($|-)/i.test(slug);
+}
+
+/** Public-facing slug from title + short unique suffix. */
+export function articleSlug(title: string, unique: string): string {
+  const stem = slugify(title.trim()) || "story";
+  const suffix = unique.replace(/[^a-z0-9]/gi, "").slice(0, 8).toLowerCase();
+  return `${stem}-${suffix || Date.now().toString(36)}`.slice(0, 96);
+}

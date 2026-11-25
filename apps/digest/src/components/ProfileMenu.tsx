@@ -217,6 +217,14 @@ export function ProfileMenu({
                   <Chevron />
                 </Link>
                 <Link
+                  href="/account/saved"
+                  onClick={closeDrawer}
+                  className="flex items-center justify-between border-t border-rule py-4 text-[15px] text-ink hover:bg-accent-soft/40"
+                >
+                  Saved stories
+                  <Chevron />
+                </Link>
+                <Link
                   href="/account/newsletters"
                   onClick={closeDrawer}
                   className="flex items-center justify-between border-t border-rule py-4 text-[15px] text-ink hover:bg-accent-soft/40"

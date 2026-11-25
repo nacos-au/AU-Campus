@@ -203,6 +203,12 @@ export function MobileMenu({
                         Library
                       </Link>
                       <Link
+                        href="/account/saved"
+                        className="py-2 text-sm font-semibold uppercase tracking-wider text-ink-soft"
+                      >
+                        Saved stories
+                      </Link>
+                      <Link
                         href="/account/settings"
                         className="py-2 text-sm font-semibold uppercase tracking-wider text-ink-soft"
                       >

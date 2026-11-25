@@ -10,7 +10,7 @@ import StarterKit from "@tiptap/starter-kit";
 import ImageExt from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extensions";
 import { createClient } from "@/lib/supabase/client";
-import { slugify } from "@/lib/articles";
+import { articleSlug, isPlaceholderSlug, slugify } from "@/lib/articles";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
 import { uploadCover } from "@/lib/uploads";
 import { locales, localeNames } from "@/i18n/locales";
@@ -368,17 +368,31 @@ export function ArticleComposer({
       };
 
       if (articleIdRef.current) {
+        const id = articleIdRef.current;
+        const headline = title.trim();
+        const patch: Record<string, unknown> = { ...row };
+        // Refresh placeholder slugs once a real headline exists (unpublished only).
+        if (
+          headline &&
+          article?.status !== "published" &&
+          isPlaceholderSlug(article?.slug)
+        ) {
+          patch.slug = articleSlug(headline, id);
+        }
         const { error } = await supabase
           .from("articles")
-          .update(row)
-          .eq("id", articleIdRef.current);
+          .update(patch)
+          .eq("id", id);
         if (error) throw error;
-        await syncCollaborators(articleIdRef.current);
+        await syncCollaborators(id);
         dirtyRef.current = false;
-        return articleIdRef.current;
+        return id;
       }
 
-      const slug = `${slugify(row.title)}-${Date.now().toString(36)}`;
+      const headline = title.trim();
+      const slug = headline
+        ? `${slugify(headline)}-${Date.now().toString(36)}`
+        : `untitled-draft-${Date.now().toString(36)}`;
       const { data, error } = await supabase
         .from("articles")
         .insert({ ...row, slug, status: "draft", author_id: userId })

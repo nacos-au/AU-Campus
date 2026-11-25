@@ -1,7 +1,73 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+
+const btnBase =
+  "inline-flex h-10 w-10 shrink-0 items-center justify-center border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink";
+
+function IconHeart({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 21s-6.5-4.35-9.33-8.5C.8 9.6 2.1 5.75 5.6 4.6c1.9-.63 3.95-.1 5.4 1.35C12.45 4.5 14.5 3.97 16.4 4.6c3.5 1.15 4.8 5 2.93 7.9C18.5 16.65 12 21 12 21z"
+      />
+    </svg>
+  );
+}
+
+function IconBookmark({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M6 4.75A1.75 1.75 0 0 1 7.75 3h8.5A1.75 1.75 0 0 1 18 4.75v15.5L12 16.5l-6 3.75V4.75z"
+      />
+    </svg>
+  );
+}
+
+function IconShare() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      aria-hidden
+    >
+      <circle cx="18" cy="5" r="2.25" />
+      <circle cx="6" cy="12" r="2.25" />
+      <circle cx="18" cy="19" r="2.25" />
+      <path strokeLinecap="round" d="M8.2 13.1 15.8 17M15.8 7 8.2 10.9" />
+    </svg>
+  );
+}
+
+function tone(active: boolean) {
+  return active
+    ? "border-ink bg-ink text-paper"
+    : "border-ink bg-paper text-ink hover:bg-ink hover:text-paper";
+}
 
 export function LikeShare({
   articleId,
@@ -84,7 +150,7 @@ export function LikeShare({
       setSaved(!next);
       setMsg(error.message);
     } else {
-      setMsg(next ? "Saved to your library." : "Removed from saved.");
+      setMsg(null);
     }
   }
 
@@ -104,36 +170,46 @@ export function LikeShare({
 
   return (
     <div className="mt-10 flex flex-wrap items-center gap-3 border-y border-rule py-4">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={toggleLike}
+          aria-pressed={liked}
+          aria-label={liked ? "Unlike" : "Like"}
+          className={`${btnBase} ${tone(liked)}`}
+        >
+          <IconHeart filled={liked} />
+        </button>
+        <span className="min-w-[1ch] text-xs font-semibold tabular-nums text-ink-soft">
+          {likes}
+        </span>
+      </div>
       <button
-        onClick={toggleLike}
-        aria-pressed={liked}
-        className={`flex items-center gap-2 border px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-colors ${
-          liked
-            ? "border-accent bg-accent text-white"
-            : "border-ink hover:bg-ink hover:text-paper"
-        }`}
-      >
-        <span aria-hidden>{liked ? "♥" : "♡"}</span>
-        {liked ? "Liked" : "Like"} · {likes}
-      </button>
-      <button
+        type="button"
         onClick={toggleSave}
         aria-pressed={saved}
-        className={`border px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-colors ${
-          saved
-            ? "border-ink bg-ink text-paper"
-            : "border-ink hover:bg-ink hover:text-paper"
-        }`}
+        aria-label={saved ? "Remove from saved" : "Save"}
+        className={`${btnBase} ${tone(saved)}`}
       >
-        {saved ? "Saved" : "Save"}
+        <IconBookmark filled={saved} />
       </button>
       <button
+        type="button"
         onClick={share}
-        className="border border-ink px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-colors hover:bg-ink hover:text-paper"
+        aria-label="Share"
+        className={`${btnBase} ${tone(false)}`}
       >
-        Share
+        <IconShare />
       </button>
       {msg && <span className="text-xs text-ink-soft">{msg}</span>}
+      {saved && !msg && (
+        <Link
+          href="/account/saved"
+          className="text-xs font-semibold text-ink-soft underline hover:text-ink"
+        >
+          View saved
+        </Link>
+      )}
     </div>
   );
 }
