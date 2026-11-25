@@ -92,6 +92,9 @@ begin
 end;
 $$;
 
+-- Must DROP first: CREATE OR REPLACE cannot rename p_article_id → p_link_id.
+drop function if exists public.revoke_article_share_link(uuid);
+
 create or replace function public.revoke_article_share_link(p_link_id uuid)
 returns void
 language plpgsql
