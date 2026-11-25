@@ -55,17 +55,18 @@ export default async function ReviewPage({
   const state = isRevision ? rev!.state : article.status;
   const assignee = isRevision ? rev!.assigned_editor_id : article.assigned_editor_id;
   const isAuthor = article.author_id === profile.id;
-  const soleSelf = isAuthor && hasRole(profile, "editor");
+  const assignedEditorIsMe = assignee === profile.id;
   const canReview =
     state === "awaiting_editor" &&
-    hasRole(profile, "editor") &&
-    assignee === profile.id &&
-    (!isAuthor || soleSelf);
+    assignedEditorIsMe &&
+    (hasRole(profile, "editor") || Boolean(profile.is_super_admin));
   const canMakeLive =
     !isRevision &&
     article.status === "scheduled" &&
     hasRole(profile, "editor");
   const canMoveDesk = hasRole(profile, "editor");
+  const isSuperAdmin = Boolean(profile.is_super_admin);
+  const adminModeOn = Boolean(profile.elevated);
 
   const { data: sectionRows } = await supabase
     .from("sections")
@@ -95,7 +96,10 @@ export default async function ReviewPage({
         sectionId={sectionId}
         sections={sections}
         isAuthor={isAuthor}
+        assignedEditorIsMe={assignedEditorIsMe}
         userId={profile.id}
+        isSuperAdmin={isSuperAdmin}
+        adminModeOn={adminModeOn}
         initialComments={(comments ?? []) as unknown as ReviewComment[]}
       />
 

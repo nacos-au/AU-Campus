@@ -8,6 +8,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { RichText } from "@/components/RichText";
+import {
+  applyReviewHighlights,
+  scrollToReviewHighlight,
+  type HighlightSpec,
+} from "@/lib/review-highlights";
 import type { ReviewComment, RevisionPayload, Section } from "@/lib/types";
 
 const STATE_LABELS: Record<string, string> = {
@@ -17,31 +22,6 @@ const STATE_LABELS: Record<string, string> = {
   published: "Live",
   scheduled: "Parked",
 };
-
-function applyHighlights(root: HTMLElement, quotes: string[]) {
-  root.querySelectorAll("mark[data-review]").forEach((m) => {
-    m.replaceWith(document.createTextNode(m.textContent ?? ""));
-  });
-  root.normalize();
-  for (const q of quotes) {
-    if (!q) continue;
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    let n: Node | null;
-    while ((n = walker.nextNode())) {
-      const text = n.nodeValue ?? "";
-      const i = text.indexOf(q);
-      if (i === -1) continue;
-      const range = document.createRange();
-      range.setStart(n, i);
-      range.setEnd(n, i + q.length);
-      const mark = document.createElement("mark");
-      mark.dataset.review = "1";
-      mark.className = "bg-yellow-200";
-      range.surroundContents(mark);
-      break;
-    }
-  }
-}
 
 export function ReviewClient({
   articleId,
@@ -54,7 +34,10 @@ export function ReviewClient({
   sectionId: initialSectionId,
   sections,
   isAuthor,
+  assignedEditorIsMe,
   userId,
+  isSuperAdmin,
+  adminModeOn,
   initialComments,
 }: {
   articleId: string;
@@ -67,7 +50,10 @@ export function ReviewClient({
   sectionId: number;
   sections: Section[];
   isAuthor: boolean;
+  assignedEditorIsMe: boolean;
   userId: string;
+  isSuperAdmin: boolean;
+  adminModeOn: boolean;
   initialComments: ReviewComment[];
 }) {
   const supabase = useMemo(() => createClient(), []);
@@ -77,13 +63,19 @@ export function ReviewClient({
   const [quote, setQuote] = useState<string | null>(null);
   const [quotePrefix, setQuotePrefix] = useState<string | null>(null);
   const [quoteSuffix, setQuoteSuffix] = useState<string | null>(null);
-  const [activeQuote, setActiveQuote] = useState<string | null>(null);
+  const [activeHighlightId, setActiveHighlightId] = useState<string | null>(
+    null
+  );
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sectionId, setSectionId] = useState(String(initialSectionId));
   const [deskBusy, setDeskBusy] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editBody, setEditBody] = useState("");
   const { confirm } = useConfirm();
+
+  const showSelfAssignTools = isSuperAdmin && adminModeOn;
 
   useEffect(() => {
     setSectionId(String(initialSectionId));
@@ -105,17 +97,39 @@ export function ReviewClient({
   });
 
   const body = useMemo(() => <RichText doc={content.body} />, [content.body]);
-  const quotes = comments
-    .filter((c) => !c.resolved)
-    .map((c) => c.anchor?.quote ?? "")
-    .filter(Boolean);
-  if (activeQuote && !quotes.includes(activeQuote)) quotes.unshift(activeQuote);
-  const quoteKey = quotes.join("\u0000") + (activeQuote ?? "");
+
+  const highlightSpecs: HighlightSpec[] = useMemo(() => {
+    const specs: HighlightSpec[] = comments
+      .filter((c) => !c.resolved && c.anchor?.quote)
+      .map((c) => ({
+        id: c.id,
+        quote: c.anchor!.quote!,
+        prefix: c.anchor?.prefix ?? null,
+        suffix: c.anchor?.suffix ?? null,
+      }));
+    if (quote && activeHighlightId === "pending") {
+      specs.unshift({
+        id: "pending",
+        quote,
+        prefix: quotePrefix,
+        suffix: quoteSuffix,
+      });
+    }
+    return specs;
+  }, [comments, quote, quotePrefix, quoteSuffix, activeHighlightId]);
+
+  const quoteKey = highlightSpecs
+    .map((s) => `${s.id}:${s.quote}:${s.prefix ?? ""}:${s.suffix ?? ""}`)
+    .join("\u0000");
 
   useEffect(() => {
-    if (bodyRef.current) applyHighlights(bodyRef.current, quotes);
+    if (!bodyRef.current) return;
+    applyReviewHighlights(bodyRef.current, highlightSpecs);
+    if (activeHighlightId && activeHighlightId !== "pending") {
+      scrollToReviewHighlight(bodyRef.current, activeHighlightId);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quoteKey]);
+  }, [quoteKey, activeHighlightId]);
 
   useEffect(() => {
     if (!canReview) return;
@@ -128,6 +142,13 @@ export function ReviewClient({
       void supabase.rpc("release_review", { p_article_id: articleId });
     };
   }, [canReview, articleId, supabase]);
+
+  function clearPendingHighlight() {
+    setQuote(null);
+    setQuotePrefix(null);
+    setQuoteSuffix(null);
+    setActiveHighlightId((id) => (id === "pending" ? null : id));
+  }
 
   function captureSelection() {
     const sel = window.getSelection();
@@ -146,7 +167,7 @@ export function ReviewClient({
       setQuote(t);
       setQuotePrefix(prefix || null);
       setQuoteSuffix(suffix || null);
-      setActiveQuote(t);
+      setActiveHighlightId("pending");
     }
   }
 
@@ -164,9 +185,40 @@ export function ReviewClient({
     setBusy(false);
     if (error) return setError(error.message);
     setText("");
-    setQuote(null);
-    setQuotePrefix(null);
-    setQuoteSuffix(null);
+    clearPendingHighlight();
+    qc.invalidateQueries({ queryKey: ["review-comments", articleId] });
+  }
+
+  async function saveEdit(id: string) {
+    if (!editBody.trim()) return;
+    setBusy(true);
+    setError(null);
+    const { error } = await supabase.rpc("update_review_comment", {
+      p_comment_id: id,
+      p_body: editBody,
+    });
+    setBusy(false);
+    if (error) return setError(error.message);
+    setEditingId(null);
+    setEditBody("");
+    qc.invalidateQueries({ queryKey: ["review-comments", articleId] });
+  }
+
+  async function removeComment(id: string) {
+    const ok = await confirm({
+      title: "Remove this highlight?",
+      body: "The comment and yellow mark will be deleted.",
+      confirmLabel: "Remove",
+    });
+    if (!ok) return;
+    setBusy(true);
+    setError(null);
+    const { error } = await supabase.rpc("delete_review_comment", {
+      p_comment_id: id,
+    });
+    setBusy(false);
+    if (error) return setError(error.message);
+    if (activeHighlightId === id) setActiveHighlightId(null);
     qc.invalidateQueries({ queryKey: ["review-comments", articleId] });
   }
 
@@ -177,6 +229,34 @@ export function ReviewClient({
     });
     if (error) setError(error.message);
     else qc.invalidateQueries({ queryKey: ["review-comments", articleId] });
+  }
+
+  async function assignToMe() {
+    setBusy(true);
+    setError(null);
+    const { error } = await supabase.rpc("admin_assign_review_to_me", {
+      p_article_id: articleId,
+    });
+    setBusy(false);
+    if (error) return setError(error.message);
+    router.refresh();
+  }
+
+  async function revokeSelfAssign() {
+    const ok = await confirm({
+      title: "Revoke self-assign?",
+      body: "Clears your assignment so the piece can go to a real editor on the next send.",
+      confirmLabel: "Revoke",
+    });
+    if (!ok) return;
+    setBusy(true);
+    setError(null);
+    const { error } = await supabase.rpc("admin_revoke_self_review_assign", {
+      p_article_id: articleId,
+    });
+    setBusy(false);
+    if (error) return setError(error.message);
+    router.refresh();
   }
 
   async function moveDesk(nextId: string) {
@@ -268,6 +348,30 @@ export function ReviewClient({
   return (
     <div className="mt-4 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <article>
+        {showSelfAssignTools && (
+          <div className="mb-4 flex flex-wrap items-center gap-2 border border-rule-dark bg-gray-50 px-3 py-2 text-[11px]">
+            <span className="font-bold uppercase tracking-wider text-ink-soft">
+              Super admin · test assign
+            </span>
+            <button
+              type="button"
+              disabled={busy || assignedEditorIsMe}
+              onClick={() => void assignToMe()}
+              className="border border-ink px-2 py-1 font-semibold uppercase tracking-wider hover:bg-ink hover:text-paper disabled:opacity-40"
+            >
+              Assign to me
+            </button>
+            <button
+              type="button"
+              disabled={busy || !assignedEditorIsMe}
+              onClick={() => void revokeSelfAssign()}
+              className="border border-rule-dark px-2 py-1 font-semibold uppercase tracking-wider text-ink-soft hover:border-ink hover:text-ink disabled:opacity-40"
+            >
+              Revoke self-assign
+            </button>
+          </div>
+        )}
+
         <div className="mb-4 flex flex-wrap items-center gap-2 text-xs">
           <span className="rounded-full bg-rule px-2.5 py-0.5 font-semibold uppercase tracking-wide text-ink-soft">
             {isRevision ? "Edit · " : ""}
@@ -343,6 +447,7 @@ export function ReviewClient({
           {comments.map((c) => {
             const mine = c.author_id === userId;
             const done = !!c.resolved;
+            const canMutate = mine || canReview;
             return (
               <div
                 key={c.id}
@@ -363,22 +468,76 @@ export function ReviewClient({
                 {c.anchor?.quote && (
                   <button
                     type="button"
-                    onClick={() => setActiveQuote(c.anchor?.quote ?? null)}
+                    onClick={() => setActiveHighlightId(c.id)}
                     className="mt-1.5 block w-full border-l-2 border-yellow-400 bg-yellow-50 px-2 py-1 text-left text-xs italic hover:bg-yellow-100"
                   >
                     “{c.anchor.quote}”
                   </button>
                 )}
-                <p className="mt-1.5 whitespace-pre-wrap">{c.body}</p>
-                {(canReview || isAuthor) && (
-                  <button
-                    type="button"
-                    onClick={() => toggleResolved(c.id, !done)}
-                    className="mt-2 text-[11px] font-semibold uppercase tracking-wide text-ink-soft underline hover:text-ink"
-                  >
-                    {done ? "Reopen" : "Resolve"}
-                  </button>
+                {editingId === c.id ? (
+                  <div className="mt-1.5 space-y-2">
+                    <textarea
+                      value={editBody}
+                      onChange={(e) => setEditBody(e.target.value)}
+                      rows={3}
+                      className="w-full border border-rule-dark px-2 py-1.5 text-sm focus:border-ink focus:outline-none"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={busy || !editBody.trim()}
+                        onClick={() => void saveEdit(c.id)}
+                        className="text-[11px] font-semibold uppercase tracking-wide text-ink underline"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingId(null);
+                          setEditBody("");
+                        }}
+                        className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft underline"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-1.5 whitespace-pre-wrap">{c.body}</p>
                 )}
+                <div className="mt-2 flex flex-wrap gap-3">
+                  {(canReview || isAuthor) && (
+                    <button
+                      type="button"
+                      onClick={() => toggleResolved(c.id, !done)}
+                      className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft underline hover:text-ink"
+                    >
+                      {done ? "Reopen" : "Resolve"}
+                    </button>
+                  )}
+                  {canMutate && mine && editingId !== c.id && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingId(c.id);
+                        setEditBody(c.body);
+                      }}
+                      className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft underline hover:text-ink"
+                    >
+                      Edit
+                    </button>
+                  )}
+                  {canMutate && (
+                    <button
+                      type="button"
+                      onClick={() => void removeComment(c.id)}
+                      className="text-[11px] font-semibold uppercase tracking-wide text-red-700 underline hover:text-red-900"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -389,7 +548,8 @@ export function ReviewClient({
             <p className="mb-2 flex items-start justify-between gap-2 border-l-2 border-yellow-400 bg-yellow-50 px-2 py-1 text-xs italic">
               <span>“{quote}”</span>
               <button
-                onClick={() => setQuote(null)}
+                type="button"
+                onClick={clearPendingHighlight}
                 className="not-italic text-ink-soft"
                 aria-label="Clear highlight"
               >
@@ -405,7 +565,8 @@ export function ReviewClient({
             className="w-full border border-rule-dark px-3 py-2 text-sm focus:border-ink focus:outline-none"
           />
           <button
-            onClick={post}
+            type="button"
+            onClick={() => void post()}
             disabled={busy || !text.trim()}
             className="mt-2 w-full border border-ink py-2 text-xs font-semibold uppercase tracking-wider hover:bg-ink hover:text-paper disabled:opacity-40"
           >
@@ -426,7 +587,8 @@ export function ReviewClient({
               it live.
             </p>
             <button
-              onClick={() => act("make_live")}
+              type="button"
+              onClick={() => void act("make_live")}
               disabled={busy}
               className="bg-green-700 py-3 text-xs font-semibold uppercase tracking-wider text-white hover:bg-green-800 disabled:opacity-50"
             >
@@ -438,7 +600,8 @@ export function ReviewClient({
         {canReview && (
           <div className="mt-5 flex flex-col gap-2 border-t border-rule pt-5">
             <button
-              onClick={() => act("approve")}
+              type="button"
+              onClick={() => void act("approve")}
               disabled={busy}
               className="bg-green-700 py-3 text-xs font-semibold uppercase tracking-wider text-white hover:bg-green-800 disabled:opacity-50"
             >
@@ -446,16 +609,18 @@ export function ReviewClient({
             </button>
             {!isRevision && (
               <button
-                onClick={() => act("park")}
+                type="button"
+                onClick={() => void act("park")}
                 disabled={busy}
                 className="border border-sky-700 py-3 text-xs font-semibold uppercase tracking-wider text-sky-800 hover:bg-sky-700 hover:text-white disabled:opacity-50"
               >
                 Approve & park
               </button>
             )}
-            {!isAuthor && (
+            {assignedEditorIsMe && (
               <button
-                onClick={() => act("changes")}
+                type="button"
+                onClick={() => void act("changes")}
                 disabled={busy}
                 className="border border-ink py-3 text-xs font-semibold uppercase tracking-wider hover:bg-ink hover:text-paper disabled:opacity-50"
               >
