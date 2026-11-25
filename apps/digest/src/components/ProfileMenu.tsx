@@ -224,14 +224,6 @@ export function ProfileMenu({
                   Saved stories
                   <Chevron />
                 </Link>
-                <Link
-                  href="/account/newsletters"
-                  onClick={closeDrawer}
-                  className="flex items-center justify-between border-t border-rule py-4 text-[15px] text-ink hover:bg-accent-soft/40"
-                >
-                  Newsletters
-                  <Chevron />
-                </Link>
 
                 <p className="border-t border-rule pt-4 text-[11px] font-bold uppercase tracking-[0.08em] text-ink">
                   Get support

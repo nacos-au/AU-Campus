@@ -70,14 +70,13 @@
     "libraryEmpty": "You haven't purchased any editions yet.",
     "purchasedOn": "Purchased {date}",
     "settings": "Account settings",
-    "newsletters": "Newsletters",
     "editProfile": "Edit your profile",
     "logOut": "Log out",
     "yourContent": "Your content",
     "getSupport": "Get support",
     "helpCenter": "Help Center"
   },
-    "footer": {
+  "footer": {
     "rights": "All rights reserved.",
     "weatherCredit": "Weather for Owo via Open-Meteo.",
     "tagline": "The independent student newspaper of the University Students' Association.",
