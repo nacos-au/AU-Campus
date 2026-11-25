@@ -109,17 +109,19 @@ export function AdminNav({
         </div>
       )}
       <div className="flex items-center gap-3">
-        <ProfileAvatar url={avatarUrl} name={displayName} size="sm" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold">{displayName}</p>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-soft">{role}</p>
-          <Link
-            href="/account/settings"
-            className="text-[10px] font-semibold uppercase tracking-wider text-accent hover:text-accent-hover"
-          >
-            Edit photo
-          </Link>
-        </div>
+        <Link
+          href="/account/settings"
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-sm py-1 hover:bg-gray-50"
+          title="Edit profile"
+        >
+          <ProfileAvatar url={avatarUrl} name={displayName} size="sm" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] font-semibold text-ink">{displayName}</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-soft">
+              {role}
+            </p>
+          </div>
+        </Link>
         <form action={exitAction}>
           <button
             type="submit"
