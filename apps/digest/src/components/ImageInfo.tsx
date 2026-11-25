@@ -87,9 +87,7 @@ export function ImageInfo({
   const media = Children.map(children, (child) => {
     if (!isValidElement(child)) return child;
     const el = child as ReactElement<Record<string, unknown>>;
-    const prevOnLoad = el.props.onLoad as
-      | ((e: unknown) => void)
-      | undefined;
+    const prevOnLoad = el.props.onLoad as ((e: unknown) => void) | undefined;
     const prevComplete = el.props.onLoadingComplete as
       | ((img: HTMLImageElement) => void)
       | undefined;
@@ -117,16 +115,18 @@ export function ImageInfo({
           aria-label={open ? "Hide image description" : "Show image description"}
           title="Image description"
           onClick={() => setOpen((v) => !v)}
-          className="image-info-chip group absolute bottom-2 right-2 z-10 flex max-w-[min(100%-1rem,20rem)] items-center gap-1.5 rounded-sm bg-paper/95 px-1.5 py-1 text-ink shadow-sm ring-1 ring-rule-dark backdrop-blur-sm transition-[background-color,box-shadow] hover:bg-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="image-info-chip group absolute bottom-2 right-2 z-10 flex max-w-[min(100%-1rem,22rem)] items-center gap-0 overflow-hidden rounded-sm bg-paper/95 pl-1.5 pr-1.5 py-1 text-accent shadow-sm ring-1 ring-accent/35 backdrop-blur-sm transition-[box-shadow,background-color] duration-200 hover:bg-paper hover:ring-accent/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           <Info
-            className="h-3.5 w-3.5 shrink-0 text-ink-soft"
-            strokeWidth={1.75}
+            className="h-4 w-4 shrink-0 text-accent"
+            strokeWidth={2.25}
             aria-hidden
           />
-          <span className="max-w-0 overflow-hidden whitespace-nowrap text-[11px] leading-tight text-ink-soft opacity-0 transition-[max-width,opacity] duration-200 group-hover:max-w-[16rem] group-hover:opacity-100 group-focus-visible:max-w-[16rem] group-focus-visible:opacity-100">
-            <span className="inline-block max-w-[16rem] truncate pl-0.5">
-              {text}
+          <span className="grid max-w-0 grid-cols-[0fr] opacity-0 transition-[max-width,opacity,padding] duration-300 ease-out group-hover:max-w-[18rem] group-hover:grid-cols-[1fr] group-hover:opacity-100 group-hover:pl-1.5 group-focus-visible:max-w-[18rem] group-focus-visible:grid-cols-[1fr] group-focus-visible:opacity-100 group-focus-visible:pl-1.5">
+            <span className="min-w-0 overflow-hidden">
+              <span className="block truncate text-[11px] font-medium leading-tight text-accent">
+                {text}
+              </span>
             </span>
           </span>
         </button>
@@ -142,7 +142,7 @@ export function ImageInfo({
       {open && (
         <p
           id={panelId}
-          className="image-info-full mt-2 font-sans text-[0.8125rem] leading-snug text-ink-soft"
+          className="image-info-full mt-2 animate-[imageInfoIn_180ms_ease-out] font-sans text-[0.8125rem] leading-snug text-ink-soft"
         >
           {text}
         </p>

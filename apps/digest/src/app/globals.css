@@ -233,6 +233,17 @@ body {
   -webkit-user-drag: none;
 }
 
+@keyframes imageInfoIn {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Blank the whole document if someone reaches the print dialog on a reader page */
 @media print {
   body:has(.secure-reader) * {

@@ -15,6 +15,7 @@ import { articleSlug, isPlaceholderSlug, slugify } from "@/lib/articles";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
 import { uploadCover } from "@/lib/uploads";
 import { locales, localeNames } from "@/i18n/locales";
+import { CoverEditorModal } from "@/components/CoverEditorModal";
 import { ImageInfo } from "@/components/ImageInfo";
 import { RichText } from "@/components/RichText";
 import { useConfirm } from "@/components/ConfirmDialog";
@@ -32,6 +33,8 @@ const EMPTY_DOC = { type: "doc", content: [] };
 const AUTOSAVE_MS = 2000;
 
 const AlignedImage = ImageExt.extend({
+  selectable: true,
+  draggable: true,
   addAttributes() {
     return {
       ...this.parent?.(),
@@ -102,7 +105,6 @@ export function ArticleComposer({
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const replaceImageRef = useRef<HTMLInputElement>(null);
-  const coverFileRef = useRef<HTMLInputElement>(null);
   const articleIdRef = useRef<string | null>(article?.id ?? null);
   const dirtyRef = useRef(false);
   const savingRef = useRef(false);
@@ -134,6 +136,7 @@ export function ArticleComposer({
   const [coverCaption, setCoverCaption] = useState(
     initial?.cover_caption ?? ""
   );
+  const [showCoverEditor, setShowCoverEditor] = useState(false);
   const [overrideEditorId, setOverrideEditorId] = useState(
     canManualAssign ? (article?.assigned_editor_id ?? "") : ""
   );
@@ -271,6 +274,10 @@ export function ArticleComposer({
       h3: e?.isActive("heading", { level: 3 }) ?? false,
       image: e?.isActive("image") ?? false,
       align: (e?.getAttributes("image").align as string | undefined) ?? null,
+      imageCaption: Boolean(
+        String(e?.getAttributes("image").title ?? "").trim() ||
+          String(e?.getAttributes("image").alt ?? "").trim()
+      ),
       canUndo: e?.can().undo() ?? false,
       canRedo: e?.can().redo() ?? false,
     }),
@@ -551,9 +558,9 @@ export function ArticleComposer({
     }
   }
 
-  async function uploadCoverFile(file: File | undefined) {
-    if (!file) return;
+  async function saveCoverFromEditor(file: File) {
     setUploading(true);
+    setError(null);
     try {
       setCoverUrl(
         await uploadCover(supabase, file, "articles", uploadNameHint())
@@ -561,9 +568,9 @@ export function ArticleComposer({
       dirtyRef.current = true;
     } catch (e) {
       setError((e as Error).message);
+      throw e;
     } finally {
       setUploading(false);
-      if (coverFileRef.current) coverFileRef.current.value = "";
     }
   }
 
@@ -589,13 +596,20 @@ export function ArticleComposer({
 
   async function setCaption() {
     if (!editor) return;
-    const prev = editor.getAttributes("image").title as string | undefined;
+    if (!editor.isActive("image")) {
+      setError("Select a photo in the story first, then add a description.");
+      return;
+    }
+    const prev =
+      String(editor.getAttributes("image").title ?? "").trim() ||
+      String(editor.getAttributes("image").alt ?? "").trim();
     const cap = await prompt({
-      title: "Image caption",
+      title: "Image description",
+      body: "Shown as the info chip on the published article.",
       confirmLabel: "Save",
       input: {
         placeholder: "Describe the photo, credit the photographer",
-        defaultValue: prev ?? "",
+        defaultValue: prev,
       },
     });
     if (cap === null) return;
@@ -816,7 +830,13 @@ export function ArticleComposer({
               <Btn title="Align left, text wraps" active={ui.align === "left"} onClick={() => setAlign("left")}>◧</Btn>
               <Btn title="Center" active={ui.align === "center"} onClick={() => setAlign("center")}>▣</Btn>
               <Btn title="Wide" active={ui.align === "wide"} onClick={() => setAlign("wide")}>▭</Btn>
-              <Btn title="Caption" onClick={setCaption}>Cap</Btn>
+              <Btn
+                title="Image description"
+                active={ui.imageCaption}
+                onClick={() => void setCaption()}
+              >
+                Description
+              </Btn>
               <Btn
                 title="Remove image"
                 onClick={() => {
@@ -826,6 +846,9 @@ export function ArticleComposer({
               >
                 ✕
               </Btn>
+              <span className="hidden shrink-0 px-2 text-[11px] text-ink-soft sm:inline">
+                Description → info chip on the public article
+              </span>
             </>
           )}
         </div>
@@ -1051,14 +1074,14 @@ export function ArticleComposer({
                   <p className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">
                     Cover photo
                   </p>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       disabled={uploading}
-                      onClick={() => coverFileRef.current?.click()}
+                      onClick={() => setShowCoverEditor(true)}
                       className="text-xs font-semibold uppercase tracking-wider text-accent hover:text-accent-hover"
                     >
-                      {coverUrl ? "Change" : "Add cover"}
+                      {coverUrl ? "Adjust / change" : "Add cover"}
                     </button>
                     {coverUrl && (
                       <>
@@ -1113,16 +1136,9 @@ export function ArticleComposer({
                 ) : (
                   <p className="mt-2 text-sm text-ink-soft">
                     Optional for most stories. Required for Top News / featured
-                    homepage packages.
+                    homepage packages. Crop to 16:9 for share previews.
                   </p>
                 )}
-                <input
-                  ref={coverFileRef}
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={(e) => uploadCoverFile(e.target.files?.[0])}
-                />
               </div>
             )}
 
@@ -1226,10 +1242,11 @@ export function ArticleComposer({
                 <div className="mt-2 flex flex-wrap gap-3">
                   <button
                     type="button"
-                    onClick={() => coverFileRef.current?.click()}
-                    className="text-xs font-semibold uppercase tracking-wider text-accent"
+                    disabled={uploading}
+                    onClick={() => setShowCoverEditor(true)}
+                    className="text-xs font-semibold uppercase tracking-wider text-accent disabled:opacity-50"
                   >
-                    {coverUrl ? "Change cover" : "Upload cover"}
+                    {coverUrl ? "Adjust / change cover" : "Add cover"}
                   </button>
                   {coverUrl && (
                     <>
@@ -1331,6 +1348,13 @@ export function ArticleComposer({
           onClose={() => setShowShare(false)}
         />
       )}
+
+      <CoverEditorModal
+        open={showCoverEditor}
+        existingUrl={coverUrl || null}
+        onClose={() => setShowCoverEditor(false)}
+        onSave={saveCoverFromEditor}
+      />
     </div>
   );
 }
