@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { IconClose, IconUser } from "./icons";
 import { ProfileAvatar } from "./ProfileAvatar";
 
@@ -20,11 +21,7 @@ function timeGreeting(): "Good morning" | "Good afternoon" | "Good night" {
 }
 
 function Chevron() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-ink/40" fill="none" stroke="currentColor" strokeWidth={1.75} aria-hidden>
-      <path strokeLinecap="round" strokeLinejoin="round" d="m9 6 6 6-6 6" />
-    </svg>
-  );
+  return <ChevronRight className="h-4 w-4 shrink-0 text-ink/40" strokeWidth={1.75} aria-hidden />;
 }
 
 type Props = {
@@ -109,9 +106,7 @@ export function ProfileMenu({
         {!compact && (
           <>
             <span>Account</span>
-            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden>
-              <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
-            </svg>
+            <ChevronDown className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
           </>
         )}
       </button>

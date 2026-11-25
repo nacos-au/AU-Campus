@@ -152,8 +152,9 @@ function wrapRange(range: Range, spec: HighlightSpec) {
   btn.setAttribute("aria-label", "Review comment");
   btn.className =
     "ml-0.5 inline-flex h-4 w-4 translate-y-[-1px] items-center justify-center rounded-full bg-ink text-paper align-middle hover:bg-accent";
+  /* Lucide MessageCircle path (DOM injection — no React tree here) */
   btn.innerHTML =
-    '<svg viewBox="0 0 24 24" class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 0 1-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8Z"/></svg>';
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>';
   mark.after(btn);
 }
 
