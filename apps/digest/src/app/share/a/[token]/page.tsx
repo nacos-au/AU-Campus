@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { ImageInfo } from "@/components/ImageInfo";
 import { RichText } from "@/components/RichText";
 import { digestFeatures } from "@/lib/features";
 import { requireRole } from "@/lib/auth";
@@ -32,6 +33,7 @@ interface ShareView {
   dek?: string | null;
   body?: unknown;
   cover_url?: string | null;
+  cover_caption?: string | null;
   byline?: string | null;
   captured_at?: string | null;
 }
@@ -116,16 +118,21 @@ export default async function ShareDraftPage({
           </p>
         )}
         {view.cover_url && (
-          <div className="relative mt-6 aspect-video w-full overflow-hidden bg-rule">
-            <Image
-              src={view.cover_url}
-              alt=""
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, 768px"
-              priority
-            />
-          </div>
+          <figure className="mt-6">
+            <ImageInfo
+              description={view.cover_caption}
+              className="aspect-video w-full overflow-hidden bg-rule"
+            >
+              <Image
+                src={view.cover_url}
+                alt={view.cover_caption?.trim() || view.title || ""}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 768px"
+                priority
+              />
+            </ImageInfo>
+          </figure>
         )}
         <div className="mt-8">
           <RichText doc={view.body} />

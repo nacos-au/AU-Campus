@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { ImageInfo } from "@/components/ImageInfo";
 import { RichText } from "@/components/RichText";
 import { IconMoreVertical } from "@/components/icons";
 import {
@@ -627,9 +628,19 @@ export function ReviewClient({
           <p className="mt-3 text-sm font-semibold">By {content.byline}</p>
         )}
         {content.cover_url && (
-          <div className="relative mt-6 aspect-video w-full overflow-hidden">
-            <Image src={content.cover_url} alt="" fill className="object-cover" />
-          </div>
+          <figure className="mt-6">
+            <ImageInfo
+              description={content.cover_caption}
+              className="aspect-video w-full overflow-hidden"
+            >
+              <Image
+                src={content.cover_url}
+                alt={content.cover_caption?.trim() || content.title || ""}
+                fill
+                className="object-cover"
+              />
+            </ImageInfo>
+          </figure>
         )}
         <div
           ref={bodyRef}

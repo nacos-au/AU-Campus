@@ -47,6 +47,7 @@ export default async function ReviewPage({
         dek: article.dek,
         body: article.body,
         cover_url: article.cover_url,
+        cover_caption: article.cover_caption ?? null,
         byline: article.byline ?? null,
         section_id: article.section_id,
         language: article.language,

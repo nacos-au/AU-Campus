@@ -67,6 +67,8 @@ export interface Article {
   dek: string | null;
   body: unknown; // Tiptap JSON document
   cover_url: string | null;
+  /** Optional cover description — shown via ImageInfo; also used as alt when set. */
+  cover_caption?: string | null;
   section_id: number;
   author_id: string;
   language: string;
@@ -254,6 +256,7 @@ export interface RevisionPayload {
   dek: string | null;
   body: unknown;
   cover_url: string | null;
+  cover_caption?: string | null;
   byline: string | null;
   byline_mode?: BylineMode;
   series_id?: string | null;

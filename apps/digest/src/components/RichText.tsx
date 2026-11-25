@@ -1,4 +1,5 @@
 import { memo, type ReactNode } from "react";
+import { ImageInfo } from "@/components/ImageInfo";
 
 interface Mark {
   type: string;
@@ -78,12 +79,17 @@ function renderNode(node: Node, key: number): ReactNode {
       const src = String(node.attrs?.src ?? "");
       if (!src) return null;
       const align = String(node.attrs?.align ?? "center");
-      const caption = (node.attrs?.title as string | null) || null;
+      const caption =
+        String(node.attrs?.title ?? "").trim() ||
+        String(node.attrs?.alt ?? "").trim() ||
+        "";
+      const alt = String(node.attrs?.alt ?? "").trim() || caption;
       return (
         <figure key={key} className="article-figure" data-align={align}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt={String(node.attrs?.alt ?? "")} loading="lazy" />
-          {caption && <figcaption>{caption}</figcaption>}
+          <ImageInfo description={caption || null}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={src} alt={alt} loading="lazy" />
+          </ImageInfo>
         </figure>
       );
     }

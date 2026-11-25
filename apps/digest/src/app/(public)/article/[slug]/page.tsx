@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { AdSlot } from "@/components/AdSlot";
+import { ImageInfo } from "@/components/ImageInfo";
 import { RichText } from "@/components/RichText";
 import { LikeShare } from "@/components/LikeShare";
 import { creditPeople, displayByline, seriesHref } from "@/lib/byline";
@@ -192,16 +193,19 @@ export default async function ArticlePage({
 
         {article.cover_url && (
           <figure className="mt-6">
-            <div className="relative aspect-video w-full overflow-hidden bg-rule">
+            <ImageInfo
+              description={article.cover_caption}
+              className="aspect-video w-full overflow-hidden bg-rule"
+            >
               <Image
                 src={article.cover_url}
-                alt={article.title}
+                alt={article.cover_caption?.trim() || article.title}
                 fill
                 priority
                 sizes="(max-width: 768px) 100vw, 768px"
                 className="object-cover"
               />
-            </div>
+            </ImageInfo>
           </figure>
         )}
 

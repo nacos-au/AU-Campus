@@ -14,6 +14,7 @@ import { articleSlug, isPlaceholderSlug, slugify } from "@/lib/articles";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
 import { uploadCover } from "@/lib/uploads";
 import { locales, localeNames } from "@/i18n/locales";
+import { ImageInfo } from "@/components/ImageInfo";
 import { RichText } from "@/components/RichText";
 import { useConfirm } from "@/components/ConfirmDialog";
 import { WriterReviewPanel } from "@/components/WriterReviewPanel";
@@ -129,6 +130,9 @@ export function ArticleComposer({
   const isOwner = !article || article.author_id === userId;
   const [language, setLanguage] = useState(initial?.language ?? "en");
   const [coverUrl, setCoverUrl] = useState(initial?.cover_url ?? "");
+  const [coverCaption, setCoverCaption] = useState(
+    initial?.cover_caption ?? ""
+  );
   const [overrideEditorId, setOverrideEditorId] = useState(
     canManualAssign ? (article?.assigned_editor_id ?? "") : ""
   );
@@ -299,6 +303,7 @@ export function ArticleComposer({
       dek: dek.trim() || null,
       body: editor?.getJSON() ?? EMPTY_DOC,
       cover_url: coverUrl || null,
+      cover_caption: coverCaption.trim() || null,
       byline: null,
       byline_mode: "personal",
       series_id: resolvedSeriesId,
@@ -359,6 +364,7 @@ export function ArticleComposer({
         dek: p.dek,
         body: p.body,
         cover_url: p.cover_url,
+        cover_caption: p.cover_caption ?? null,
         byline: p.byline,
         byline_mode: p.byline_mode ?? "personal",
         series_id: p.series_id ?? null,
@@ -412,6 +418,7 @@ export function ArticleComposer({
       collaborators,
       isOwner,
       coverUrl,
+      coverCaption,
       isLive,
       language,
       resolvedSection,
@@ -586,6 +593,32 @@ export function ArticleComposer({
       .updateAttributes("image", { title: cap || null, alt: cap || null })
       .run();
     dirtyRef.current = true;
+  }
+
+  async function editCoverCaption() {
+    const cap = await prompt({
+      title: "Cover description",
+      confirmLabel: "Save",
+      input: {
+        placeholder: "Describe the photo, credit the photographer",
+        defaultValue: coverCaption,
+      },
+    });
+    if (cap === null) return;
+    setCoverCaption(cap.trim());
+    markDirty();
+  }
+
+  function clearCover() {
+    if (article?.featured) {
+      setError(
+        "Top News stories need a cover. Unfeature the story before removing art."
+      );
+      return;
+    }
+    setCoverUrl("");
+    setCoverCaption("");
+    markDirty();
   }
 
   const busy = saveDraft.isPending || send.isPending || uploading;
@@ -804,9 +837,19 @@ export function ArticleComposer({
               )}
             </p>
             {coverUrl && (
-              <div className="relative mt-6 aspect-video w-full overflow-hidden">
-                <Image src={coverUrl} alt="" fill className="object-cover" />
-              </div>
+              <figure className="mt-6">
+                <ImageInfo
+                  description={coverCaption}
+                  className="aspect-video w-full overflow-hidden"
+                >
+                  <Image
+                    src={coverUrl}
+                    alt={coverCaption.trim() || title || "Cover"}
+                    fill
+                    className="object-cover"
+                  />
+                </ImageInfo>
+              </figure>
             )}
             <div className="article-body mt-8">
               <RichText doc={editor?.getJSON() ?? EMPTY_DOC} />
@@ -998,28 +1041,38 @@ export function ArticleComposer({
                       {coverUrl ? "Change" : "Add cover"}
                     </button>
                     {coverUrl && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (article?.featured) {
-                            setError(
-                              "Top News stories need a cover. Unfeature the story before removing art."
-                            );
-                            return;
-                          }
-                          setCoverUrl("");
-                          markDirty();
-                        }}
-                        className="text-xs font-semibold uppercase tracking-wider text-ink-soft hover:text-ink"
-                      >
-                        Remove
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => void editCoverCaption()}
+                          className="text-xs font-semibold uppercase tracking-wider text-accent hover:text-accent-hover"
+                        >
+                          {coverCaption.trim() ? "Edit description" : "Add description"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={clearCover}
+                          className="text-xs font-semibold uppercase tracking-wider text-ink-soft hover:text-ink"
+                        >
+                          Remove
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
                 {coverUrl ? (
-                  <div className="relative mt-2 aspect-video w-full overflow-hidden border border-rule">
-                    <Image src={coverUrl} alt="Cover" fill className="object-cover" />
+                  <div className="mt-2 border border-rule">
+                    <ImageInfo
+                      description={coverCaption}
+                      className="aspect-video w-full overflow-hidden"
+                    >
+                      <Image
+                        src={coverUrl}
+                        alt={coverCaption.trim() || "Cover"}
+                        fill
+                        className="object-cover"
+                      />
+                    </ImageInfo>
                   </div>
                 ) : (
                   <p className="mt-2 text-sm text-ink-soft">
@@ -1120,8 +1173,18 @@ export function ArticleComposer({
                   Cover image
                 </p>
                 {coverUrl && (
-                  <div className="relative mt-2 aspect-video w-full overflow-hidden border border-rule-dark">
-                    <Image src={coverUrl} alt="Cover" fill className="object-cover" />
+                  <div className="mt-2 border border-rule-dark">
+                    <ImageInfo
+                      description={coverCaption}
+                      className="aspect-video w-full overflow-hidden"
+                    >
+                      <Image
+                        src={coverUrl}
+                        alt={coverCaption.trim() || "Cover"}
+                        fill
+                        className="object-cover"
+                      />
+                    </ImageInfo>
                   </div>
                 )}
                 <div className="mt-2 flex flex-wrap gap-3">
@@ -1133,22 +1196,22 @@ export function ArticleComposer({
                     {coverUrl ? "Change cover" : "Upload cover"}
                   </button>
                   {coverUrl && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (article?.featured) {
-                          setError(
-                            "Top News stories need a cover. Unfeature the story before removing art."
-                          );
-                          return;
-                        }
-                        setCoverUrl("");
-                        markDirty();
-                      }}
-                      className="text-xs font-semibold uppercase tracking-wider text-ink-soft"
-                    >
-                      Remove
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => void editCoverCaption()}
+                        className="text-xs font-semibold uppercase tracking-wider text-accent"
+                      >
+                        {coverCaption.trim() ? "Edit description" : "Add description"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearCover}
+                        className="text-xs font-semibold uppercase tracking-wider text-ink-soft"
+                      >
+                        Remove
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
