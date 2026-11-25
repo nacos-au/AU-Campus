@@ -118,6 +118,10 @@ body {
   outline: 2px solid #eab308;
   outline-offset: 2px;
 }
+.review-mark--focused {
+  background: color-mix(in srgb, #eab308 70%, transparent);
+  box-shadow: inset 0 -2px 0 #ca8a04;
+}
 .review-mark-icon {
   display: inline-flex;
   align-items: center;

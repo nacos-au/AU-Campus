@@ -97,14 +97,24 @@ export function ReviewClient({
     if (!id || id === "pending") return;
     setActiveHighlightId(id);
     if (bodyRef.current) scrollToReviewHighlight(bodyRef.current, id);
+    const narrow = window.matchMedia("(max-width: 1023px)").matches;
     const scrollCard = () => {
       const el = document.getElementById(`review-c-${id}`);
-      el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      el?.scrollIntoView({
+        behavior: "smooth",
+        block: narrow ? "start" : "nearest",
+      });
     };
     requestAnimationFrame(() => {
       scrollCard();
       window.setTimeout(scrollCard, 120);
     });
+  }
+
+  function jumpToComments() {
+    document
+      .getElementById("review-thread")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   useEffect(() => {
@@ -176,15 +186,33 @@ export function ReviewClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quoteKey]);
 
+  // Keep the active mark visually focused after (re)paint
+  useEffect(() => {
+    const root = bodyRef.current;
+    if (!root) return;
+    root.querySelectorAll("mark.review-mark--focused").forEach((m) => {
+      m.classList.remove("review-mark--focused");
+    });
+    if (!activeHighlightId || activeHighlightId === "pending") return;
+    const mark = root.querySelector(
+      `mark[data-review-id="${CSS.escape(activeHighlightId)}"]`
+    );
+    mark?.classList.add("review-mark--focused");
+  }, [activeHighlightId, quoteKey]);
+
   // After marks paint (or when focusing a comment), scroll mark + rail card into view
   useEffect(() => {
     if (!activeHighlightId || activeHighlightId === "pending") return;
     const id = activeHighlightId;
+    const narrow = window.matchMedia("(max-width: 1023px)").matches;
     const t = window.setTimeout(() => {
       if (bodyRef.current) scrollToReviewHighlight(bodyRef.current, id);
       document
         .getElementById(`review-c-${id}`)
-        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: narrow ? "start" : "nearest",
+        });
     }, 40);
     return () => window.clearTimeout(t);
   }, [activeHighlightId, quoteKey]);
@@ -519,7 +547,7 @@ export function ReviewClient({
   }
 
   return (
-    <div className="mt-4 grid gap-8 lg:grid-cols-[minmax(0,1fr)_24rem]">
+    <div className="mt-4 grid gap-8 pb-20 lg:grid-cols-[minmax(0,1fr)_24rem] lg:pb-0">
       <article>
         {showSelfAssignTools && (
           <div className="mb-4 flex flex-wrap items-center gap-2 border border-rule-dark bg-gray-50 px-3 py-2 text-[11px]">
@@ -596,20 +624,56 @@ export function ReviewClient({
               {iconPop.pinned ? " · Pinned" : ""}
             </p>
             <p className="mt-1.5 whitespace-pre-wrap text-sm">{iconPop.body}</p>
-            {iconPop.pinned && (
-              <button
-                type="button"
-                className="mt-2 text-[10px] font-semibold uppercase tracking-wider text-ink-soft underline"
-                onClick={() => setIconPop(null)}
-              >
-                Close
-              </button>
-            )}
+            <div className="mt-2 flex flex-wrap gap-3">
+              {iconPop.id && iconPop.id !== "pending" && (
+                <button
+                  type="button"
+                  className="text-[10px] font-semibold uppercase tracking-wider text-accent underline"
+                  onClick={() => {
+                    const id = iconPop.id;
+                    setIconPop(null);
+                    focusThread(id);
+                  }}
+                >
+                  Open in list
+                </button>
+              )}
+              {iconPop.pinned && (
+                <button
+                  type="button"
+                  className="text-[10px] font-semibold uppercase tracking-wider text-ink-soft underline"
+                  onClick={() => setIconPop(null)}
+                >
+                  Close
+                </button>
+              )}
+            </div>
           </div>
         )}
       </article>
 
-      <aside className="lg:sticky lg:top-4 lg:self-start">
+      {/* Mobile: always-visible path into the comments list */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-rule-dark bg-paper/95 px-3 py-2.5 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] backdrop-blur lg:hidden">
+        <button
+          type="button"
+          onClick={jumpToComments}
+          className="flex w-full items-center justify-between gap-3 px-1 py-1 text-left"
+        >
+          <span className="text-[11px] font-bold uppercase tracking-wider text-ink">
+            Comments · {openCount} open
+            {comments.length > 0 ? (
+              <span className="ml-2 font-normal normal-case tracking-normal text-ink-soft">
+                {comments.length} total
+              </span>
+            ) : null}
+          </span>
+          <span className="shrink-0 text-[11px] font-semibold uppercase tracking-wider text-accent">
+            View ↓
+          </span>
+        </button>
+      </div>
+
+      <aside className="pb-20 lg:sticky lg:top-4 lg:self-start lg:pb-0">
         {canMoveDesk && sections.length > 0 && (
           <div className="mb-5 border border-rule-dark p-3">
             <label className="block text-[11px] font-bold uppercase tracking-wider text-ink-soft">
@@ -685,9 +749,28 @@ export function ReviewClient({
               <div
                 key={c.id}
                 id={`review-c-${c.id}`}
+                role="button"
+                tabIndex={0}
+                onClick={(e) => {
+                  const t = e.target as HTMLElement;
+                  if (
+                    t.closest("button") ||
+                    t.closest("textarea") ||
+                    t.closest("a")
+                  ) {
+                    return;
+                  }
+                  focusThread(c.id);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    focusThread(c.id);
+                  }
+                }}
                 className={`border p-3 text-sm transition-shadow ${
                   active
-                    ? "border-yellow-500 bg-yellow-50 shadow-[inset_3px_0_0_0_#eab308]"
+                    ? "border-yellow-500 bg-yellow-50 shadow-[inset_3px_0_0_0_#eab308] ring-1 ring-yellow-400/60"
                     : done
                       ? "border-rule bg-gray-50/60 opacity-70"
                       : mine
@@ -701,6 +784,7 @@ export function ReviewClient({
                   {done ? " · Resolved" : ""}
                   {!c.anchor?.quote ? " · General note" : ""}
                   {quoteMissing ? " · Quote not in draft" : ""}
+                  {active ? " · Focused" : ""}
                 </p>
                 {c.anchor?.quote && (
                   <button
