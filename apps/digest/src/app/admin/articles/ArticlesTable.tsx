@@ -695,8 +695,8 @@ export function ArticlesTable({
                         if (
                           await confirm({
                             title: `Withdraw “${a.title}”?`,
-                            body: "Removes it from the editor queue. The assigned editor will see that you withdrew it. Body content is cleared; an audit row is kept.",
-                            confirmLabel: "Withdraw",
+                            body: "Pulls it out of the editor queue and returns it to your drafts so you can edit and resubmit. Review comments are cleared; the assigned editor is notified.",
+                            confirmLabel: "Withdraw to draft",
                             danger: true,
                           })
                         )

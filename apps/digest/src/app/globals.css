@@ -207,6 +207,11 @@ body {
 .composer-body img.ProseMirror-selectednode {
   outline: 3px solid var(--accent);
 }
+/* Pasted Word/Docs crumbs must not bring foreign fonts into the story */
+.composer-body,
+.composer-body * {
+  font-family: inherit !important;
+}
 
 /* Tiptap editor shares article typography */
 .tiptap-editor .ProseMirror {

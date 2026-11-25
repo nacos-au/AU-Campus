@@ -9,7 +9,7 @@ import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import ImageExt from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extensions";
-import { Loader2 } from "lucide-react";
+import { ChevronLeft, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { articleSlug, isPlaceholderSlug, slugify } from "@/lib/articles";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
@@ -253,7 +253,47 @@ export function ArticleComposer({
     content: (initial?.body as object) ?? EMPTY_DOC,
     editable: !locked,
     immediatelyRender: false,
-    editorProps: { attributes: { class: "article-body composer-body" } },
+    editorProps: {
+      attributes: { class: "article-body composer-body" },
+      /** Drop Word/Docs fonts & spacing junk; keep basic structure. */
+      transformPastedHTML(html) {
+        const doc = new DOMParser().parseFromString(html, "text/html");
+        doc
+          .querySelectorAll("style, script, meta, link, xml, o\\:p")
+          .forEach((el) => el.remove());
+        doc.querySelectorAll("*").forEach((el) => {
+          el.removeAttribute("style");
+          el.removeAttribute("class");
+          el.removeAttribute("face");
+          el.removeAttribute("size");
+          el.removeAttribute("color");
+          el.removeAttribute("bgcolor");
+          for (const attr of [...el.attributes]) {
+            if (attr.name.startsWith("data-") || attr.name.startsWith("o:")) {
+              el.removeAttribute(attr.name);
+            }
+          }
+        });
+        doc.querySelectorAll("font").forEach((el) => {
+          const parent = el.parentNode;
+          if (!parent) return;
+          while (el.firstChild) parent.insertBefore(el.firstChild, el);
+          parent.removeChild(el);
+        });
+        doc.querySelectorAll("span").forEach((el) => {
+          if (el.attributes.length === 0) {
+            const parent = el.parentNode;
+            if (!parent) return;
+            while (el.firstChild) parent.insertBefore(el.firstChild, el);
+            parent.removeChild(el);
+          }
+        });
+        return doc.body.innerHTML;
+      },
+      transformPastedText(text) {
+        return text.replace(/\u00a0/g, " ").replace(/\r\n/g, "\n");
+      },
+    },
     onUpdate: () => {
       dirtyRef.current = true;
     },
@@ -667,10 +707,11 @@ export function ArticleComposer({
       <div className="sticky top-0 z-30 flex items-center gap-2 border-b border-rule bg-paper px-3 py-2 sm:px-6 lg:px-8">
         <Link
           href="/admin/articles?filter=draft"
-          className="text-sm text-ink-soft hover:text-ink"
+          className="inline-flex items-center gap-0.5 text-sm text-ink-soft hover:text-ink"
           aria-label="Back to drafts"
         >
-          ←<span className="ml-1 hidden sm:inline">Drafts</span>
+          <ChevronLeft className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
+          <span className="hidden sm:inline">Drafts</span>
         </Link>
         <span className="ml-1 inline-flex items-center gap-1.5 rounded-full border border-rule px-2.5 py-0.5 text-[11px] font-semibold text-ink-soft">
           {saveDraft.isPending || (notice === "Autosaved" && dirtyRef.current === false) ? (

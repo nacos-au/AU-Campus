@@ -31,9 +31,9 @@ export default async function EditArticlePage({
         </p>
         <Link
           href="/admin/articles?filter=draft"
-          className="mt-6 inline-block text-sm font-semibold text-accent underline underline-offset-2"
+          className="mt-6 inline-flex items-center gap-1 text-sm font-semibold text-accent underline underline-offset-2"
         >
-          ← Back to drafts
+          Back to drafts
         </Link>
       </div>
     );
