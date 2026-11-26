@@ -1162,13 +1162,11 @@ export function WeeklyIssueEditor({
         </dd>
         <dt className="text-ink-soft">Issue</dt>
         <dd className="text-right font-semibold">No. {meta.number}</dd>
-        <dt className="text-ink-soft">Week</dt>
-        <dd className="text-right font-semibold">Week {meta.weekNo}</dd>
         <dt className="text-ink-soft">Title</dt>
         <dd className="text-right font-semibold">{meta.title}</dd>
       </dl>
       <p className="text-[11px] leading-snug text-ink-soft">
-        Volume, number, week and title are derived from the publish date.
+        Volume, number and title are derived from the publish date.
         Move the date and everything renumbers.
       </p>
       <label className="block border-t border-rule pt-3">

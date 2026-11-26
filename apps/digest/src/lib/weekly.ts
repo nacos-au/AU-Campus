@@ -12,7 +12,7 @@ import { toRoman, volumeNumberFor } from "@/lib/weekly-masthead";
  *             site.firstVolumeYear)
  *   number  = position within that year, restarting at No. 1 each January
  *   week    = ISO-8601 week number of the date
- *   title   = "Week 48 · November 26, 2026"
+ *   title   = "November 26, 2026"
  *
  * `week_start` (Monday) is kept in the table as a derived, unique "slot" key
  * so there is at most one issue per calendar week and old links keep working.
@@ -106,7 +106,7 @@ export function displayTitle(iso: string, locale = "en-US"): string {
     year: "numeric",
     timeZone: "UTC",
   }).format(isoToUtc(iso));
-  return `Week ${isoWeekNumber(iso)} · ${date}`;
+  return date;
 }
 
 type IssueRef = Pick<WeeklyIssue, "week_start" | "status"> & {

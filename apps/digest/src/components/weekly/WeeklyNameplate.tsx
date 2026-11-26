@@ -117,13 +117,12 @@ export function WeeklyNameplate({ meta, nameplate, weather }: Props) {
         <div className="mt-[2px] h-px bg-ink" />
       </div>
 
-      {/* Dateline */}
+      {/* Dateline: the issue is free, so the copyright takes the price's place. */}
       <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 border-b border-ink py-2 text-[10px] font-bold uppercase tracking-[0.14em] text-ink @2xl:justify-between @2xl:text-[11px]">
         <span>{meta.dateLong}</span>
-        <span className="text-ink-soft">
-          Week {meta.weekNo} · {meta.year}
+        <span>
+          © {meta.year} {site.name} · Free
         </span>
-        <span>Free Issue</span>
       </div>
     </header>
   );
