@@ -137,6 +137,12 @@ export function AdminNav({
     startTransition(() => setPendingHref(href));
   }
 
+  // The weekly issue editor is a full-screen canvas: no sidebar, no top bar.
+  // It ships its own toolbar (with a "Newsroom" link back to /admin).
+  if (pathname.startsWith("/admin/weekly")) {
+    return <>{children}</>;
+  }
+
   const navList = (
     <ul className="space-y-0.5">
       {items.map((i) => (

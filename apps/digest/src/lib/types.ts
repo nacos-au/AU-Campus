@@ -283,14 +283,17 @@ export interface RevisionPayload {
 
 export interface WeeklyIssue {
   id: string;
+  /** Derived Monday of `publish_date`; unique → one issue per calendar week. */
   week_start: string;
+  /** Canonical publish date (YYYY-MM-DD). Volume / number / week derive from it. */
+  publish_date?: string | null;
   title: string;
   status: WeeklyIssueStatus;
   scheduled_at: string | null;
   published_at: string | null;
   intro?: string | null;
   intro_byline?: string | null;
-  /** Freeform board document — see lib/weekly-layout.ts */
+  /** Region-based layout document (v2) — see lib/weekly-layout.ts */
   layout?: unknown;
   created_at: string;
   updated_at: string;

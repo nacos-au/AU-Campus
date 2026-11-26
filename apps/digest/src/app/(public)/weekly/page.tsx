@@ -3,24 +3,24 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { WeekPicker } from "@/components/WeekPicker";
 import { WordOfTheDay } from "@/components/WordOfTheDay";
-import { WeeklyBlockView } from "@/components/weekly/WeeklyBlockView";
+import { WeeklyPage } from "@/components/weekly/WeeklyPage";
 import { ARTICLE_PUBLIC_SELECT } from "@/lib/articles";
 import { todaysWord } from "@/lib/campus-lore";
 import { getSessionProfile, hasRole } from "@/lib/auth";
+import { fetchCampusWeather } from "@/lib/weather";
 import {
   articleIdsInLayout,
   ensureLayout,
-  parseLayout,
+  usesWeather,
 } from "@/lib/weekly-layout";
 import {
-  formatWeekLabel,
+  effectivePublishDate,
+  formatShortDate,
   isLiveIssue,
+  issueMeta,
+  issueNumberFor,
 } from "@/lib/weekly";
-import type {
-  ArticleWithMeta,
-  CampusWord,
-  WeeklyIssue,
-} from "@/lib/types";
+import type { ArticleWithMeta, CampusWord, WeeklyIssue } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Weekly Issue" };
 export const revalidate = 60;
@@ -32,19 +32,20 @@ export default async function WeeklyIssuePage({
 }: {
   searchParams: Promise<{ week?: string }>;
 }) {
-  const [{ week: weekParam }, supabase, locale, t, { profile }] = await Promise.all([
-    searchParams,
-    createClient(),
-    getLocale(),
-    getTranslations("home"),
-    getSessionProfile(),
-  ]);
+  const [{ week: weekParam }, supabase, locale, t, { profile }] =
+    await Promise.all([
+      searchParams,
+      createClient(),
+      getLocale(),
+      getTranslations("home"),
+      getSessionProfile(),
+    ]);
   const isStaff = hasRole(profile, "editor");
 
   const [{ data: allIssuesData }, { data: wordsData }] = await Promise.all([
     supabase
       .from("weekly_issues")
-      .select("id, week_start, title, status, scheduled_at, published_at")
+      .select("id, week_start, publish_date, title, status, scheduled_at, published_at")
       .neq("status", "archived")
       .order("week_start", { ascending: false }),
     supabase
@@ -58,9 +59,7 @@ export default async function WeeklyIssuePage({
   const word = todaysWord((wordsData ?? []) as CampusWord[]);
   const allIssues = (allIssuesData ?? []) as WeeklyIssue[];
   const liveIssues = allIssues.filter((i) => isLiveIssue(i));
-  const pickerSource = isStaff
-    ? allIssues.filter((i) => i.status !== "archived")
-    : liveIssues;
+  const pickerSource = isStaff ? allIssues : liveIssues;
 
   const requested = weekParam?.match(/^\d{4}-\d{2}-\d{2}$/) ? weekParam : null;
   const defaultWeek =
@@ -75,22 +74,44 @@ export default async function WeeklyIssuePage({
       .eq("week_start", activeWeek)
       .maybeSingle();
     issue = (data as WeeklyIssue | null) ?? null;
-    if (issue && !isLiveIssue(issue) && !isStaff) {
-      issue = null;
-    }
+    if (issue && !isLiveIssue(issue) && !isStaff) issue = null;
   }
 
-  const layout = issue
-    ? ensureLayout({
-        layout: issue.layout,
-        intro: issue.intro,
-        introByline: issue.intro_byline,
-        slots: (
-          (issue as WeeklyIssue & { weekly_issue_slots?: unknown[] })
-            .weekly_issue_slots ?? []
-        ) as Parameters<typeof ensureLayout>[0]["slots"],
-      }).layout
-    : parseLayout(null);
+  const weekOptions = pickerSource.map((i) => {
+    const date = effectivePublishDate(i);
+    return {
+      weekStart: i.week_start,
+      label: `No. ${issueNumberFor(date, allIssues, i.id)} · ${formatShortDate(date, locale)}`,
+    };
+  });
+
+  const picker =
+    weekOptions.length > 0 && activeWeek ? (
+      <div className="-mt-2 mb-2 flex justify-end">
+        <WeekPicker
+          label={t("theDigestFor")}
+          options={weekOptions}
+          value={activeWeek}
+        />
+      </div>
+    ) : null;
+
+  if (!issue) {
+    return (
+      <div className="py-6 md:py-10">
+        {picker}
+        <p className="py-20 text-center text-ink-soft">{t("weeklyEmpty")}</p>
+      </div>
+    );
+  }
+
+  const { layout } = ensureLayout({
+    layout: issue.layout,
+    intro: issue.intro,
+    introByline: issue.intro_byline,
+    slots: ((issue as WeeklyIssue & { weekly_issue_slots?: unknown[] })
+      .weekly_issue_slots ?? []) as Parameters<typeof ensureLayout>[0]["slots"],
+  });
 
   const ids = articleIdsInLayout(layout);
   let articlesById = new Map<string, ArticleWithMeta>();
@@ -105,70 +126,43 @@ export default async function WeeklyIssuePage({
     );
   }
 
-  const weekOptions = pickerSource.map((i) => ({
-    weekStart: i.week_start,
-    label: formatWeekLabel(i.week_start, locale),
-  }));
-
-  const hasBlocks = layout.blocks.length > 0;
-  const hasIntro = layout.blocks.some((b) => b.type === "intro");
+  const weather = usesWeather(layout.nameplate)
+    ? await fetchCampusWeather()
+    : null;
+  const meta = issueMeta(
+    effectivePublishDate(issue),
+    allIssues,
+    issue.id,
+    locale
+  );
+  const isDraftView = !isLiveIssue(issue);
 
   return (
-    <div className="py-6 md:py-10">
-      <header className="border-b-2 border-ink pb-5">
-        <h1 className="font-serif text-4xl font-black tracking-tight md:text-6xl">
-          {t("thisWeeksIssue")}
-        </h1>
-        {weekOptions.length > 0 && activeWeek ? (
-          <WeekPicker
-            label={t("theDigestFor")}
-            options={weekOptions}
-            value={activeWeek}
+    <div className="py-4 md:py-6">
+      {picker}
+      {isDraftView ? (
+        <p className="mb-3 border border-dashed border-accent/40 bg-accent-soft px-3 py-2 text-center text-xs font-semibold uppercase tracking-wider text-accent">
+          Draft · only editors can see this issue
+        </p>
+      ) : null}
+
+      <WeeklyPage
+        layout={layout}
+        articlesById={articlesById}
+        meta={meta}
+        weather={weather}
+      />
+
+      {word ? (
+        <div className="mt-2 max-w-sm border-t border-rule pt-8">
+          <WordOfTheDay
+            word={word}
+            label={t("wordOfTheDay")}
+            revealLabel={t("tapForMeaning")}
+            compact
           />
-        ) : (
-          <p className="mt-3 text-sm text-ink-soft">{t("weeklyEmpty")}</p>
-        )}
-        {issue?.title ? (
-          <p className="mt-2 font-serif text-lg text-ink-soft">{issue.title}</p>
-        ) : null}
-      </header>
-
-      {!hasBlocks ? (
-        <p className="py-20 text-center text-ink-soft">{t("weeklyEmpty")}</p>
-      ) : (
-        <>
-          {word && !hasIntro ? (
-            <div className="mt-8 max-w-sm">
-              <WordOfTheDay
-                word={word}
-                label={t("wordOfTheDay")}
-                revealLabel={t("tapForMeaning")}
-              />
-            </div>
-          ) : null}
-
-          <div className="mt-8 grid grid-cols-12 grid-flow-dense gap-x-5 gap-y-6 md:gap-y-7">
-            {layout.blocks.map((block) => (
-              <WeeklyBlockView
-                key={block.id}
-                block={block}
-                articlesById={articlesById}
-              />
-            ))}
-          </div>
-
-          {word && hasIntro ? (
-            <div className="mt-10 max-w-sm border-t border-rule pt-8">
-              <WordOfTheDay
-                word={word}
-                label={t("wordOfTheDay")}
-                revealLabel={t("tapForMeaning")}
-                compact
-              />
-            </div>
-          ) : null}
-        </>
-      )}
+        </div>
+      ) : null}
     </div>
   );
 }

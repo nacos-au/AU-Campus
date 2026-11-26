@@ -1,288 +1,307 @@
-import type { ArticleWithMeta, WeeklyIssueSlot } from "@/lib/types";
+import { site } from "@/lib/site";
+import type { WeeklyIssueSlot } from "@/lib/types";
+import { resolveMasthead, type MastheadWidget } from "@/lib/weekly-masthead";
 
-export type WeeklySpan = 12 | 8 | 6 | 4;
+/* ─────────────────────────────────────────────────────────────────────────
+ * Weekly issue layout, v2.
+ *
+ * One content model: four NAMED REGIONS on a newspaper page. Editors drop an
+ * article into a slot; they never position boxes. How the regions are
+ * presented (stacked / 2-up / full broadsheet) is decided purely by CSS grid
+ * container queries in <WeeklyPage />, never by authored data.
+ *
+ *   hero       1   full-width top story
+ *   lead       1   main column story
+ *   secondary  3   row of supporting stories
+ *   sidebar    5   narrow rail of briefs
+ * ───────────────────────────────────────────────────────────────────────── */
 
-export type WeeklyBlock =
-  | {
-      id: string;
-      type: "intro";
-      span: 12 | 8 | 6;
-      byline?: string;
-      body: string;
-    }
-  | {
-      id: string;
-      type: "heading";
-      span: 12 | 6;
-      text: string;
-    }
-  | {
-      id: string;
-      type: "text";
-      span: 12 | 8 | 6;
-      body: string;
-    }
-  | {
-      id: string;
-      type: "article";
-      span: 12 | 8 | 6 | 4;
-      articleId: string;
-      kicker?: string;
-      headline?: string;
-      teaser?: string;
-      showImage?: boolean;
-      /** Visual recipe; defaults from span when omitted. */
-      variant?: "lead" | "feature" | "column";
-    }
-  | {
-      id: string;
-      type: "articleStack";
-      span: 4 | 6;
-      articleIds: string[];
-      title?: string;
-    }
-  | {
-      id: string;
-      type: "image";
-      span: 12 | 6;
-      url: string;
-      caption?: string;
-    }
-  | { id: string; type: "divider"; span: 12 }
-  | { id: string; type: "spacer"; span: 12; size: "sm" | "md" | "lg" };
+export const WEEKLY_REGIONS = ["hero", "lead", "secondary", "sidebar"] as const;
+export type WeeklyRegion = (typeof WEEKLY_REGIONS)[number];
+
+export const REGION_META: Record<
+  WeeklyRegion,
+  { label: string; capacity: number; hint: string }
+> = {
+  hero: { label: "Hero", capacity: 1, hint: "Full-width top story" },
+  lead: { label: "Lead", capacity: 1, hint: "Main column story" },
+  secondary: {
+    label: "Secondary",
+    capacity: 3,
+    hint: "Row of supporting stories",
+  },
+  sidebar: { label: "Sidebar", capacity: 5, hint: "Narrow rail of briefs" },
+};
+
+export type WeeklySlotItem = {
+  articleId: string;
+  /** Overrides the section name above the headline. */
+  kicker?: string;
+  /** Overrides the article title on this page only. */
+  headline?: string;
+  /** Page copy; falls back to dek / excerpt. */
+  teaser?: string;
+  showImage?: boolean;
+};
+
+/**
+ * Nameplate settings: the two "ears" flanking the masthead each hold one
+ * widget (motto / campus weather / short note). Volume, number and dateline
+ * are NOT stored here — they derive from the issue's publish date.
+ */
+export type WeeklyNameplate = {
+  left: MastheadWidget;
+  right: MastheadWidget;
+  motto: string;
+  note: string;
+};
+
+export type WeeklyNote = { byline?: string; body: string };
 
 export type WeeklyLayout = {
-  version: 1;
-  blocks: WeeklyBlock[];
-  meta?: { sample?: boolean };
+  version: 2;
+  nameplate: WeeklyNameplate;
+  note?: WeeklyNote;
+  /** Each region is a compact list (no holes) up to its capacity. */
+  regions: Record<WeeklyRegion, WeeklySlotItem[]>;
 };
 
-export const EMPTY_LAYOUT: WeeklyLayout = {
-  version: 1,
-  blocks: [],
-  meta: {},
+export type SlotPos = { region: WeeklyRegion; index: number };
+
+export const DEFAULT_NAMEPLATE: WeeklyNameplate = {
+  left: "motto",
+  right: "weather",
+  motto: site.tagline,
+  note: "",
 };
 
-export function newBlockId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `b_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+/** Does either ear show the campus weather? (Avoids a fetch when neither does.) */
+export function usesWeather(n: WeeklyNameplate): boolean {
+  return n.left === "weather" || n.right === "weather";
 }
 
-export function parseLayout(raw: unknown): WeeklyLayout {
-  if (!raw || typeof raw !== "object") return { ...EMPTY_LAYOUT, blocks: [] };
-  const o = raw as Partial<WeeklyLayout>;
-  const blocks = Array.isArray(o.blocks) ? (o.blocks as WeeklyBlock[]) : [];
+/** Result-table / rich-text shapes used by the optional block components. */
+export type RichNode = {
+  type?: string;
+  text?: string;
+  attrs?: Record<string, unknown>;
+  marks?: { type: string; attrs?: Record<string, unknown> }[];
+  content?: RichNode[];
+};
+export type RichDoc = { type: "doc"; content?: RichNode[] };
+
+export type ScoreRow = {
+  id: string;
+  home: string;
+  away: string;
+  homeScore: string;
+  awayScore: string;
+  status: string;
+};
+
+export function emptyLayout(): WeeklyLayout {
   return {
-    version: 1,
-    blocks,
-    meta: o.meta && typeof o.meta === "object" ? o.meta : {},
+    version: 2,
+    nameplate: { ...DEFAULT_NAMEPLATE },
+    regions: { hero: [], lead: [], secondary: [], sidebar: [] },
   };
 }
 
-export function isSampleLayout(layout: WeeklyLayout): boolean {
-  return Boolean(layout.meta?.sample);
+function isObj(v: unknown): v is Record<string, unknown> {
+  return !!v && typeof v === "object" && !Array.isArray(v);
 }
 
-export function articleIdsInLayout(layout: WeeklyLayout): string[] {
-  const ids: string[] = [];
-  for (const b of layout.blocks) {
-    if (b.type === "article" && b.articleId) ids.push(b.articleId);
-    if (b.type === "articleStack") ids.push(...b.articleIds.filter(Boolean));
+function str(v: unknown): string | undefined {
+  return typeof v === "string" && v.trim() ? v : undefined;
+}
+
+function cleanItem(raw: unknown): WeeklySlotItem | null {
+  if (!isObj(raw) || typeof raw.articleId !== "string" || !raw.articleId) {
+    return null;
   }
-  return [...new Set(ids)];
+  const item: WeeklySlotItem = { articleId: raw.articleId };
+  const kicker = str(raw.kicker);
+  const headline = str(raw.headline);
+  const teaser = str(raw.teaser);
+  if (kicker) item.kicker = kicker;
+  if (headline) item.headline = headline;
+  if (teaser) item.teaser = teaser;
+  if (raw.showImage === false) item.showImage = false;
+  return item;
 }
 
-export function createBlock(
-  type: WeeklyBlock["type"],
-  partial?: Partial<WeeklyBlock>
-): WeeklyBlock {
-  const id = newBlockId();
-  switch (type) {
-    case "intro":
-      return {
-        id,
-        type: "intro",
-        span: 8,
-        byline: "From the Desk",
-        body: "",
-        ...(partial as Partial<Extract<WeeklyBlock, { type: "intro" }>>),
-      };
-    case "heading":
-      return {
-        id,
-        type: "heading",
-        span: 12,
-        text: "Headline",
-        ...(partial as Partial<Extract<WeeklyBlock, { type: "heading" }>>),
-      };
-    case "text":
-      return {
-        id,
-        type: "text",
-        span: 12,
-        body: "",
-        ...(partial as Partial<Extract<WeeklyBlock, { type: "text" }>>),
-      };
-    case "article":
-      return {
-        id,
-        type: "article",
-        span: 4,
-        articleId: "",
-        showImage: true,
-        variant: "column",
-        ...(partial as Partial<Extract<WeeklyBlock, { type: "article" }>>),
-      };
-    case "articleStack":
-      return {
-        id,
-        type: "articleStack",
-        span: 4,
-        articleIds: [],
-        title: "Also",
-        ...(partial as Partial<Extract<WeeklyBlock, { type: "articleStack" }>>),
-      };
-    case "image":
-      return {
-        id,
-        type: "image",
-        span: 6,
-        url: "",
-        caption: "",
-        ...(partial as Partial<Extract<WeeklyBlock, { type: "image" }>>),
-      };
-    case "divider":
-      return { id, type: "divider", span: 12 };
-    case "spacer":
-      return { id, type: "spacer", span: 12, size: "md" };
+function normalizeV2(o: Record<string, unknown>): WeeklyLayout {
+  const out = emptyLayout();
+  const seen = new Set<string>();
+  const regions = isObj(o.regions) ? o.regions : {};
+  for (const region of WEEKLY_REGIONS) {
+    const list = Array.isArray(regions[region]) ? regions[region] : [];
+    for (const raw of list as unknown[]) {
+      const item = cleanItem(raw);
+      if (!item || seen.has(item.articleId)) continue;
+      if (out.regions[region].length >= REGION_META[region].capacity) break;
+      seen.add(item.articleId);
+      out.regions[region].push(item);
+    }
   }
-}
-
-export function spanClass(span: number): string {
-  switch (span) {
-    case 4:
-      return "col-span-12 md:col-span-4";
-    case 6:
-      return "col-span-12 md:col-span-6";
-    case 8:
-      return "col-span-12 md:col-span-8";
-    case 12:
-    default:
-      return "col-span-12";
+  if (isObj(o.nameplate)) {
+    const ears = resolveMasthead(o.nameplate);
+    out.nameplate = {
+      left: ears.left,
+      right: ears.right,
+      motto:
+        typeof o.nameplate.motto === "string"
+          ? o.nameplate.motto
+          : DEFAULT_NAMEPLATE.motto,
+      note: typeof o.nameplate.note === "string" ? o.nameplate.note : "",
+    };
   }
+  if (isObj(o.note) && typeof o.note.body === "string") {
+    out.note = {
+      byline: typeof o.note.byline === "string" ? o.note.byline : undefined,
+      body: o.note.body,
+    };
+  }
+  return out;
 }
 
-export function articleVariant(
-  block: Extract<WeeklyBlock, { type: "article" }>
-): "lead" | "feature" | "column" {
-  if (block.variant) return block.variant;
-  if (block.span >= 8) return "lead";
-  if (block.span === 6) return "feature";
-  return "column";
-}
+/* ── v1 (freeform blocks) → v2 ─────────────────────────────────────────── */
 
-type LegacySlot = WeeklyIssueSlot & {
-  articles?: ArticleWithMeta | null;
+type V1Block = {
+  type?: string;
+  span?: number;
+  variant?: string;
+  articleId?: string;
+  articleIds?: string[];
+  kicker?: string;
+  headline?: string;
+  teaser?: string;
+  showImage?: boolean;
+  body?: string;
+  byline?: string;
 };
 
-/** Map old lead/second/rail/inside slots into a freeform layout once. */
+function placeFirst(
+  layout: WeeklyLayout,
+  prefer: WeeklyRegion[],
+  item: WeeklySlotItem
+): void {
+  if (findArticle(layout, item.articleId)) return;
+  for (const region of prefer) {
+    if (layout.regions[region].length < REGION_META[region].capacity) {
+      layout.regions[region].push(item);
+      return;
+    }
+  }
+}
+
+function fromV1(blocks: V1Block[]): WeeklyLayout {
+  const layout = emptyLayout();
+  for (const b of blocks) {
+    if (!b || typeof b !== "object") continue;
+    if (b.type === "intro" && typeof b.body === "string" && b.body.trim()) {
+      layout.note = { byline: str(b.byline), body: b.body };
+    } else if (b.type === "article" && b.articleId) {
+      const item = cleanItem(b);
+      if (!item) continue;
+      const span = b.span ?? 4;
+      const prefer: WeeklyRegion[] =
+        span >= 12
+          ? ["hero", "lead", "secondary", "sidebar"]
+          : span >= 8 || b.variant === "lead"
+            ? ["lead", "secondary", "sidebar"]
+            : ["secondary", "sidebar"];
+      placeFirst(layout, prefer, item);
+    } else if (b.type === "articleStack" && Array.isArray(b.articleIds)) {
+      for (const id of b.articleIds) {
+        if (id) placeFirst(layout, ["sidebar", "secondary"], { articleId: id });
+      }
+    }
+  }
+  return layout;
+}
+
+export function parseLayout(raw: unknown): WeeklyLayout {
+  if (!isObj(raw)) return emptyLayout();
+  if (raw.version === 2) return normalizeV2(raw);
+  if (Array.isArray(raw.blocks)) {
+    const layout = fromV1(raw.blocks as V1Block[]);
+    // Carry over masthead widgets saved by the block editor (meta.masthead).
+    if (isObj(raw.meta) && isObj(raw.meta.masthead)) {
+      const m = raw.meta.masthead;
+      const ears = resolveMasthead(m);
+      layout.nameplate = {
+        left: ears.left,
+        right: ears.right,
+        motto: typeof m.motto === "string" ? m.motto : DEFAULT_NAMEPLATE.motto,
+        note: typeof m.note === "string" ? m.note : "",
+      };
+    }
+    return layout;
+  }
+  return emptyLayout();
+}
+
+export function layoutHasContent(layout: WeeklyLayout): boolean {
+  return (
+    Boolean(layout.note?.body.trim()) ||
+    WEEKLY_REGIONS.some((r) => layout.regions[r].length > 0)
+  );
+}
+
+type LegacySlot = Pick<
+  WeeklyIssueSlot,
+  "slot" | "position" | "article_id" | "teaser"
+>;
+
+/** Map the original lead/second/rail/inside slot rows into v2 once. */
 export function layoutFromLegacySlots(opts: {
   intro?: string | null;
   introByline?: string | null;
   slots: LegacySlot[];
-  sectionName?: (id: number) => string;
 }): WeeklyLayout {
-  const blocks: WeeklyBlock[] = [];
+  const layout = emptyLayout();
   const intro = opts.intro?.trim();
   if (intro) {
-    blocks.push({
-      id: newBlockId(),
-      type: "intro",
-      span: 8,
+    layout.note = {
       byline: opts.introByline?.trim() || "From the Desk",
       body: intro,
-    });
+    };
   }
-
   const sorted = [...opts.slots].sort((a, b) => a.position - b.position);
+  const item = (s: LegacySlot): WeeklySlotItem => ({
+    articleId: s.article_id,
+    ...(s.teaser?.trim() ? { teaser: s.teaser.trim() } : {}),
+  });
   const lead = sorted.find((s) => s.slot === "lead");
-  const second = sorted.find((s) => s.slot === "second");
-  if (lead?.article_id) {
-    blocks.push({
-      id: newBlockId(),
-      type: "article",
-      span: 8,
-      articleId: lead.article_id,
-      teaser: lead.teaser ?? undefined,
-      showImage: true,
-    });
+  if (lead?.article_id) placeFirst(layout, ["lead"], item(lead));
+  for (const s of sorted) {
+    if (!s.article_id) continue;
+    if (s.slot === "second") placeFirst(layout, ["secondary", "sidebar"], item(s));
   }
-  if (second?.article_id) {
-    blocks.push({
-      id: newBlockId(),
-      type: "article",
-      span: 4,
-      articleId: second.article_id,
-      teaser: second.teaser ?? undefined,
-      showImage: true,
-    });
+  for (const s of sorted) {
+    if (!s.article_id) continue;
+    if (s.slot === "rail") placeFirst(layout, ["sidebar", "secondary"], item(s));
   }
-
-  const railIds = sorted
-    .filter((s) => s.slot === "rail" && s.article_id)
-    .map((s) => s.article_id);
-  if (railIds.length) {
-    blocks.push({
-      id: newBlockId(),
-      type: "articleStack",
-      span: 4,
-      articleIds: railIds,
-      title: "The Rail",
-    });
+  for (const s of sorted) {
+    if (!s.article_id) continue;
+    if (s.slot === "inside") placeFirst(layout, ["secondary", "sidebar"], item(s));
   }
-
-  const inside = sorted.filter((s) => s.slot === "inside" && s.article_id);
-  const bySection = new Map<number, LegacySlot[]>();
-  for (const s of inside) {
-    if (s.section_id == null) continue;
-    const list = bySection.get(s.section_id) ?? [];
-    list.push(s);
-    bySection.set(s.section_id, list);
-  }
-  for (const [sectionId, list] of bySection) {
-    const name = opts.sectionName?.(sectionId) ?? "Inside";
-    blocks.push({
-      id: newBlockId(),
-      type: "heading",
-      span: 12,
-      text: name,
-    });
-    for (const s of list) {
-      blocks.push({
-        id: newBlockId(),
-        type: "article",
-        span: 6,
-        articleId: s.article_id,
-        teaser: s.teaser ?? undefined,
-        showImage: true,
-      });
-    }
-  }
-
-  return { version: 1, blocks, meta: {} };
+  return layout;
 }
 
+/** Parse whatever is stored; migrate v1 / legacy slots. `migrated` ⇒ re-save. */
 export function ensureLayout(opts: {
   layout: unknown;
   intro?: string | null;
   introByline?: string | null;
   slots?: LegacySlot[];
-  sectionName?: (id: number) => string;
 }): { layout: WeeklyLayout; migrated: boolean } {
   const parsed = parseLayout(opts.layout);
-  if (parsed.blocks.length > 0) return { layout: parsed, migrated: false };
+  if (isObj(opts.layout) && opts.layout.version === 2) {
+    return { layout: parsed, migrated: false };
+  }
+  if (layoutHasContent(parsed)) return { layout: parsed, migrated: true };
   const slots = opts.slots ?? [];
   if (!slots.length && !opts.intro?.trim()) {
     return { layout: parsed, migrated: false };
@@ -292,8 +311,144 @@ export function ensureLayout(opts: {
       intro: opts.intro,
       introByline: opts.introByline,
       slots,
-      sectionName: opts.sectionName,
     }),
     migrated: true,
   };
+}
+
+/* ── Queries ───────────────────────────────────────────────────────────── */
+
+export function articleIdsInLayout(layout: WeeklyLayout): string[] {
+  return WEEKLY_REGIONS.flatMap((r) =>
+    layout.regions[r].map((i) => i.articleId)
+  );
+}
+
+export function findArticle(
+  layout: WeeklyLayout,
+  articleId: string
+): SlotPos | null {
+  for (const region of WEEKLY_REGIONS) {
+    const index = layout.regions[region].findIndex(
+      (i) => i.articleId === articleId
+    );
+    if (index >= 0) return { region, index };
+  }
+  return null;
+}
+
+export function getSlot(
+  layout: WeeklyLayout,
+  pos: SlotPos
+): WeeklySlotItem | null {
+  return layout.regions[pos.region][pos.index] ?? null;
+}
+
+/* ── Slot operations (pure) ────────────────────────────────────────────── */
+
+function cloneRegions(
+  layout: WeeklyLayout
+): Record<WeeklyRegion, WeeklySlotItem[]> {
+  return {
+    hero: [...layout.regions.hero],
+    lead: [...layout.regions.lead],
+    secondary: [...layout.regions.secondary],
+    sidebar: [...layout.regions.sidebar],
+  };
+}
+
+/** Replace the slot at `pos`, or append when `pos` is the next free slot. */
+export function setSlot(
+  layout: WeeklyLayout,
+  pos: SlotPos,
+  item: WeeklySlotItem
+): WeeklyLayout {
+  const regions = cloneRegions(layout);
+  const list = regions[pos.region];
+  if (pos.index < list.length) list[pos.index] = item;
+  else if (list.length < REGION_META[pos.region].capacity) list.push(item);
+  else return layout;
+  return { ...layout, regions };
+}
+
+export function removeSlot(layout: WeeklyLayout, pos: SlotPos): WeeklyLayout {
+  if (!getSlot(layout, pos)) return layout;
+  const regions = cloneRegions(layout);
+  regions[pos.region].splice(pos.index, 1);
+  return { ...layout, regions };
+}
+
+export function patchSlot(
+  layout: WeeklyLayout,
+  pos: SlotPos,
+  patch: Partial<Omit<WeeklySlotItem, "articleId">>
+): WeeklyLayout {
+  const cur = getSlot(layout, pos);
+  if (!cur) return layout;
+  const next: WeeklySlotItem = { ...cur, ...patch };
+  for (const key of ["kicker", "headline", "teaser"] as const) {
+    if (!next[key]?.trim()) delete next[key];
+  }
+  if (next.showImage !== false) delete next.showImage;
+  return setSlot(layout, pos, next);
+}
+
+/** Swap two filled slots, or move a slot into the next free slot. */
+export function moveSlot(
+  layout: WeeklyLayout,
+  from: SlotPos,
+  to: SlotPos
+): WeeklyLayout {
+  if (from.region === to.region && from.index === to.index) return layout;
+  const a = getSlot(layout, from);
+  if (!a) return layout;
+  const b = getSlot(layout, to);
+  const regions = cloneRegions(layout);
+  if (b) {
+    regions[from.region][from.index] = b;
+    regions[to.region][to.index] = a;
+  } else {
+    if (
+      from.region !== to.region &&
+      regions[to.region].length >= REGION_META[to.region].capacity
+    ) {
+      return layout;
+    }
+    regions[from.region].splice(from.index, 1);
+    regions[to.region].push(a);
+  }
+  return { ...layout, regions };
+}
+
+/**
+ * Drop a library article into a slot. If it already sits elsewhere in the
+ * issue it moves (or swaps) instead of duplicating.
+ */
+export function placeArticle(
+  layout: WeeklyLayout,
+  pos: SlotPos,
+  articleId: string
+): WeeklyLayout {
+  const existing = findArticle(layout, articleId);
+  if (existing) return moveSlot(layout, existing, pos);
+  return setSlot(layout, pos, { articleId });
+}
+
+/** Fill every empty slot, in page order, from unplaced article ids. */
+export function fillFromArticles(
+  layout: WeeklyLayout,
+  articleIds: string[]
+): WeeklyLayout {
+  const placed = new Set(articleIdsInLayout(layout));
+  const queue = articleIds.filter((id) => !placed.has(id));
+  const regions = cloneRegions(layout);
+  for (const region of WEEKLY_REGIONS) {
+    while (
+      regions[region].length < REGION_META[region].capacity &&
+      queue.length
+    ) {
+      regions[region].push({ articleId: queue.shift()! });
+    }
+  }
+  return { ...layout, regions };
 }

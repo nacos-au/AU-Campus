@@ -1,7 +1,9 @@
 import { requireRole } from "@/lib/auth";
-import { WeeklyBoardManager } from "./WeeklyBoardManager";
+import { fetchCampusWeather } from "@/lib/weather";
+import { WeeklyIssueEditor } from "./WeeklyIssueEditor";
 
 export default async function AdminWeeklyPage() {
   await requireRole("editor");
-  return <WeeklyBoardManager />;
+  const weather = await fetchCampusWeather();
+  return <WeeklyIssueEditor weather={weather} />;
 }
