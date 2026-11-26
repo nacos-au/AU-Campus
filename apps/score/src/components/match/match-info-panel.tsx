@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { AlertTriangle, Calendar, ChevronRight, Flag, MapPin, Trophy, User, Users } from "lucide-react";
+import { AlertTriangle, Calendar, CalendarClock, ChevronRight, Flag, MapPin, Trophy, User, Users } from "lucide-react";
 import type { Match } from "@/lib/types/database";
 import type { MatchMeta } from "@/lib/match/match-meta";
 import { dbIdToSport } from "@/lib/utils/sport";
+import type { RescheduleNote } from "@/lib/data/fixture-schedule";
+import { formatWat } from "@/lib/schedule/shift-fixtures";
 
 function formatMatchDateTime(iso: string): string {
   const d = new Date(iso);
@@ -17,7 +19,15 @@ function competitionLabel(match: Match): string {
   return `${sport}, ${tournament}`;
 }
 
-export function MatchInfoPanel({ match, meta }: { match: Match; meta: MatchMeta }) {
+export function MatchInfoPanel({
+  match,
+  meta,
+  reschedule,
+}: {
+  match: Match;
+  meta: MatchMeta;
+  reschedule?: RescheduleNote | null;
+}) {
   const sport = dbIdToSport(match.sport_id);
   const isPostponed = match.status === "postponed";
   const assistants = [meta.assistantReferee1, meta.assistantReferee2].filter(Boolean) as string[];
@@ -59,6 +69,14 @@ export function MatchInfoPanel({ match, meta }: { match: Match; meta: MatchMeta 
             icon={<Users className="h-5 w-5" />}
             label={assistants.length === 1 ? "Assistant referee" : "Assistant referees"}
             value={assistants.join(" · ")}
+          />
+        )}
+        {reschedule && (
+          <InfoRow
+            icon={<CalendarClock className="h-5 w-5" />}
+            label={reschedule.times_moved > 1 ? `Rescheduled (${reschedule.times_moved} times)` : "Rescheduled"}
+            value={`Originally ${formatWat(reschedule.original_scheduled_at, true)}. Reason: ${reschedule.latest_reason}`}
+            tone="warn"
           />
         )}
         {isPostponed && (

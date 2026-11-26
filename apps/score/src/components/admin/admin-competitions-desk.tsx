@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import Link from "next/link";
 import { AdminCompetitionSchedulePanel } from "@/components/admin/admin-competition-schedule-panel";
 import { AdminCompetitionSquadsPanel } from "@/components/admin/admin-competition-squads-panel";
 import { AdminCompetitionWizard } from "@/components/admin/admin-competition-wizard";
@@ -31,6 +32,15 @@ export function AdminCompetitionsDesk({ isAdmin }: { isAdmin: boolean }) {
           <AdminCustomCompetition onCreated={onCreated} />
           <AdminVenueManager />
         </>
+      )}
+      {isAdmin && (
+        <p className="rounded-xl border border-rule bg-accent/[0.03] px-4 py-3 text-sm text-accent/80">
+          Need to postpone or move existing matches?{" "}
+          <Link href="/admin/fixtures" className="font-bold text-accent underline-offset-2 hover:underline">
+            Open Fixtures
+          </Link>
+          .
+        </p>
       )}
       <AdminCompetitionSquadsPanel focusCompetitionId={focusId} canArchive={isAdmin} />
       <p className="text-sm text-accent/60">

@@ -3,8 +3,14 @@ import { DEMO_MATCHES, DEMO_SPORTS } from "@/lib/data/demo";
 import { findDemoTeam } from "@/lib/data/demo-roster";
 import { getDemoVenueById } from "@/lib/data/venues";
 
-/** Session overlay for manually posted / edited matches in demo mode. */
-let postedMatches: Match[] = [];
+/**
+ * Session overlay for manually posted / edited matches in demo mode.
+ * Kept on globalThis so API routes and server-rendered pages (separate module
+ * graphs in dev) see the same edits.
+ */
+const demoMatchState = ((globalThis as typeof globalThis & {
+  __auScoreDemoMatches?: { posted: Match[] };
+}).__auScoreDemoMatches ??= { posted: [] });
 
 function findTeam(id: string): Team | undefined {
   return findDemoTeam(id);
@@ -26,14 +32,14 @@ export function listAllDemoMatches(): Match[] {
   for (const m of DEMO_MATCHES) {
     if (!m.deleted_at) byId.set(m.id, hydrateVenue(m));
   }
-  for (const m of postedMatches) {
+  for (const m of demoMatchState.posted) {
     if (!m.deleted_at) byId.set(m.id, hydrateVenue(m));
   }
   return Array.from(byId.values());
 }
 
 export function getDemoMatchById(id: string): Match | null {
-  const posted = postedMatches.find((m) => m.id === id);
+  const posted = demoMatchState.posted.find((m) => m.id === id);
   if (posted) return hydrateVenue(posted);
   const base = DEMO_MATCHES.find((m) => m.id === id);
   return base ? hydrateVenue(base) : null;
@@ -116,7 +122,7 @@ export function postDemoMatch(input: PostDemoMatchInput): Match {
     sport: DEMO_SPORTS.find((s) => s.id === input.sport_id),
   };
 
-  postedMatches = [...postedMatches, match];
+  demoMatchState.posted = [...demoMatchState.posted, match];
   return match;
 }
 
@@ -157,11 +163,11 @@ export function updateDemoMatch(
     venue_id: patch.venue_id !== undefined ? patch.venue_id : existing.venue_id,
   };
 
-  const postedIdx = postedMatches.findIndex((m) => m.id === id);
+  const postedIdx = demoMatchState.posted.findIndex((m) => m.id === id);
   if (postedIdx >= 0) {
-    postedMatches = postedMatches.map((m, i) => (i === postedIdx ? next : m));
+    demoMatchState.posted = demoMatchState.posted.map((m, i) => (i === postedIdx ? next : m));
   } else {
-    postedMatches = [...postedMatches, next];
+    demoMatchState.posted = [...demoMatchState.posted, next];
   }
   return next;
 }

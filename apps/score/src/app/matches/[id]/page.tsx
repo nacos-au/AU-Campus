@@ -27,6 +27,7 @@ import {
   fetchSetScores,
   fetchTrackResults,
 } from "@/lib/data/repository";
+import { getRescheduleNote } from "@/lib/data/fixture-schedule";
 import { dbIdToSport, parseSportParam } from "@/lib/utils/sport";
 import { getSportConfig, scoreUnitLabel } from "@/lib/utils/sport-config";
 import {
@@ -89,6 +90,7 @@ export default async function MatchPage({
   const awayName = match.away_team?.name ?? "Away";
   const motm = isCompleted ? getManOfTheMatch(id) : null;
   const matchMeta = getMatchMeta(match);
+  const rescheduleNote = await getRescheduleNote(id);
 
   const title = config.isEventSport
     ? (match.home_team?.name ?? "Event")
@@ -253,7 +255,9 @@ export default async function MatchPage({
             </section>
           )}
 
-          {!config.isEventSport && <MatchInfoPanel match={match} meta={matchMeta} />}
+          {!config.isEventSport && (
+            <MatchInfoPanel match={match} meta={matchMeta} reschedule={rescheduleNote} />
+          )}
         </div>
       </PageContent>
       <FeedbackLauncher matchId={match.id} />

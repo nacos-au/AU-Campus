@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  CalendarClock,
   CalendarDays,
   Handshake,
   LayoutGrid,
@@ -28,6 +29,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: "/admin/clubs", label: "Clubs", icon: UsersRound, adminOnly: true },
   { href: "/admin/players", label: "Players", icon: Users },
   { href: "/admin/competitions", label: "Competitions", icon: Trophy },
+  { href: "/admin/fixtures", label: "Fixtures", icon: CalendarClock, adminOnly: true },
   { href: "/admin/matches", label: "Matches", icon: Handshake },
   { href: "/admin/awards", label: "Awards", icon: Trophy },
   { href: "/admin/feedback", label: "Feedback", icon: MessageSquare, adminOnly: true },
@@ -102,6 +104,17 @@ export function AdminHubCards({ staff }: { staff?: SessionStaff | null }) {
         : "Pick players from each club pool onto the named competition squad.",
       cta: isAdmin ? "Create competition" : "Fill squads",
     },
+    ...(isAdmin
+      ? [
+          {
+            href: "/admin/fixtures",
+            icon: CalendarClock,
+            title: "Fixtures",
+            body: "Postpone or move matches. Edit one date, or shift a batch by days. Every change is logged.",
+            cta: "Manage fixtures",
+          },
+        ]
+      : []),
     {
       href: "/admin/matches",
       icon: CalendarDays,

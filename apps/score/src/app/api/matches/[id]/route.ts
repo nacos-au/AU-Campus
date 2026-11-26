@@ -22,7 +22,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  // Keepers need to write live scores/periods; admin for venue/schedule edits.
+  // Keepers need to write live scores/periods; scheduling lives in Admin > Fixtures.
   const gate = await requireMatchStaff();
   if ("error" in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status });
@@ -48,6 +48,15 @@ export async function PATCH(
     assistant_referee_2?: string | null;
     postpone_reason?: string | null;
   };
+
+  // Kick-off changes go through Admin > Fixtures so they are previewed,
+  // admin-only and written to the reschedule log.
+  if (body.scheduled_at !== undefined) {
+    return NextResponse.json(
+      { error: "Kick-off times can only be changed from Admin > Fixtures." },
+      { status: 400 }
+    );
+  }
 
   const result = await updateMatch(id, body);
   if ("error" in result) {
