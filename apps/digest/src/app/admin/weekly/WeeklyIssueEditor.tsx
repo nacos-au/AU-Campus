@@ -59,11 +59,15 @@ import type { WeatherSnapshot } from "@/lib/weather";
 import {
   DISCLAIMER_PRESETS,
   MAX_SECTIONS,
+  MAX_WIDGETS,
   REGION_META,
-  SECTION_META,
+  WIDGET_META,
+  WIDGET_TYPES,
   articleIdsInLayout,
   createSection,
+  createWidget,
   emptyScoreRow,
+  findWidget,
   standardSections,
   ensureLayout,
   fillFromArticles,
@@ -80,8 +84,9 @@ import {
   type ScoreRow,
   type WeeklyRegion,
   type WeeklySection,
-  type WeeklySectionType,
   type WeeklySlotItem,
+  type WeeklyWidget,
+  type WeeklyWidgetType,
 } from "@/lib/weekly-layout";
 import {
   displayTitle,
@@ -103,6 +108,7 @@ type Selection =
   | { kind: "nameplate" }
   | { kind: "note" }
   | { kind: "section"; id: string }
+  | { kind: "widget"; id: string }
   | null;
 
 const STATUS_STYLE: Record<WeeklyIssueStatus, string> = {
@@ -322,33 +328,36 @@ function LinkWarning({ value }: { value?: string }) {
   );
 }
 
+/* ── Inspector panels for sections and widgets ─────────────────────────── */
+
 function SectionPanel({
   section,
   canUp,
   canDown,
-  onPatch,
+  onTitle,
   onMove,
   onRemove,
+  onSelectWidget,
+  onAddWidget,
 }: {
   section: WeeklySection;
   canUp: boolean;
   canDown: boolean;
-  onPatch: (patch: Partial<WeeklySection>) => void;
+  onTitle: (title: string) => void;
   onMove: (dir: -1 | 1) => void;
   onRemove: () => void;
+  onSelectWidget: (id: string) => void;
+  onAddWidget: (type: WeeklyWidgetType) => void;
 }) {
-  const patchRow = (rows: ScoreRow[], i: number, patch: Partial<ScoreRow>) =>
-    rows.map((r, k) => (k === i ? { ...r, ...patch } : r));
-
   return (
     <section className="space-y-3 border border-rule bg-white p-3 text-sm">
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-ink-soft">
-            {SECTION_META[section.type].label} section
+            Section
           </p>
           <p className="text-[11px] text-ink-soft">
-            {SECTION_META[section.type].hint}
+            A titled band of widgets under the front page
           </p>
         </div>
         <div className="flex gap-1">
@@ -372,27 +381,298 @@ function SectionPanel({
           </button>
         </div>
       </div>
+      <label className="block">
+        <span className={fieldLabel}>Title</span>
+        <input
+          className={fieldInput}
+          value={section.title ?? ""}
+          placeholder="Sports, Campus, Opinion…"
+          onChange={(e) => onTitle(e.target.value)}
+        />
+      </label>
+      <div>
+        <p className={fieldLabel}>Widgets</p>
+        {section.widgets.length ? (
+          <ul className="mt-1 divide-y divide-rule border border-rule">
+            {section.widgets.map((w) => (
+              <li key={w.id}>
+                <button
+                  type="button"
+                  className="w-full px-2 py-1.5 text-left text-xs hover:bg-gray-50"
+                  onClick={() => onSelectWidget(w.id)}
+                >
+                  <span className="font-semibold">{WIDGET_META[w.type].label}</span>
+                  <span className="text-ink-soft"> · {widgetSummary(w)}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-1 text-xs text-ink-soft">
+            No widgets yet. Add one below or from the Widgets tab.
+          </p>
+        )}
+        <select
+          aria-label="Add a widget to this section"
+          className={`${fieldInput} mt-2`}
+          value=""
+          disabled={section.widgets.length >= MAX_WIDGETS}
+          onChange={(e) => {
+            if (e.target.value) onAddWidget(e.target.value as WeeklyWidgetType);
+          }}
+        >
+          <option value="">+ Add widget…</option>
+          {WIDGET_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {WIDGET_META[t].label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <button type="button" className={btn.danger} onClick={onRemove}>
+        Remove section
+      </button>
+    </section>
+  );
+}
 
-      {section.type === "text" ? (
+function widgetSummary(w: WeeklyWidget): string {
+  switch (w.type) {
+    case "story":
+      return w.headline.trim() || "Untitled";
+    case "brief":
+      return w.title.trim() || "Untitled";
+    case "scores":
+      return w.title.trim() || "Results";
+    case "editorsNote":
+      return w.byline?.trim() || "Note";
+    case "note":
+      return w.body.trim().slice(0, 40) || "Empty";
+    case "text":
+      return "Text";
+  }
+}
+
+/* ── Canvas shells and palette cards for widgets (drag and drop) ───────── */
+
+function SectionShell({
+  section,
+  selected,
+  onSelect,
+  children,
+}: {
+  section: WeeklySection;
+  selected: boolean;
+  onSelect: () => void;
+  children: ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: `section:${section.id}`,
+    data: { sectionId: section.id },
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      role="button"
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && e.target === e.currentTarget) onSelect();
+      }}
+      className={`cursor-pointer ${
+        selected
+          ? "outline outline-2 outline-offset-4 outline-accent"
+          : isOver
+            ? "bg-accent-soft outline outline-2 outline-offset-4 outline-dashed outline-accent"
+            : "hover:outline hover:outline-1 hover:outline-offset-4 hover:outline-rule-dark"
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function NewSectionDrop({ children }: { children: ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: "section:new",
+    data: { sectionId: "new" },
+  });
+  return (
+    <div
+      ref={setNodeRef}
+      className={isOver ? "bg-accent-soft outline outline-2 outline-dashed outline-accent" : ""}
+    >
+      {children}
+    </div>
+  );
+}
+
+function WidgetCard({
+  type,
+  onAdd,
+}: {
+  type: WeeklyWidgetType;
+  onAdd: () => void;
+}) {
+  const { setNodeRef, listeners, attributes, isDragging } = useDraggable({
+    id: `widget-card:${type}`,
+    data: { type: "widget", widgetType: type },
+  });
+  return (
+    <li
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      onClick={onAdd}
+      className={`cursor-grab border border-rule-dark bg-white p-2 hover:border-ink active:cursor-grabbing ${
+        isDragging ? "opacity-40" : ""
+      }`}
+    >
+      <p className="text-[12px] font-semibold leading-snug">{WIDGET_META[type].label}</p>
+      <p className="mt-0.5 text-[11px] leading-snug text-ink-soft">
+        {WIDGET_META[type].hint}
+      </p>
+    </li>
+  );
+}
+
+function WidgetPanel({
+  widget,
+  canUp,
+  canDown,
+  onPatch,
+  onMove,
+  onRemove,
+}: {
+  widget: WeeklyWidget;
+  canUp: boolean;
+  canDown: boolean;
+  onPatch: (patch: Partial<WeeklyWidget>) => void;
+  onMove: (dir: -1 | 1) => void;
+  onRemove: () => void;
+}) {
+  const patchRow = (rows: ScoreRow[], i: number, patch: Partial<ScoreRow>) =>
+    rows.map((r, k) => (k === i ? { ...r, ...patch } : r));
+
+  return (
+    <section className="space-y-3 border border-rule bg-white p-3 text-sm">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-ink-soft">
+            {WIDGET_META[widget.type].label}
+          </p>
+          <p className="text-[11px] text-ink-soft">
+            {WIDGET_META[widget.type].hint}
+          </p>
+        </div>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            className={btn.ghost}
+            disabled={!canUp}
+            onClick={() => onMove(-1)}
+            aria-label="Move widget up"
+          >
+            ↑
+          </button>
+          <button
+            type="button"
+            className={btn.ghost}
+            disabled={!canDown}
+            onClick={() => onMove(1)}
+            aria-label="Move widget down"
+          >
+            ↓
+          </button>
+        </div>
+      </div>
+
+      {widget.type === "story" ? (
+        <>
+          <label className="block">
+            <span className={fieldLabel}>Kicker (optional)</span>
+            <input
+              className={fieldInput}
+              value={widget.kicker ?? ""}
+              placeholder="Campus"
+              onChange={(e) => onPatch({ kicker: e.target.value })}
+            />
+          </label>
+          <label className="block">
+            <span className={fieldLabel}>Headline</span>
+            <input
+              className={fieldInput}
+              value={widget.headline}
+              placeholder="Shown to readers once filled in"
+              onChange={(e) => onPatch({ headline: e.target.value })}
+            />
+          </label>
+          <label className="block">
+            <span className={fieldLabel}>Byline (optional)</span>
+            <input
+              className={fieldInput}
+              value={widget.byline ?? ""}
+              placeholder="Writer’s name"
+              onChange={(e) => onPatch({ byline: e.target.value })}
+            />
+          </label>
+          <div>
+            <span className={fieldLabel}>Story</span>
+            <div className="mt-1">
+              <RichBlockEditor
+                key={widget.id}
+                value={widget.doc ?? null}
+                onChange={(doc: RichDoc) => onPatch({ doc })}
+              />
+            </div>
+          </div>
+        </>
+      ) : null}
+
+      {widget.type === "editorsNote" ? (
+        <>
+          <label className="block">
+            <span className={fieldLabel}>Byline</span>
+            <input
+              className={fieldInput}
+              value={widget.byline ?? ""}
+              placeholder="From the Desk"
+              onChange={(e) => onPatch({ byline: e.target.value })}
+            />
+          </label>
+          <div>
+            <span className={fieldLabel}>Note</span>
+            <div className="mt-1">
+              <RichBlockEditor
+                key={widget.id}
+                value={widget.doc ?? null}
+                onChange={(doc: RichDoc) => onPatch({ doc })}
+              />
+            </div>
+          </div>
+        </>
+      ) : null}
+
+      {widget.type === "text" ? (
         <div>
           <span className={fieldLabel}>Text</span>
           <div className="mt-1">
             <RichBlockEditor
-              key={section.id}
-              value={section.doc}
+              key={widget.id}
+              value={widget.doc}
               onChange={(doc: RichDoc) => onPatch({ doc })}
             />
           </div>
         </div>
       ) : null}
 
-      {section.type === "brief" ? (
+      {widget.type === "brief" ? (
         <>
           <label className="block">
             <span className={fieldLabel}>Kicker (optional)</span>
             <input
               className={fieldInput}
-              value={section.kicker ?? ""}
+              value={widget.kicker ?? ""}
               onChange={(e) => onPatch({ kicker: e.target.value })}
             />
           </label>
@@ -400,7 +680,7 @@ function SectionPanel({
             <span className={fieldLabel}>Title</span>
             <input
               className={fieldInput}
-              value={section.title}
+              value={widget.title}
               placeholder="Shown to readers once filled in"
               onChange={(e) => onPatch({ title: e.target.value })}
             />
@@ -409,8 +689,8 @@ function SectionPanel({
             <span className={fieldLabel}>Text</span>
             <div className="mt-1">
               <RichBlockEditor
-                key={section.id}
-                value={section.doc ?? null}
+                key={widget.id}
+                value={widget.doc ?? null}
                 onChange={(doc: RichDoc) => onPatch({ doc })}
               />
             </div>
@@ -419,17 +699,17 @@ function SectionPanel({
             <span className={fieldLabel}>Link address (optional)</span>
             <input
               className={fieldInput}
-              value={section.linkUrl ?? ""}
+              value={widget.linkUrl ?? ""}
               placeholder="https://…"
               onChange={(e) => onPatch({ linkUrl: e.target.value })}
             />
-            <LinkWarning value={section.linkUrl} />
+            <LinkWarning value={widget.linkUrl} />
           </label>
           <label className="block">
             <span className={fieldLabel}>Link label</span>
             <input
               className={fieldInput}
-              value={section.linkLabel ?? ""}
+              value={widget.linkLabel ?? ""}
               placeholder="Read more"
               onChange={(e) => onPatch({ linkLabel: e.target.value })}
             />
@@ -437,13 +717,13 @@ function SectionPanel({
         </>
       ) : null}
 
-      {section.type === "scores" ? (
+      {widget.type === "scores" ? (
         <>
           <label className="block">
             <span className={fieldLabel}>Title</span>
             <input
               className={fieldInput}
-              value={section.title}
+              value={widget.title}
               placeholder="Matchweek 12"
               onChange={(e) => onPatch({ title: e.target.value })}
             />
@@ -452,7 +732,7 @@ function SectionPanel({
             <span className={fieldLabel}>Sport label</span>
             <input
               className={fieldInput}
-              value={section.sport ?? ""}
+              value={widget.sport ?? ""}
               placeholder="Football"
               onChange={(e) => onPatch({ sport: e.target.value })}
             />
@@ -460,7 +740,7 @@ function SectionPanel({
           <div>
             <p className={fieldLabel}>Fixtures</p>
             <div className="mt-1 space-y-2">
-              {section.rows.map((row, i) => (
+              {widget.rows.map((row, i) => (
                 <div key={row.id} className="space-y-1 border border-rule p-2">
                   <div className="grid grid-cols-2 gap-1">
                     {(
@@ -479,7 +759,7 @@ function SectionPanel({
                         value={row[key]}
                         onChange={(e) =>
                           onPatch({
-                            rows: patchRow(section.rows, i, {
+                            rows: patchRow(widget.rows, i, {
                               [key]: e.target.value,
                             }),
                           })
@@ -495,7 +775,7 @@ function SectionPanel({
                       value={row.status}
                       onChange={(e) =>
                         onPatch({
-                          rows: patchRow(section.rows, i, {
+                          rows: patchRow(widget.rows, i, {
                             status: e.target.value,
                           }),
                         })
@@ -506,7 +786,7 @@ function SectionPanel({
                       className={btn.danger}
                       onClick={() =>
                         onPatch({
-                          rows: section.rows.filter((r) => r.id !== row.id),
+                          rows: widget.rows.filter((r) => r.id !== row.id),
                         })
                       }
                     >
@@ -519,9 +799,9 @@ function SectionPanel({
             <button
               type="button"
               className={`${btn.secondary} mt-2 w-full`}
-              disabled={section.rows.length >= 24}
+              disabled={widget.rows.length >= 24}
               onClick={() =>
-                onPatch({ rows: [...section.rows, emptyScoreRow()] })
+                onPatch({ rows: [...widget.rows, emptyScoreRow()] })
               }
             >
               Add fixture
@@ -532,7 +812,7 @@ function SectionPanel({
             <textarea
               rows={2}
               className={fieldInput}
-              value={section.footnote ?? ""}
+              value={widget.footnote ?? ""}
               onChange={(e) => onPatch({ footnote: e.target.value })}
             />
           </label>
@@ -540,29 +820,29 @@ function SectionPanel({
             <span className={fieldLabel}>Full results link (optional)</span>
             <input
               className={fieldInput}
-              value={section.sourceUrl ?? ""}
+              value={widget.sourceUrl ?? ""}
               placeholder="https://…"
               onChange={(e) => onPatch({ sourceUrl: e.target.value })}
             />
-            <LinkWarning value={section.sourceUrl} />
+            <LinkWarning value={widget.sourceUrl} />
           </label>
         </>
       ) : null}
 
-      {section.type === "note" ? (
+      {widget.type === "note" ? (
         <label className="block">
           <span className={fieldLabel}>Note</span>
           <textarea
             rows={4}
             className={fieldInput}
-            value={section.body}
+            value={widget.body}
             onChange={(e) => onPatch({ body: e.target.value })}
           />
         </label>
       ) : null}
 
       <button type="button" className={btn.danger} onClick={onRemove}>
-        Remove section
+        Remove widget
       </button>
     </section>
   );
@@ -593,6 +873,7 @@ export function WeeklyIssueEditor({
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [dirty, setDirty] = useState(false);
   const [dragLabel, setDragLabel] = useState<string | null>(null);
+  const [libraryTab, setLibraryTab] = useState<"stories" | "widgets">("stories");
 
   const dirtyRef = useRef(false);
   /** Bumped on every edit, so a save only clears "dirty" if nothing changed meanwhile. */
@@ -918,6 +1199,13 @@ export function WeeklyIssueEditor({
       | { type: "lib"; articleId: string }
       | { type: "slot"; region: WeeklyRegion; index: number }
       | undefined;
+    const w = e.active.data.current as
+      | { type: "widget"; widgetType: WeeklyWidgetType }
+      | undefined;
+    if (w?.type === "widget") {
+      setDragLabel(WIDGET_META[w.widgetType].label);
+      return;
+    }
     if (d?.type === "lib") {
       setDragLabel(articlesById.get(d.articleId)?.title ?? "Story");
     } else if (d?.type === "slot") {
@@ -931,6 +1219,16 @@ export function WeeklyIssueEditor({
   function onDragEnd(e: DragEndEvent) {
     setDragLabel(null);
     const { active, over } = e;
+    const card = active.data.current as
+      | { type: "widget"; widgetType: WeeklyWidgetType }
+      | undefined;
+    if (card?.type === "widget") {
+      const dropOn = over?.data.current as { sectionId?: string } | undefined;
+      if (dropOn?.sectionId) {
+        addWidget(card.widgetType, dropOn.sectionId === "new" ? null : dropOn.sectionId);
+      }
+      return;
+    }
     const target = over?.data.current as SlotPos | undefined;
     if (!target?.region) return;
     const d = active.data.current as
@@ -948,22 +1246,21 @@ export function WeeklyIssueEditor({
     setSelection({ kind: "slot", ...target });
   }
 
-  /* ── Sections ── */
+  /* ── Sections and widgets ── */
 
-  function patchSection(id: string, patch: Partial<WeeklySection>) {
+  function patchSectionTitle(id: string, title: string) {
     updateLayout((p) => ({
       ...p,
-      sections: p.sections.map((x) =>
-        x.id === id ? ({ ...x, ...patch } as WeeklySection) : x
-      ),
+      sections: p.sections.map((x) => (x.id === id ? { ...x, title } : x)),
     }));
   }
 
-  function addSection(type: WeeklySectionType) {
-    if (layout.sections.length >= MAX_SECTIONS) return;
-    const created = createSection(type);
+  function addSection(): string | null {
+    if (layout.sections.length >= MAX_SECTIONS) return null;
+    const created = createSection();
     updateLayout((p) => ({ ...p, sections: [...p.sections, created] }));
     setSelection({ kind: "section", id: created.id });
+    return created.id;
   }
 
   function moveSection(id: string, dir: -1 | 1) {
@@ -985,13 +1282,80 @@ export function WeeklyIssueEditor({
     setSelection(null);
   }
 
+  /** Which section a new widget goes into: the selected one, else a new one. */
+  function targetSectionId(): string | null {
+    if (selection?.kind === "section") return selection.id;
+    if (selection?.kind === "widget") {
+      return findWidget(layout, selection.id)?.section.id ?? null;
+    }
+    return null;
+  }
+
+  function addWidget(type: WeeklyWidgetType, sectionId = targetSectionId()) {
+    const widget = createWidget(type);
+    const existing = sectionId
+      ? layout.sections.find((x) => x.id === sectionId)
+      : undefined;
+    if (existing) {
+      if (existing.widgets.length >= MAX_WIDGETS) return;
+      updateLayout((p) => ({
+        ...p,
+        sections: p.sections.map((x) =>
+          x.id === existing.id ? { ...x, widgets: [...x.widgets, widget] } : x
+        ),
+      }));
+    } else {
+      if (layout.sections.length >= MAX_SECTIONS) return;
+      const created = createSection("", [widget]);
+      updateLayout((p) => ({ ...p, sections: [...p.sections, created] }));
+    }
+    setSelection({ kind: "widget", id: widget.id });
+  }
+
+  function patchWidget(id: string, patch: Partial<WeeklyWidget>) {
+    updateLayout((p) => ({
+      ...p,
+      sections: p.sections.map((x) => ({
+        ...x,
+        widgets: x.widgets.map((w) =>
+          w.id === id ? ({ ...w, ...patch } as WeeklyWidget) : w
+        ),
+      })),
+    }));
+  }
+
+  function moveWidget(id: string, dir: -1 | 1) {
+    updateLayout((p) => ({
+      ...p,
+      sections: p.sections.map((x) => {
+        const i = x.widgets.findIndex((w) => w.id === id);
+        const j = i + dir;
+        if (i < 0 || j < 0 || j >= x.widgets.length) return x;
+        const widgets = [...x.widgets];
+        [widgets[i], widgets[j]] = [widgets[j], widgets[i]];
+        return { ...x, widgets };
+      }),
+    }));
+  }
+
+  function removeWidget(id: string) {
+    updateLayout((p) => ({
+      ...p,
+      sections: p.sections.map((x) => ({
+        ...x,
+        widgets: x.widgets.filter((w) => w.id !== id),
+      })),
+    }));
+    setSelection(null);
+  }
+
   /** Standard issue: fill empty slots and start the sections from the template. */
   async function applyStandardIssue() {
     if (
       layout.sections.length > 0 &&
       !(await confirm({
         title: "Replace the sections with the standard set?",
-        body: "Your current sections are replaced by scores, a brief and a note. Stories already in slots stay; empty slots are filled.",
+        body: "Your current sections are replaced by a Sports section (match week and a brief) and a Campus section (a story and an editor’s note). Stories already in slots stay; empty slots are filled.",
         confirmLabel: "Replace sections",
         danger: true,
       }))
@@ -1072,19 +1436,34 @@ export function WeeklyIssueEditor({
       </div>
     ),
     wrapSection: (section, node) => (
+      <SectionShell
+        section={section}
+        selected={selection?.kind === "section" && selection.id === section.id}
+        onSelect={() => setSelection({ kind: "section", id: section.id })}
+      >
+        {node}
+      </SectionShell>
+    ),
+    wrapWidget: (widget, node) => (
       <div
         role="button"
         tabIndex={0}
-        // Links inside a section must select it, not navigate away.
+        // Links inside a widget must select it, not navigate away.
         onClickCapture={(e) => {
           if ((e.target as HTMLElement).closest("a")) e.preventDefault();
         }}
-        onClick={() => setSelection({ kind: "section", id: section.id })}
+        onClick={(e) => {
+          e.stopPropagation();
+          setSelection({ kind: "widget", id: widget.id });
+        }}
         onKeyDown={(e) => {
-          if (e.key === "Enter") setSelection({ kind: "section", id: section.id });
+          if (e.key === "Enter") {
+            e.stopPropagation();
+            setSelection({ kind: "widget", id: widget.id });
+          }
         }}
         className={`cursor-pointer ${
-          selection?.kind === "section" && selection.id === section.id
+          selection?.kind === "widget" && selection.id === widget.id
             ? "outline outline-2 outline-offset-2 outline-accent"
             : "hover:outline hover:outline-1 hover:outline-offset-2 hover:outline-rule-dark"
         }`}
@@ -1092,26 +1471,49 @@ export function WeeklyIssueEditor({
         {node}
       </div>
     ),
-    sectionsFooter: (
-      <div className="border border-dashed border-rule-dark bg-gray-50 p-3 text-center">
-        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
-          Add a section below the front page
-        </p>
-        <div className="flex flex-wrap justify-center gap-2">
-          {(Object.keys(SECTION_META) as WeeklySectionType[]).map((t) => (
-            <button
-              key={t}
-              type="button"
-              className={btn.secondary}
-              disabled={layout.sections.length >= MAX_SECTIONS}
-              onClick={() => addSection(t)}
-            >
-              <Plus className="h-3.5 w-3.5" aria-hidden />
-              {SECTION_META[t].label}
-            </button>
+    sectionFooter: (section) => (
+      <div
+        className="flex items-center justify-center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <select
+          aria-label="Add a widget to this section"
+          className="border border-dashed border-rule-dark bg-gray-50 px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-ink-soft"
+          value=""
+          disabled={section.widgets.length >= MAX_WIDGETS}
+          onChange={(e) => {
+            if (e.target.value) {
+              addWidget(e.target.value as WeeklyWidgetType, section.id);
+            }
+          }}
+        >
+          <option value="">+ Add widget</option>
+          {WIDGET_TYPES.map((t) => (
+            <option key={t} value={t}>
+              {WIDGET_META[t].label}
+            </option>
           ))}
-        </div>
+        </select>
       </div>
+    ),
+    sectionsFooter: (
+      <NewSectionDrop>
+        <div className="border border-dashed border-rule-dark bg-gray-50 p-3 text-center">
+          <button
+            type="button"
+            className={btn.secondary}
+            disabled={layout.sections.length >= MAX_SECTIONS}
+            onClick={() => addSection()}
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+            Add section
+          </button>
+          <p className="mt-2 text-[11px] text-ink-soft">
+            Sections hold widgets: stories, editor’s notes, match week, briefs.
+            Drop a widget here to start a new section.
+          </p>
+        </div>
+      </NewSectionDrop>
     ),
   };
 
@@ -1123,6 +1525,8 @@ export function WeeklyIssueEditor({
     selection?.kind === "section"
       ? layout.sections.find((x) => x.id === selection.id)
       : undefined;
+  const selWidget =
+    selection?.kind === "widget" ? findWidget(layout, selection.id) : null;
   const selItem = selSlot ? getSlot(layout, selSlot) : null;
   const selArticle = selItem ? articlesById.get(selItem.articleId) : undefined;
 
@@ -1314,10 +1718,33 @@ export function WeeklyIssueEditor({
         section={selSection}
         canUp={idx > 0}
         canDown={idx < layout.sections.length - 1}
-        onPatch={(patch) => patchSection(selSection.id, patch)}
+        onTitle={(title) => patchSectionTitle(selSection.id, title)}
         onMove={(dir) => moveSection(selSection.id, dir)}
         onRemove={() => removeSection(selSection.id)}
+        onSelectWidget={(id) => setSelection({ kind: "widget", id })}
+        onAddWidget={(type) => addWidget(type, selSection.id)}
       />
+    );
+  } else if (selWidget) {
+    const { section, widget, index } = selWidget;
+    selectionPanel = (
+      <>
+        <button
+          type="button"
+          className="text-[11px] font-semibold uppercase tracking-wider text-ink-soft hover:text-ink"
+          onClick={() => setSelection({ kind: "section", id: section.id })}
+        >
+          ← {section.title?.trim() || "Untitled section"}
+        </button>
+        <WidgetPanel
+          widget={widget}
+          canUp={index > 0}
+          canDown={index < section.widgets.length - 1}
+          onPatch={(patch) => patchWidget(widget.id, patch)}
+          onMove={(dir) => moveWidget(widget.id, dir)}
+          onRemove={() => removeWidget(widget.id)}
+        />
+      </>
     );
   } else if (selSlot) {
     const pos: SlotPos = { region: selSlot.region, index: selSlot.index };
@@ -1468,7 +1895,7 @@ export function WeeklyIssueEditor({
   } else {
     selectionPanel = (
       <p className="border border-dashed border-rule-dark p-3 text-xs text-ink-soft">
-        Click the nameplate, a slot or a section on the page to edit it.
+        Click the nameplate, a slot, a section or a widget on the page to edit it. Add widgets from the Widgets tab.
       </p>
     );
   }
@@ -1667,6 +2094,33 @@ export function WeeklyIssueEditor({
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
           {!focus ? (
             <aside className="order-2 w-full shrink-0 border-t border-rule bg-paper p-3 lg:order-1 lg:w-64 lg:overflow-y-auto lg:border-r lg:border-t-0">
+              <div
+                role="tablist"
+                aria-label="Library"
+                className="mb-3 grid grid-cols-2 border border-ink text-[11px] font-bold uppercase tracking-wider"
+              >
+                {(
+                  [
+                    ["stories", "Stories"],
+                    ["widgets", "Widgets"],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={libraryTab === id}
+                    className={`py-1.5 ${
+                      libraryTab === id ? "bg-ink text-paper" : "text-ink hover:bg-gray-100"
+                    }`}
+                    onClick={() => setLibraryTab(id)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {libraryTab === "stories" ? (
+                <>
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-xs font-bold uppercase tracking-wider text-ink-soft">
                   Story library
@@ -1719,6 +2173,26 @@ export function WeeklyIssueEditor({
                       : undefined
                   }
                 />
+              )}
+                </>
+              ) : (
+                <div>
+                  <p className="mb-2 text-[11px] leading-snug text-ink-soft">
+                    Widgets are written straight into the issue, no article
+                    needed. Click to add, or drag onto a section.
+                  </p>
+                  <p className="mb-3 text-[11px] font-semibold text-ink">
+                    Adds to:{" "}
+                    {targetSectionId()
+                      ? `“${layout.sections.find((x) => x.id === targetSectionId())?.title?.trim() || "Untitled section"}”`
+                      : "a new section"}
+                  </p>
+                  <ul className="space-y-2">
+                    {WIDGET_TYPES.map((t) => (
+                      <WidgetCard key={t} type={t} onAdd={() => addWidget(t)} />
+                    ))}
+                  </ul>
+                </div>
               )}
             </aside>
           ) : null}

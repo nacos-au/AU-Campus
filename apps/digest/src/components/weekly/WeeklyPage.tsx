@@ -13,6 +13,7 @@ import {
   disclaimerOf,
   type WeeklyLayout,
   type WeeklySection,
+  type WeeklyWidget,
   type WeeklyRegion,
   type WeeklySlotItem,
 } from "@/lib/weekly-layout";
@@ -30,9 +31,13 @@ export type WeeklyEditorHooks = {
   }) => ReactNode;
   wrapNameplate: (node: ReactNode) => ReactNode;
   wrapNote: (node: ReactNode | null) => ReactNode;
-  /** Wraps each configurable section so it can be selected. */
+  /** Wraps each section so it can be selected. */
   wrapSection: (section: WeeklySection, node: ReactNode) => ReactNode;
-  /** Rendered after the sections: the "add a section" controls. */
+  /** Wraps each widget so it can be selected. */
+  wrapWidget: (widget: WeeklyWidget, node: ReactNode) => ReactNode;
+  /** Rendered at the end of each section: the "add widget" controls. */
+  sectionFooter: (section: WeeklySection) => ReactNode;
+  /** Rendered after the sections: the "add section" control. */
   sectionsFooter: ReactNode;
 };
 
@@ -441,7 +446,9 @@ export function WeeklyPage({
         <WeeklySections
           sections={layout.sections}
           preview={preview || Boolean(editor)}
-          wrap={editor?.wrapSection}
+          wrapSection={editor?.wrapSection}
+          wrapWidget={editor?.wrapWidget}
+          sectionFooter={editor?.sectionFooter}
           footer={editor?.sectionsFooter}
         />
       </div>

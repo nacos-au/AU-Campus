@@ -15,8 +15,9 @@ import { resolveMasthead, type MastheadWidget } from "@/lib/weekly-masthead";
  *   secondary  3   row of supporting stories
  *   sidebar    5   narrow rail of briefs
  *
- * Below the fixed front page sits an editor-configurable list of SECTIONS
- * (formatted text, short briefs, score tables, notes) that flow in order.
+ * Below the fixed front page sits an editor-configurable list of SECTIONS,
+ * each a titled band of WIDGETS (inline stories, editor's notes, match-week
+ * scores, briefs, text, notes) that flow in order.
  * ───────────────────────────────────────────────────────────────────────── */
 
 export const WEEKLY_REGIONS = ["hero", "lead", "secondary", "sidebar"] as const;
@@ -142,20 +143,19 @@ export type ScoreRow = {
 };
 
 /**
- * Editor-configurable sections under the fixed front page. They render in
- * order and flow to the width of the page; editors never size them.
+ * Widgets: self-contained pieces of content written straight into the issue
+ * (no external article needed). They live inside sections.
  */
-export type WeeklySection =
-  | { id: string; type: "text"; doc: RichDoc }
+export type WeeklyWidget =
   | {
       id: string;
-      type: "brief";
+      type: "story";
       kicker?: string;
-      title: string;
+      headline: string;
+      byline?: string;
       doc?: RichDoc;
-      linkUrl?: string;
-      linkLabel?: string;
     }
+  | { id: string; type: "editorsNote"; byline?: string; doc?: RichDoc }
   | {
       id: string;
       type: "scores";
@@ -165,21 +165,53 @@ export type WeeklySection =
       footnote?: string;
       sourceUrl?: string;
     }
+  | {
+      id: string;
+      type: "brief";
+      kicker?: string;
+      title: string;
+      doc?: RichDoc;
+      linkUrl?: string;
+      linkLabel?: string;
+    }
+  | { id: string; type: "text"; doc: RichDoc }
   | { id: string; type: "note"; body: string };
 
-export type WeeklySectionType = WeeklySection["type"];
+export type WeeklyWidgetType = WeeklyWidget["type"];
 
-export const SECTION_META: Record<
-  WeeklySectionType,
+export const WIDGET_TYPES: WeeklyWidgetType[] = [
+  "story",
+  "editorsNote",
+  "scores",
+  "brief",
+  "text",
+  "note",
+];
+
+export const WIDGET_META: Record<
+  WeeklyWidgetType,
   { label: string; hint: string }
 > = {
+  story: { label: "Story", hint: "A short article written right here, no link needed" },
+  editorsNote: { label: "Editor’s note", hint: "A signed note from the desk" },
+  scores: { label: "Match week", hint: "Results table for football or any sport" },
+  brief: { label: "Brief", hint: "Short titled item with an optional link" },
   text: { label: "Text", hint: "Formatted text with links" },
-  brief: { label: "Brief", hint: "Short titled section" },
-  scores: { label: "Scores", hint: "Results table for any sport" },
   note: { label: "Note", hint: "Small italic disclaimer" },
 };
 
-export const MAX_SECTIONS = 12;
+/**
+ * A titled band under the fixed front page ("Sports", "Campus") holding
+ * widgets in order. Widgets flow to the page width; nobody sizes them.
+ */
+export type WeeklySection = {
+  id: string;
+  title?: string;
+  widgets: WeeklyWidget[];
+};
+
+export const MAX_SECTIONS = 8;
+export const MAX_WIDGETS = 12;
 const MAX_ROWS = 24;
 
 export function emptyLayout(): WeeklyLayout {
@@ -214,14 +246,14 @@ export function docFromText(text: string): RichDoc {
   };
 }
 
-export function createSection(type: WeeklySectionType): WeeklySection {
+export function createWidget(type: WeeklyWidgetType): WeeklyWidget {
   const id = newSectionId();
   switch (type) {
-    case "text":
-      return { id, type, doc: { type: "doc", content: [{ type: "paragraph" }] } };
-    case "brief":
-      // Title stays empty so an unfinished brief never reaches readers.
-      return { id, type, kicker: "Brief", title: "" };
+    case "story":
+      // Headline stays empty so an unfinished story never reaches readers.
+      return { id, type, headline: "" };
+    case "editorsNote":
+      return { id, type, byline: "From the Desk" };
     case "scores":
       return {
         id,
@@ -230,6 +262,10 @@ export function createSection(type: WeeklySectionType): WeeklySection {
         sport: "Football",
         rows: [emptyScoreRow()],
       };
+    case "brief":
+      return { id, type, kicker: "Brief", title: "" };
+    case "text":
+      return { id, type, doc: { type: "doc", content: [{ type: "paragraph" }] } };
     case "note":
       return {
         id,
@@ -239,13 +275,31 @@ export function createSection(type: WeeklySectionType): WeeklySection {
   }
 }
 
-/** Starting skeleton for the configurable part of a standard issue. */
+export function createSection(
+  title = "",
+  widgets: WeeklyWidget[] = []
+): WeeklySection {
+  return { id: newSectionId(), title, widgets };
+}
+
+/** Starting sections for a standard issue. */
 export function standardSections(): WeeklySection[] {
   return [
-    { ...createSection("scores") },
-    { ...createSection("brief") },
-    { ...createSection("note") },
+    createSection("Sports", [createWidget("scores"), createWidget("brief")]),
+    createSection("Campus", [createWidget("story"), createWidget("editorsNote")]),
   ];
+}
+
+/** Find a widget and the section holding it. */
+export function findWidget(
+  layout: WeeklyLayout,
+  widgetId: string
+): { section: WeeklySection; widget: WeeklyWidget; index: number } | null {
+  for (const section of layout.sections) {
+    const index = section.widgets.findIndex((w) => w.id === widgetId);
+    if (index >= 0) return { section, widget: section.widgets[index], index };
+  }
+  return null;
 }
 
 function isObj(v: unknown): v is Record<string, unknown> {
@@ -300,10 +354,21 @@ function cleanRow(raw: unknown): ScoreRow | null {
   };
 }
 
-function cleanSection(raw: unknown): WeeklySection | null {
+function cleanWidget(raw: unknown): WeeklyWidget | null {
   if (!isObj(raw)) return null;
   const id = clip(raw.id, 40) ?? newSectionId();
   switch (raw.type) {
+    case "story":
+      return {
+        id,
+        type: "story",
+        kicker: clip(raw.kicker, 40),
+        headline: clip(raw.headline, 200) ?? "",
+        byline: clip(raw.byline, 80),
+        doc: cleanDoc(raw.doc),
+      };
+    case "editorsNote":
+      return { id, type: "editorsNote", byline: clip(raw.byline, 80), doc: cleanDoc(raw.doc) };
     case "text":
       return { id, type: "text", doc: cleanDoc(raw.doc) ?? { type: "doc", content: [] } };
     case "brief":
@@ -338,17 +403,45 @@ function cleanSection(raw: unknown): WeeklySection | null {
   }
 }
 
+/**
+ * Sections hold widgets. The first sections release stored a flat list of
+ * widgets; those are wrapped into one untitled section where they first sat.
+ */
 function cleanSections(raw: unknown): WeeklySection[] {
   if (!Array.isArray(raw)) return [];
   const seen = new Set<string>();
+  const unique = (id: string) => {
+    const out = seen.has(id) ? newSectionId() : id;
+    seen.add(out);
+    return out;
+  };
   const out: WeeklySection[] = [];
+  let legacy: WeeklySection | null = null;
   for (const r of raw) {
-    const s = cleanSection(r);
-    if (!s) continue;
-    if (seen.has(s.id)) s.id = newSectionId();
-    seen.add(s.id);
-    out.push(s);
-    if (out.length >= MAX_SECTIONS) break;
+    if (!isObj(r)) continue;
+    if (Array.isArray(r.widgets)) {
+      if (out.length >= MAX_SECTIONS) break;
+      const widgets: WeeklyWidget[] = [];
+      for (const w of r.widgets) {
+        const widget = cleanWidget(w);
+        if (!widget) continue;
+        widget.id = unique(widget.id);
+        widgets.push(widget);
+        if (widgets.length >= MAX_WIDGETS) break;
+      }
+      out.push({ id: unique(clip(r.id, 40) ?? newSectionId()), title: clip(r.title, 80) ?? "", widgets });
+      continue;
+    }
+    const widget = cleanWidget(r);
+    if (!widget) continue;
+    if (!legacy) {
+      if (out.length >= MAX_SECTIONS) break;
+      legacy = { id: unique(newSectionId()), title: "", widgets: [] };
+      out.push(legacy);
+    }
+    if (legacy.widgets.length >= MAX_WIDGETS) continue;
+    widget.id = unique(widget.id);
+    legacy.widgets.push(widget);
   }
   return out;
 }
@@ -426,8 +519,10 @@ function fromV1(blocks: V1Block[]): WeeklyLayout {
     if (b.type === "intro" && typeof b.body === "string" && b.body.trim()) {
       layout.note = { byline: str(b.byline), body: b.body };
     } else if (b.type === "text" && typeof b.body === "string" && b.body.trim()) {
-      if (layout.sections.length < MAX_SECTIONS) {
-        layout.sections.push({
+      if (!layout.sections.length) layout.sections.push(createSection());
+      const target = layout.sections[0];
+      if (target.widgets.length < MAX_WIDGETS) {
+        target.widgets.push({
           id: newSectionId(),
           type: "text",
           doc: docFromText(b.body),
@@ -477,7 +572,7 @@ export function parseLayout(raw: unknown): WeeklyLayout {
 export function layoutHasContent(layout: WeeklyLayout): boolean {
   return (
     Boolean(layout.note?.body.trim()) ||
-    layout.sections.length > 0 ||
+    layout.sections.some((sec) => sec.widgets.length > 0) ||
     WEEKLY_REGIONS.some((r) => layout.regions[r].length > 0)
   );
 }

@@ -98,7 +98,7 @@ export function formatWeekLabel(weekStart: string, locale = "en-US"): string {
   return formatShortDate(weekStart, locale);
 }
 
-/** "Week 48 · November 26, 2026" — stored in `title` for back-compat. */
+/** "November 26, 2026": the issue title, derived from the publish date. */
 export function displayTitle(iso: string, locale = "en-US"): string {
   const date = new Intl.DateTimeFormat(locale, {
     month: "long",
