@@ -40,6 +40,8 @@ import {
   Wand2,
 } from "lucide-react";
 import { btn } from "@/components/admin/ui";
+import { RichBlockEditor } from "@/components/weekly/RichBlockEditor";
+import { safeHref } from "@/lib/safe-link";
 import { useConfirm } from "@/components/ConfirmDialog";
 import {
   DeviceFrame,
@@ -55,8 +57,14 @@ import { createClient } from "@/lib/supabase/client";
 import type { ArticleWithMeta, WeeklyIssue, WeeklyIssueStatus } from "@/lib/types";
 import type { WeatherSnapshot } from "@/lib/weather";
 import {
+  DISCLAIMER_PRESETS,
+  MAX_SECTIONS,
   REGION_META,
+  SECTION_META,
   articleIdsInLayout,
+  createSection,
+  emptyScoreRow,
+  standardSections,
   ensureLayout,
   fillFromArticles,
   getSlot,
@@ -68,7 +76,11 @@ import {
   usesWeather,
   type SlotPos,
   type WeeklyLayout,
+  type RichDoc,
+  type ScoreRow,
   type WeeklyRegion,
+  type WeeklySection,
+  type WeeklySectionType,
   type WeeklySlotItem,
 } from "@/lib/weekly-layout";
 import {
@@ -90,6 +102,7 @@ type Selection =
   | ({ kind: "slot" } & SlotPos)
   | { kind: "nameplate" }
   | { kind: "note" }
+  | { kind: "section"; id: string }
   | null;
 
 const STATUS_STYLE: Record<WeeklyIssueStatus, string> = {
@@ -297,6 +310,263 @@ function ArticleList({
 }
 
 /* ── Editor ────────────────────────────────────────────────────────────── */
+
+/* ── Section inspector: edits one configurable section ─────────────────── */
+
+function LinkWarning({ value }: { value?: string }) {
+  if (!value?.trim() || safeHref(value)) return null;
+  return (
+    <p className="mt-1 text-xs text-red-700">
+      Use https://, mailto: or a /path. This link will be hidden from readers.
+    </p>
+  );
+}
+
+function SectionPanel({
+  section,
+  canUp,
+  canDown,
+  onPatch,
+  onMove,
+  onRemove,
+}: {
+  section: WeeklySection;
+  canUp: boolean;
+  canDown: boolean;
+  onPatch: (patch: Partial<WeeklySection>) => void;
+  onMove: (dir: -1 | 1) => void;
+  onRemove: () => void;
+}) {
+  const patchRow = (rows: ScoreRow[], i: number, patch: Partial<ScoreRow>) =>
+    rows.map((r, k) => (k === i ? { ...r, ...patch } : r));
+
+  return (
+    <section className="space-y-3 border border-rule bg-white p-3 text-sm">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-ink-soft">
+            {SECTION_META[section.type].label} section
+          </p>
+          <p className="text-[11px] text-ink-soft">
+            {SECTION_META[section.type].hint}
+          </p>
+        </div>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            className={btn.ghost}
+            disabled={!canUp}
+            onClick={() => onMove(-1)}
+            aria-label="Move section up"
+          >
+            ↑
+          </button>
+          <button
+            type="button"
+            className={btn.ghost}
+            disabled={!canDown}
+            onClick={() => onMove(1)}
+            aria-label="Move section down"
+          >
+            ↓
+          </button>
+        </div>
+      </div>
+
+      {section.type === "text" ? (
+        <div>
+          <span className={fieldLabel}>Text</span>
+          <div className="mt-1">
+            <RichBlockEditor
+              key={section.id}
+              value={section.doc}
+              onChange={(doc: RichDoc) => onPatch({ doc })}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {section.type === "brief" ? (
+        <>
+          <label className="block">
+            <span className={fieldLabel}>Kicker (optional)</span>
+            <input
+              className={fieldInput}
+              value={section.kicker ?? ""}
+              onChange={(e) => onPatch({ kicker: e.target.value })}
+            />
+          </label>
+          <label className="block">
+            <span className={fieldLabel}>Title</span>
+            <input
+              className={fieldInput}
+              value={section.title}
+              placeholder="Shown to readers once filled in"
+              onChange={(e) => onPatch({ title: e.target.value })}
+            />
+          </label>
+          <div>
+            <span className={fieldLabel}>Text</span>
+            <div className="mt-1">
+              <RichBlockEditor
+                key={section.id}
+                value={section.doc ?? null}
+                onChange={(doc: RichDoc) => onPatch({ doc })}
+              />
+            </div>
+          </div>
+          <label className="block">
+            <span className={fieldLabel}>Link address (optional)</span>
+            <input
+              className={fieldInput}
+              value={section.linkUrl ?? ""}
+              placeholder="https://…"
+              onChange={(e) => onPatch({ linkUrl: e.target.value })}
+            />
+            <LinkWarning value={section.linkUrl} />
+          </label>
+          <label className="block">
+            <span className={fieldLabel}>Link label</span>
+            <input
+              className={fieldInput}
+              value={section.linkLabel ?? ""}
+              placeholder="Read more"
+              onChange={(e) => onPatch({ linkLabel: e.target.value })}
+            />
+          </label>
+        </>
+      ) : null}
+
+      {section.type === "scores" ? (
+        <>
+          <label className="block">
+            <span className={fieldLabel}>Title</span>
+            <input
+              className={fieldInput}
+              value={section.title}
+              placeholder="Matchweek 12"
+              onChange={(e) => onPatch({ title: e.target.value })}
+            />
+          </label>
+          <label className="block">
+            <span className={fieldLabel}>Sport label</span>
+            <input
+              className={fieldInput}
+              value={section.sport ?? ""}
+              placeholder="Football"
+              onChange={(e) => onPatch({ sport: e.target.value })}
+            />
+          </label>
+          <div>
+            <p className={fieldLabel}>Fixtures</p>
+            <div className="mt-1 space-y-2">
+              {section.rows.map((row, i) => (
+                <div key={row.id} className="space-y-1 border border-rule p-2">
+                  <div className="grid grid-cols-2 gap-1">
+                    {(
+                      [
+                        ["home", "Home"],
+                        ["away", "Away"],
+                        ["homeScore", "Home score"],
+                        ["awayScore", "Away score"],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <input
+                        key={key}
+                        aria-label={label}
+                        placeholder={label}
+                        className="border border-rule-dark bg-paper px-2 py-1 text-xs"
+                        value={row[key]}
+                        onChange={(e) =>
+                          onPatch({
+                            rows: patchRow(section.rows, i, {
+                              [key]: e.target.value,
+                            }),
+                          })
+                        }
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      aria-label="Status"
+                      placeholder="FT, HT or 15:00"
+                      className="min-w-0 flex-1 border border-rule-dark bg-paper px-2 py-1 text-xs"
+                      value={row.status}
+                      onChange={(e) =>
+                        onPatch({
+                          rows: patchRow(section.rows, i, {
+                            status: e.target.value,
+                          }),
+                        })
+                      }
+                    />
+                    <button
+                      type="button"
+                      className={btn.danger}
+                      onClick={() =>
+                        onPatch({
+                          rows: section.rows.filter((r) => r.id !== row.id),
+                        })
+                      }
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              className={`${btn.secondary} mt-2 w-full`}
+              disabled={section.rows.length >= 24}
+              onClick={() =>
+                onPatch({ rows: [...section.rows, emptyScoreRow()] })
+              }
+            >
+              Add fixture
+            </button>
+          </div>
+          <label className="block">
+            <span className={fieldLabel}>Footnote (optional)</span>
+            <textarea
+              rows={2}
+              className={fieldInput}
+              value={section.footnote ?? ""}
+              onChange={(e) => onPatch({ footnote: e.target.value })}
+            />
+          </label>
+          <label className="block">
+            <span className={fieldLabel}>Full results link (optional)</span>
+            <input
+              className={fieldInput}
+              value={section.sourceUrl ?? ""}
+              placeholder="https://…"
+              onChange={(e) => onPatch({ sourceUrl: e.target.value })}
+            />
+            <LinkWarning value={section.sourceUrl} />
+          </label>
+        </>
+      ) : null}
+
+      {section.type === "note" ? (
+        <label className="block">
+          <span className={fieldLabel}>Note</span>
+          <textarea
+            rows={4}
+            className={fieldInput}
+            value={section.body}
+            onChange={(e) => onPatch({ body: e.target.value })}
+          />
+        </label>
+      ) : null}
+
+      <button type="button" className={btn.danger} onClick={onRemove}>
+        Remove section
+      </button>
+    </section>
+  );
+}
 
 export function WeeklyIssueEditor({
   weather,
@@ -633,6 +903,65 @@ export function WeeklyIssueEditor({
     setSelection({ kind: "slot", ...target });
   }
 
+  /* ── Sections ── */
+
+  function patchSection(id: string, patch: Partial<WeeklySection>) {
+    updateLayout((p) => ({
+      ...p,
+      sections: p.sections.map((x) =>
+        x.id === id ? ({ ...x, ...patch } as WeeklySection) : x
+      ),
+    }));
+  }
+
+  function addSection(type: WeeklySectionType) {
+    if (layout.sections.length >= MAX_SECTIONS) return;
+    const created = createSection(type);
+    updateLayout((p) => ({ ...p, sections: [...p.sections, created] }));
+    setSelection({ kind: "section", id: created.id });
+  }
+
+  function moveSection(id: string, dir: -1 | 1) {
+    updateLayout((p) => {
+      const i = p.sections.findIndex((x) => x.id === id);
+      const j = i + dir;
+      if (i < 0 || j < 0 || j >= p.sections.length) return p;
+      const next = [...p.sections];
+      [next[i], next[j]] = [next[j], next[i]];
+      return { ...p, sections: next };
+    });
+  }
+
+  function removeSection(id: string) {
+    updateLayout((p) => ({
+      ...p,
+      sections: p.sections.filter((x) => x.id !== id),
+    }));
+    setSelection(null);
+  }
+
+  /** Standard issue: fill empty slots and start the sections from the template. */
+  async function applyStandardIssue() {
+    if (
+      layout.sections.length > 0 &&
+      !(await confirm({
+        title: "Replace the sections with the standard set?",
+        body: "Your current sections are replaced by scores, a brief and a note. Stories already in slots stay; empty slots are filled.",
+        confirmLabel: "Replace sections",
+        danger: true,
+      }))
+    ) {
+      return;
+    }
+    updateLayout((p) =>
+      fillFromArticles(
+        { ...p, sections: standardSections() },
+        articles.map((a) => a.id)
+      )
+    );
+    setSelection(null);
+  }
+
   /* ── Canvas hooks ── */
 
   const hooks: WeeklyEditorHooks = {
@@ -697,12 +1026,58 @@ export function WeeklyIssueEditor({
         )}
       </div>
     ),
+    wrapSection: (section, node) => (
+      <div
+        role="button"
+        tabIndex={0}
+        // Links inside a section must select it, not navigate away.
+        onClickCapture={(e) => {
+          if ((e.target as HTMLElement).closest("a")) e.preventDefault();
+        }}
+        onClick={() => setSelection({ kind: "section", id: section.id })}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") setSelection({ kind: "section", id: section.id });
+        }}
+        className={`cursor-pointer ${
+          selection?.kind === "section" && selection.id === section.id
+            ? "outline outline-2 outline-offset-2 outline-accent"
+            : "hover:outline hover:outline-1 hover:outline-offset-2 hover:outline-rule-dark"
+        }`}
+      >
+        {node}
+      </div>
+    ),
+    sectionsFooter: (
+      <div className="border border-dashed border-rule-dark bg-gray-50 p-3 text-center">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
+          Add a section below the front page
+        </p>
+        <div className="flex flex-wrap justify-center gap-2">
+          {(Object.keys(SECTION_META) as WeeklySectionType[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              className={btn.secondary}
+              disabled={layout.sections.length >= MAX_SECTIONS}
+              onClick={() => addSection(t)}
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden />
+              {SECTION_META[t].label}
+            </button>
+          ))}
+        </div>
+      </div>
+    ),
   };
 
   /* ── Inspector ── */
 
   const placedSet = useMemo(() => new Set(placedIds), [placedIds]);
   const selSlot = selection?.kind === "slot" ? selection : null;
+  const selSection =
+    selection?.kind === "section"
+      ? layout.sections.find((x) => x.id === selection.id)
+      : undefined;
   const selItem = selSlot ? getSlot(layout, selSlot) : null;
   const selArticle = selItem ? articlesById.get(selItem.articleId) : undefined;
 
@@ -889,6 +1264,18 @@ export function WeeklyIssueEditor({
         </button>
       </section>
     );
+  } else if (selSection) {
+    const idx = layout.sections.findIndex((x) => x.id === selSection.id);
+    selectionPanel = (
+      <SectionPanel
+        section={selSection}
+        canUp={idx > 0}
+        canDown={idx < layout.sections.length - 1}
+        onPatch={(patch) => patchSection(selSection.id, patch)}
+        onMove={(dir) => moveSection(selSection.id, dir)}
+        onRemove={() => removeSection(selSection.id)}
+      />
+    );
   } else if (selSlot) {
     const pos: SlotPos = { region: selSlot.region, index: selSlot.index };
     selectionPanel = (
@@ -958,6 +1345,44 @@ export function WeeklyIssueEditor({
               />
               <span>Show image</span>
             </label>
+            <label className="block">
+              <span className={fieldLabel}>Disclaimer</span>
+              <select
+                className={fieldInput}
+                value={selItem.disclaimer ?? ""}
+                onChange={(e) =>
+                  updateLayout((p) =>
+                    patchSlot(p, pos, {
+                      disclaimer: (e.target.value || undefined) as
+                        | WeeklySlotItem["disclaimer"],
+                    })
+                  )
+                }
+              >
+                <option value="">None</option>
+                {DISCLAIMER_PRESETS.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {d.label}
+                  </option>
+                ))}
+                <option value="custom">Custom…</option>
+              </select>
+            </label>
+            {selItem.disclaimer === "custom" ? (
+              <label className="block">
+                <span className={fieldLabel}>Custom disclaimer</span>
+                <textarea
+                  rows={2}
+                  className={fieldInput}
+                  value={selItem.disclaimerText ?? ""}
+                  onChange={(e) =>
+                    updateLayout((p) =>
+                      patchSlot(p, pos, { disclaimerText: e.target.value })
+                    )
+                  }
+                />
+              </label>
+            ) : null}
             <button
               type="button"
               className={btn.danger}
@@ -1000,7 +1425,7 @@ export function WeeklyIssueEditor({
   } else {
     selectionPanel = (
       <p className="border border-dashed border-rule-dark p-3 text-xs text-ink-soft">
-        Click the nameplate or any slot on the page to edit it.
+        Click the nameplate, a slot or a section on the page to edit it.
       </p>
     );
   }
@@ -1194,6 +1619,7 @@ export function WeeklyIssueEditor({
                 <p className="text-xs font-bold uppercase tracking-wider text-ink-soft">
                   Story library
                 </p>
+                <div className="flex items-center gap-1">
                 <button
                   type="button"
                   className={btn.ghost}
@@ -1210,6 +1636,15 @@ export function WeeklyIssueEditor({
                   <Wand2 className="h-3.5 w-3.5" aria-hidden />
                   Fill
                 </button>
+                <button
+                  type="button"
+                  className={btn.ghost}
+                  title="Fill empty slots and start the sections: scores, a brief and a note"
+                  onClick={applyStandardIssue}
+                >
+                  Standard issue
+                </button>
+                </div>
               </div>
               <p className="mb-2 text-[11px] leading-snug text-ink-soft">
                 Drag a story onto a slot, or click a slot and pick one.

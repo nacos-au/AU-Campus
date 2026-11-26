@@ -2,6 +2,7 @@ import Link from "next/link";
 import { RichText } from "@/components/RichText";
 import { ScoresBlock } from "@/components/weekly/ScoresBlock";
 import { isExternalHref, safeHref } from "@/lib/safe-link";
+import type { ReactNode } from "react";
 import type { RichDoc, WeeklySection } from "@/lib/weekly-layout";
 
 function hasText(doc?: RichDoc): boolean {
@@ -54,10 +55,16 @@ function Brief({
 export function WeeklySections({
   sections,
   preview = false,
+  wrap,
+  footer,
 }: {
   sections: WeeklySection[];
   /** Draft preview and editor canvas: empty sections show a placeholder. */
   preview?: boolean;
+  /** Editor only: makes each section selectable. */
+  wrap?: (section: WeeklySection, node: ReactNode) => ReactNode;
+  /** Editor only: the "add a section" controls. */
+  footer?: ReactNode;
 }) {
   const visible = sections.filter((s) => {
     if (preview) return true;
@@ -72,7 +79,7 @@ export function WeeklySections({
         return Boolean(s.body.trim());
     }
   });
-  if (visible.length === 0) return null;
+  if (visible.length === 0 && !footer) return null;
 
   // Consecutive briefs pair up side by side; an odd one out stays full width.
   const halfWidth: boolean[] = visible.map(() => false);
@@ -92,8 +99,8 @@ export function WeeklySections({
     <div className="mt-8 grid gap-x-8 gap-y-8 @3xl:grid-cols-2">
       {visible.map((s, i) => {
         const half = halfWidth[i];
-        return (
-          <div key={s.id} className={`min-w-0 ${half ? "" : "@3xl:col-span-2"}`}>
+        const content = (
+          <>
             {s.type === "text" ? (
               <div className="mx-auto max-w-3xl border-t border-rule pt-4 text-base leading-relaxed">
                 {hasText(s.doc) ? (
@@ -119,9 +126,15 @@ export function WeeklySections({
                 {s.body || (preview ? "Add a note" : "")}
               </p>
             ) : null}
+          </>
+        );
+        return (
+          <div key={s.id} className={`min-w-0 ${half ? "" : "@3xl:col-span-2"}`}>
+            {wrap ? wrap(s, content) : content}
           </div>
         );
       })}
+      {footer ? <div className="@3xl:col-span-2">{footer}</div> : null}
     </div>
   );
 }

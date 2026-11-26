@@ -36,8 +36,45 @@ export const REGION_META: Record<
   sidebar: { label: "Sidebar", capacity: 5, hint: "Narrow rail of briefs" },
 };
 
+export const DISCLAIMER_PRESETS = [
+  {
+    value: "opinion",
+    label: "Opinion",
+    text: "Opinion. The views expressed are the writer’s own.",
+  },
+  {
+    value: "analysis",
+    label: "Analysis",
+    text: "Analysis. This piece interprets the facts and reflects the writer’s judgement.",
+  },
+  {
+    value: "contributed",
+    label: "Contributed piece",
+    text: "Contributed piece. Written by a guest and edited by the newsroom.",
+  },
+  {
+    value: "partner",
+    label: "Partner content",
+    text: "Partner content. Provided by a campus partner, not written by the newsroom.",
+  },
+] as const;
+
+export type DisclaimerKey =
+  | (typeof DISCLAIMER_PRESETS)[number]["value"]
+  | "custom";
+
+/** The disclaimer line to print under a story, or null for none. */
+export function disclaimerOf(item: WeeklySlotItem): string | null {
+  if (!item.disclaimer) return null;
+  if (item.disclaimer === "custom") return item.disclaimerText?.trim() || null;
+  return DISCLAIMER_PRESETS.find((d) => d.value === item.disclaimer)?.text ?? null;
+}
+
 export type WeeklySlotItem = {
   articleId: string;
+  /** Printed under the story: a preset, or custom text. */
+  disclaimer?: DisclaimerKey;
+  disclaimerText?: string;
   /** Overrides the section name above the headline. */
   kicker?: string;
   /** Overrides the article title on this page only. */
@@ -183,7 +220,8 @@ export function createSection(type: WeeklySectionType): WeeklySection {
     case "text":
       return { id, type, doc: { type: "doc", content: [{ type: "paragraph" }] } };
     case "brief":
-      return { id, type, kicker: "Brief", title: "Short section title" };
+      // Title stays empty so an unfinished brief never reaches readers.
+      return { id, type, kicker: "Brief", title: "" };
     case "scores":
       return {
         id,
@@ -230,6 +268,14 @@ function cleanItem(raw: unknown): WeeklySlotItem | null {
   if (headline) item.headline = headline;
   if (teaser) item.teaser = teaser;
   if (raw.showImage === false) item.showImage = false;
+  if (
+    raw.disclaimer === "custom" ||
+    DISCLAIMER_PRESETS.some((d) => d.value === raw.disclaimer)
+  ) {
+    item.disclaimer = raw.disclaimer as DisclaimerKey;
+    const text = clip(raw.disclaimerText, 300);
+    if (text) item.disclaimerText = text;
+  }
   return item;
 }
 
@@ -573,8 +619,12 @@ export function patchSlot(
   const cur = getSlot(layout, pos);
   if (!cur) return layout;
   const next: WeeklySlotItem = { ...cur, ...patch };
-  for (const key of ["kicker", "headline", "teaser"] as const) {
+  for (const key of ["kicker", "headline", "teaser", "disclaimerText"] as const) {
     if (!next[key]?.trim()) delete next[key];
+  }
+  if (!next.disclaimer) {
+    delete next.disclaimer;
+    delete next.disclaimerText;
   }
   if (next.showImage !== false) delete next.showImage;
   return setSlot(layout, pos, next);

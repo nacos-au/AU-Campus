@@ -10,7 +10,9 @@ import type { WeatherSnapshot } from "@/lib/weather";
 import type { IssueMeta } from "@/lib/weekly";
 import {
   REGION_META,
+  disclaimerOf,
   type WeeklyLayout,
+  type WeeklySection,
   type WeeklyRegion,
   type WeeklySlotItem,
 } from "@/lib/weekly-layout";
@@ -28,6 +30,10 @@ export type WeeklyEditorHooks = {
   }) => ReactNode;
   wrapNameplate: (node: ReactNode) => ReactNode;
   wrapNote: (node: ReactNode | null) => ReactNode;
+  /** Wraps each configurable section so it can be selected. */
+  wrapSection: (section: WeeklySection, node: ReactNode) => ReactNode;
+  /** Rendered after the sections: the "add a section" controls. */
+  sectionsFooter: ReactNode;
 };
 
 type Props = {
@@ -62,6 +68,26 @@ function Linked({
     <Link href={articlePublicPath(article)} className="headline-link group block">
       {children}
     </Link>
+  );
+}
+
+function FullStory({ className = "" }: { className?: string }) {
+  return (
+    <p
+      className={`text-xs font-bold uppercase tracking-wider text-accent group-hover:underline ${className}`}
+    >
+      Read the full story →
+    </p>
+  );
+}
+
+function Disclaimer({ item }: { item: WeeklySlotItem }) {
+  const text = disclaimerOf(item);
+  if (!text) return null;
+  return (
+    <p className="mt-2 border-l-2 border-rule-dark pl-2 text-[11px] italic leading-snug text-ink-soft">
+      {text}
+    </p>
   );
 }
 
@@ -161,10 +187,12 @@ function SlotArticle({
               <p className="mt-3 line-clamp-4 font-serif text-base leading-snug text-ink-soft @2xl:text-lg">
                 {teaserText(article, item, 260)}
               </p>
+              <FullStory className="mt-3" />
             </div>
           </div>
         </Linked>
         {byline}
+        <Disclaimer item={item} />
       </article>
     );
   }
@@ -187,8 +215,10 @@ function SlotArticle({
           <p className="mt-2 line-clamp-5 font-serif text-base leading-snug text-ink-soft">
             {teaserText(article, item, 240)}
           </p>
+          <FullStory className="mt-3" />
         </Linked>
         {byline}
+        <Disclaimer item={item} />
       </article>
     );
   }
@@ -211,8 +241,10 @@ function SlotArticle({
           <p className="mt-1.5 line-clamp-3 font-serif text-sm leading-snug text-ink-soft">
             {teaserText(article, item, 150)}
           </p>
+          <FullStory className="mt-2" />
         </Linked>
         {byline}
+        <Disclaimer item={item} />
       </article>
     );
   }
@@ -245,6 +277,7 @@ function SlotArticle({
         </div>
       </Linked>
       {byline}
+      <Disclaimer item={item} />
     </article>
   );
 }
@@ -405,7 +438,12 @@ export function WeeklyPage({
           </section>
         ) : null}
 
-        <WeeklySections sections={layout.sections} preview={preview || Boolean(editor)} />
+        <WeeklySections
+          sections={layout.sections}
+          preview={preview || Boolean(editor)}
+          wrap={editor?.wrapSection}
+          footer={editor?.sectionsFooter}
+        />
       </div>
     </div>
   );
