@@ -112,7 +112,13 @@ export function displayTitle(iso: string, locale = "en-US"): string {
 type IssueRef = Pick<WeeklyIssue, "week_start" | "status"> & {
   id?: string;
   publish_date?: string | null;
+  title?: string | null;
 };
+
+/** The old "Create sample week" button made these; they never count as issues. */
+export function isSampleIssue(ref: { title?: string | null }): boolean {
+  return /^sample\b/i.test(ref.title?.trim() ?? "");
+}
 
 /** The canonical date; falls back to the Monday for pre-migration rows. */
 export function effectivePublishDate(
@@ -140,6 +146,7 @@ export function issueNumberFor(
   for (const other of issues) {
     if (selfId && other.id === selfId) continue;
     if (!countsTowardNumbering(other.status)) continue;
+    if (isSampleIssue(other)) continue;
     const d = effectivePublishDate(other);
     if (d.slice(0, 4) !== year) continue;
     if (d < iso) before += 1;
