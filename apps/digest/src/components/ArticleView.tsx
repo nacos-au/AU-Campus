@@ -5,6 +5,7 @@ import { ImageInfo } from "@/components/ImageInfo";
 import { ProfileAvatar } from "@/components/ProfileAvatar";
 import { RichText } from "@/components/RichText";
 import { LikeShare } from "@/components/LikeShare";
+import { CommentsSection } from "@/components/comments/CommentsSection";
 import { CompactStory } from "@/components/stories";
 import {
   creditPeople,
@@ -191,6 +192,10 @@ export function ArticleView({
             initialLikes={article.like_count ?? 0}
             title={article.title}
           />
+        )}
+
+        {digestFeatures.comments && (
+          <CommentsSection articleId={article.id} title={article.title} />
         )}
       </article>
 

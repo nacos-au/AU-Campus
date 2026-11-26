@@ -36,6 +36,7 @@ const ICONS = {
   ads: Megaphone,
   talent: Star,
   forum: MessageCircle,
+  comments: MessageCircle,
   team: Users,
   board: BarChart3,
 } as const satisfies Record<string, LucideIcon>;

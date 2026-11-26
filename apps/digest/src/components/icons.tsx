@@ -1,6 +1,8 @@
 import type { LucideProps } from "lucide-react";
 import {
   Bookmark,
+  ChevronDown,
+  Ellipsis,
   Facebook,
   Heart,
   Instagram,
@@ -65,6 +67,14 @@ export function IconBookmark({ title, ...props }: IconProps) {
 
 export function IconShare({ title, ...props }: IconProps) {
   return <Share aria-label={title} aria-hidden={title ? undefined : true} {...stroke} {...props} />;
+}
+
+export function IconMoreHorizontal({ title, ...props }: IconProps) {
+  return <Ellipsis aria-label={title} aria-hidden={title ? undefined : true} {...stroke} {...props} />;
+}
+
+export function IconChevronDown({ title, ...props }: IconProps) {
+  return <ChevronDown aria-label={title} aria-hidden={title ? undefined : true} {...stroke} {...props} />;
 }
 
 export function IconMoreVertical({ title, ...props }: IconProps) {

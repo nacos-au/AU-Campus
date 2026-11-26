@@ -273,6 +273,18 @@ export function ArticlesTable({
     onSettled: refresh,
   });
 
+  const toggleCommentsLock = useMutation({
+    mutationFn: async (vars: { id: string; locked: boolean }) => {
+      const { error } = await supabase.rpc("set_comments_locked", {
+        p_article_id: vars.id,
+        p_locked: vars.locked,
+      });
+      if (error) throw error;
+    },
+    onError: (e: Error) => setError(e.message),
+    onSettled: refresh,
+  });
+
   const withdraw = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.rpc("withdraw_article", {
@@ -743,6 +755,32 @@ export function ArticlesTable({
                       Delete
                     </button>
                   )}
+
+                  {digestFeatures.comments &&
+                    isStaff &&
+                    a.status === "published" && (
+                      <button
+                        onClick={async () => {
+                          const lock = !a.comments_locked;
+                          if (
+                            await confirm({
+                              title: lock
+                                ? `Lock comments on “${a.title}”?`
+                                : `Unlock comments on “${a.title}”?`,
+                              body: lock
+                                ? "Existing comments stay visible but readers can no longer post, reply or edit."
+                                : "Readers can post and reply again.",
+                              confirmLabel: lock ? "Lock comments" : "Unlock comments",
+                              danger: lock,
+                            })
+                          )
+                            toggleCommentsLock.mutate({ id: a.id, locked: lock });
+                        }}
+                        className="text-ink-soft underline hover:text-ink"
+                      >
+                        {a.comments_locked ? "Unlock comments" : "Lock comments"}
+                      </button>
+                    )}
 
                   {a.status !== "archived" &&
                     a.status !== "withdrawn" &&

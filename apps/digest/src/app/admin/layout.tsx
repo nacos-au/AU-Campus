@@ -29,6 +29,11 @@ export default async function AdminLayout({
           { href: "/admin/weekly", label: "Weekly", icon: "editions" },
           { href: "/admin/facts", label: "Fun facts", icon: "articles" },
           { href: "/admin/words", label: "Words", icon: "articles" },
+          ...(digestFeatures.comments
+            ? ([
+                { href: "/admin/comments", label: "Comments", icon: "comments" },
+              ] as AdminNavItem[])
+            : []),
           ...(digestFeatures.manualAds
             ? ([{ href: "/admin/ads", label: "Advertising", icon: "ads" }] as AdminNavItem[])
             : []),

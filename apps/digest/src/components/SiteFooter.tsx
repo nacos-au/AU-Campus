@@ -216,6 +216,11 @@ export async function SiteFooter() {
             <a href="/privacy" className="hover:text-ink">
               {t("privacy")}
             </a>
+            {digestFeatures.comments && (
+              <a href="/guidelines" className="hover:text-ink">
+                Community guidelines
+              </a>
+            )}
             <a href="#" className="hover:text-ink">
               {t("terms")}
             </a>

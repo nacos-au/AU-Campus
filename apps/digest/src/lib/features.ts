@@ -7,6 +7,8 @@ export const digestFeatures = {
   talent: false,
   printEditions: false,
   publicLikes: true,
+  /** Article discussions — kill switch for the whole site. */
+  comments: true,
   adsenseFallback: false,
   weekly: true,
   /** Ads paused for now — AdSlots and advertise links stay gated off. */

@@ -1,5 +1,9 @@
 -- ============================================================================
--- Demo seed data (local development only).
+-- Demo seed data — LOCAL DEVELOPMENT ONLY.
+-- NOT re-runnable and NEVER run this on the hosted Supabase project.
+-- To remove these demo accounts from a hosted project, use
+-- supabase/digest_delete_mock_users_APPLY_ALL.sql instead.
+--
 -- Accounts (password for all: password123):
 --   admin@demo.test   → admin
 --   editor@demo.test  → editor
@@ -7,28 +11,43 @@
 --   reader@demo.test  → reader
 -- ============================================================================
 
+-- Fail fast with a clear message instead of a cryptic duplicate-key error.
+do $$
+begin
+  if exists (select 1 from auth.users where id = '00000000-0000-0000-0000-000000000001') then
+    raise exception 'Seed already applied. seed.sql is local-only and not re-runnable.';
+  end if;
+end
+$$;
+
 -- ─── Demo auth users ────────────────────────────────────────────────────────
+-- Token columns are set to '' (not NULL) so the Auth service / dashboard can load them.
 
 insert into auth.users
   (id, instance_id, aud, role, email, encrypted_password, email_confirmed_at,
-   raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
+   raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+   confirmation_token, recovery_token, email_change, email_change_token_new)
 values
   ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000000',
    'authenticated', 'authenticated', 'admin@demo.test',
    extensions.crypt('password123', extensions.gen_salt('bf')), now(),
-   '{"provider":"email","providers":["email"]}', '{"display_name":"Ada Obi"}', now(), now()),
+   '{"provider":"email","providers":["email"]}', '{"display_name":"Ada Obi"}', now(), now(),
+   '', '', '', ''),
   ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000000',
    'authenticated', 'authenticated', 'editor@demo.test',
    extensions.crypt('password123', extensions.gen_salt('bf')), now(),
-   '{"provider":"email","providers":["email"]}', '{"display_name":"Emeka Eze"}', now(), now()),
+   '{"provider":"email","providers":["email"]}', '{"display_name":"Emeka Eze"}', now(), now(),
+   '', '', '', ''),
   ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000000',
    'authenticated', 'authenticated', 'writer@demo.test',
    extensions.crypt('password123', extensions.gen_salt('bf')), now(),
-   '{"provider":"email","providers":["email"]}', '{"display_name":"Wale Adeyemi"}', now(), now()),
+   '{"provider":"email","providers":["email"]}', '{"display_name":"Wale Adeyemi"}', now(), now(),
+   '', '', '', ''),
   ('00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000000',
    'authenticated', 'authenticated', 'reader@demo.test',
    extensions.crypt('password123', extensions.gen_salt('bf')), now(),
-   '{"provider":"email","providers":["email"]}', '{"display_name":"Rita Okon"}', now(), now());
+   '{"provider":"email","providers":["email"]}', '{"display_name":"Rita Okon"}', now(), now(),
+   '', '', '', '');
 
 insert into auth.identities
   (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)

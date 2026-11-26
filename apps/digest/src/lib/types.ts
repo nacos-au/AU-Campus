@@ -93,6 +93,10 @@ export interface Article {
   series_key?: string | null;
   series_id?: string | null;
   like_count?: number;
+  /** Visible + collapsed comments; maintained by DB triggers. */
+  comment_count?: number;
+  /** When true, existing comments stay readable but no new ones are accepted. */
+  comments_locked?: boolean;
   save_count?: number;
   review_lock_by?: string | null;
   review_lock_at?: string | null;
