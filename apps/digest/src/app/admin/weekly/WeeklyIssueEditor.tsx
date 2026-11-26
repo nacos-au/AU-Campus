@@ -595,6 +595,8 @@ export function WeeklyIssueEditor({
   const [dragLabel, setDragLabel] = useState<string | null>(null);
 
   const dirtyRef = useRef(false);
+  /** Bumped on every edit, so a save only clears "dirty" if nothing changed meanwhile. */
+  const versionRef = useRef(0);
   const savingRef = useRef(false);
   const initRef = useRef(false);
   const editingIdRef = useRef<string | null>(null);
@@ -676,6 +678,7 @@ export function WeeklyIssueEditor({
   );
 
   const markDirty = useCallback(() => {
+    versionRef.current += 1;
     dirtyRef.current = true;
     setDirty(true);
     setSaveState("idle");
@@ -698,8 +701,10 @@ export function WeeklyIssueEditor({
       setLayout(emptyLayout());
       setSelection(null);
       setError(null);
-      dirtyRef.current = false;
-      setDirty(false);
+      // Dirty from the start, so autosave creates the draft row straight away.
+      versionRef.current += 1;
+      dirtyRef.current = true;
+      setDirty(true);
       setSaveState("idle");
     },
     []
@@ -790,29 +795,69 @@ export function WeeklyIssueEditor({
     return id;
   }, [supabase]);
 
-  // Autosave, like a draft article.
-  useEffect(() => {
-    const t = window.setInterval(async () => {
-      if (!dirtyRef.current || savingRef.current) return;
+  /** Save now. `force` saves even without edits (manual Save on a fresh issue). */
+  const saveNow = useCallback(
+    async (force = false) => {
+      if (savingRef.current) return;
+      if (!force && !dirtyRef.current) return;
       savingRef.current = true;
+      const version = versionRef.current;
       setSaveState("saving");
       try {
         await persist();
-        dirtyRef.current = false;
-        setDirty(false);
+        if (versionRef.current === version) {
+          dirtyRef.current = false;
+          setDirty(false);
+        }
         setLastSavedAt(new Date());
         setSaveState("saved");
         setError(null);
         qc.invalidateQueries({ queryKey: ["admin-weekly-issues"] });
       } catch (e) {
         setSaveState("error");
-        setError(e instanceof Error ? e.message : "Autosave failed");
+        setError(e instanceof Error ? e.message : "Save failed");
       } finally {
         savingRef.current = false;
       }
-    }, 2000);
+    },
+    [persist, qc]
+  );
+
+  // Autosave, like a draft article.
+  useEffect(() => {
+    const t = window.setInterval(() => void saveNow(), 2000);
     return () => clearInterval(t);
-  }, [persist, qc]);
+  }, [saveNow]);
+
+  // Cmd/Ctrl+S saves; leaving or hiding the tab flushes pending edits.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        void saveNow(true);
+      }
+    };
+    const onHide = () => {
+      if (document.visibilityState === "hidden") void saveNow();
+    };
+    const onPageHide = () => void saveNow();
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!dirtyRef.current && !savingRef.current) return;
+      void saveNow();
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("keydown", onKey);
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [saveNow]);
 
   const setIssueStatus = useMutation({
     mutationFn: async (next: WeeklyIssueStatus) => {
@@ -1568,6 +1613,15 @@ export function WeeklyIssueEditor({
                   })}`
                 : ""}
             </span>
+            <button
+              type="button"
+              className={btn.secondary}
+              disabled={saveState === "saving"}
+              onClick={() => void saveNow(true)}
+              title="Save now (Cmd/Ctrl+S)"
+            >
+              {saveState === "saving" ? "Saving…" : "Save"}
+            </button>
             {(status === "published" || status === "scheduled") && editingId ? (
               <a
                 href={livePath}
