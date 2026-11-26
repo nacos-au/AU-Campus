@@ -1,5 +1,6 @@
 import { memo, type ReactNode } from "react";
 import { ImageInfo } from "@/components/ImageInfo";
+import { isExternalHref, safeHref } from "@/lib/safe-link";
 
 interface Mark {
   type: string;
@@ -33,18 +34,23 @@ function renderText(node: Node, key: number): ReactNode {
       case "code":
         el = <code key={key}>{el}</code>;
         break;
-      case "link":
+      case "link": {
+        const href = safeHref(String(mark.attrs?.href ?? ""));
+        // Unsafe or unknown addresses render as plain text, never as a link.
+        if (!href) break;
+        const external = isExternalHref(href);
         el = (
           <a
             key={key}
-            href={String(mark.attrs?.href ?? "#")}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={href}
+            target={external ? "_blank" : undefined}
+            rel={external ? "noopener noreferrer" : undefined}
           >
             {el}
           </a>
         );
         break;
+      }
     }
   }
   return el;

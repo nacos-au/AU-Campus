@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { canUseAdminMode, getSessionProfile, hasRole } from "@/lib/auth";
 import { signOut } from "@/app/(auth)/actions";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
-import { site } from "@/lib/site";
 import { exitAdminModeAction } from "@/app/actions/admin-mode";
 import type { Section } from "@/lib/types";
 import { AdminModeBanner } from "./AdminModeBanner";
@@ -16,6 +15,7 @@ import { MobileMenu } from "./MobileMenu";
 import { ProfileMenu } from "./ProfileMenu";
 import { IconUser } from "./icons";
 import { WeatherBadge } from "./WeatherBadge";
+import { SiteMasthead } from "./SiteMasthead";
 
 export async function SiteHeader() {
   const [t, locale, { user, profile }, supabase] = await Promise.all([
@@ -76,9 +76,10 @@ export async function SiteHeader() {
           />
 
           <Link href="/" className="flex min-w-0 items-center justify-center">
-            <span className="truncate font-masthead text-[1.55rem] font-bold leading-none tracking-tight">
-              {site.masthead}
-            </span>
+            <SiteMasthead
+              className="truncate font-masthead text-[1.55rem] font-bold leading-none tracking-tight"
+              compactClassName="truncate font-masthead text-lg font-bold leading-none tracking-tight"
+            />
           </Link>
 
           {user ? (
@@ -136,9 +137,10 @@ export async function SiteHeader() {
           <div className="flex flex-col items-center gap-2.5 pt-1">
             <LanguageLinks />
             <Link href="/" className="flex items-center justify-center">
-              <span className="font-masthead text-5xl font-bold leading-none">
-                {site.masthead}
-              </span>
+              <SiteMasthead
+                className="font-masthead text-5xl font-bold leading-none"
+                compactClassName="font-masthead text-2xl font-bold leading-none"
+              />
             </Link>
           </div>
 

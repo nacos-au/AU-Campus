@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Byline } from "@/components/stories";
 import { WeeklyNameplate } from "@/components/weekly/WeeklyNameplate";
+import { WeeklySections } from "@/components/weekly/WeeklySections";
 import { articlePublicPath, excerpt } from "@/lib/articles";
 import type { ArticleWithMeta } from "@/lib/types";
 import type { WeatherSnapshot } from "@/lib/weather";
@@ -403,6 +404,8 @@ export function WeeklyPage({
             )}
           </section>
         ) : null}
+
+        <WeeklySections sections={layout.sections} preview={preview || Boolean(editor)} />
       </div>
     </div>
   );

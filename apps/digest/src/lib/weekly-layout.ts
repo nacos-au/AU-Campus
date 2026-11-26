@@ -14,6 +14,9 @@ import { resolveMasthead, type MastheadWidget } from "@/lib/weekly-masthead";
  *   lead       1   main column story
  *   secondary  3   row of supporting stories
  *   sidebar    5   narrow rail of briefs
+ *
+ * Below the fixed front page sits an editor-configurable list of SECTIONS
+ * (formatted text, short briefs, score tables, notes) that flow in order.
  * ───────────────────────────────────────────────────────────────────────── */
 
 export const WEEKLY_REGIONS = ["hero", "lead", "secondary", "sidebar"] as const;
@@ -64,6 +67,8 @@ export type WeeklyLayout = {
   note?: WeeklyNote;
   /** Each region is a compact list (no holes) up to its capacity. */
   regions: Record<WeeklyRegion, WeeklySlotItem[]>;
+  /** Editor-configurable sections shown under the fixed front page. */
+  sections: WeeklySection[];
 };
 
 export type SlotPos = { region: WeeklyRegion; index: number };
@@ -99,12 +104,110 @@ export type ScoreRow = {
   status: string;
 };
 
+/**
+ * Editor-configurable sections under the fixed front page. They render in
+ * order and flow to the width of the page; editors never size them.
+ */
+export type WeeklySection =
+  | { id: string; type: "text"; doc: RichDoc }
+  | {
+      id: string;
+      type: "brief";
+      kicker?: string;
+      title: string;
+      doc?: RichDoc;
+      linkUrl?: string;
+      linkLabel?: string;
+    }
+  | {
+      id: string;
+      type: "scores";
+      title: string;
+      sport?: string;
+      rows: ScoreRow[];
+      footnote?: string;
+      sourceUrl?: string;
+    }
+  | { id: string; type: "note"; body: string };
+
+export type WeeklySectionType = WeeklySection["type"];
+
+export const SECTION_META: Record<
+  WeeklySectionType,
+  { label: string; hint: string }
+> = {
+  text: { label: "Text", hint: "Formatted text with links" },
+  brief: { label: "Brief", hint: "Short titled section" },
+  scores: { label: "Scores", hint: "Results table for any sport" },
+  note: { label: "Note", hint: "Small italic disclaimer" },
+};
+
+export const MAX_SECTIONS = 12;
+const MAX_ROWS = 24;
+
 export function emptyLayout(): WeeklyLayout {
   return {
     version: 2,
     nameplate: { ...DEFAULT_NAMEPLATE },
     regions: { hero: [], lead: [], secondary: [], sidebar: [] },
+    sections: [],
   };
+}
+
+export function newSectionId(): string {
+  return `s_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+}
+
+export function emptyScoreRow(): ScoreRow {
+  return { id: newSectionId(), home: "", away: "", homeScore: "", awayScore: "", status: "FT" };
+}
+
+/** Plain text (blank-line separated paragraphs) → a rich document. */
+export function docFromText(text: string): RichDoc {
+  const paragraphs = text
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return {
+    type: "doc",
+    content: paragraphs.map((p) => ({
+      type: "paragraph",
+      content: [{ type: "text", text: p }],
+    })),
+  };
+}
+
+export function createSection(type: WeeklySectionType): WeeklySection {
+  const id = newSectionId();
+  switch (type) {
+    case "text":
+      return { id, type, doc: { type: "doc", content: [{ type: "paragraph" }] } };
+    case "brief":
+      return { id, type, kicker: "Brief", title: "Short section title" };
+    case "scores":
+      return {
+        id,
+        type,
+        title: "Matchweek",
+        sport: "Football",
+        rows: [emptyScoreRow()],
+      };
+    case "note":
+      return {
+        id,
+        type,
+        body: "Opinions are the writers’ own. To report an error, contact the newsroom.",
+      };
+  }
+}
+
+/** Starting skeleton for the configurable part of a standard issue. */
+export function standardSections(): WeeklySection[] {
+  return [
+    { ...createSection("scores") },
+    { ...createSection("brief") },
+    { ...createSection("note") },
+  ];
 }
 
 function isObj(v: unknown): v is Record<string, unknown> {
@@ -130,6 +233,80 @@ function cleanItem(raw: unknown): WeeklySlotItem | null {
   return item;
 }
 
+function clip(v: unknown, max: number): string | undefined {
+  return typeof v === "string" && v.trim() ? v.slice(0, max) : undefined;
+}
+
+function cleanDoc(v: unknown): RichDoc | undefined {
+  if (!isObj(v) || v.type !== "doc") return undefined;
+  return { type: "doc", content: Array.isArray(v.content) ? (v.content as RichNode[]) : [] };
+}
+
+function cleanRow(raw: unknown): ScoreRow | null {
+  if (!isObj(raw)) return null;
+  return {
+    id: clip(raw.id, 40) ?? newSectionId(),
+    home: clip(raw.home, 60) ?? "",
+    away: clip(raw.away, 60) ?? "",
+    homeScore: clip(raw.homeScore, 6) ?? "",
+    awayScore: clip(raw.awayScore, 6) ?? "",
+    status: clip(raw.status, 16) ?? "",
+  };
+}
+
+function cleanSection(raw: unknown): WeeklySection | null {
+  if (!isObj(raw)) return null;
+  const id = clip(raw.id, 40) ?? newSectionId();
+  switch (raw.type) {
+    case "text":
+      return { id, type: "text", doc: cleanDoc(raw.doc) ?? { type: "doc", content: [] } };
+    case "brief":
+      return {
+        id,
+        type: "brief",
+        kicker: clip(raw.kicker, 40),
+        title: clip(raw.title, 160) ?? "",
+        doc: cleanDoc(raw.doc),
+        linkUrl: clip(raw.linkUrl, 500),
+        linkLabel: clip(raw.linkLabel, 60),
+      };
+    case "scores": {
+      const rows = (Array.isArray(raw.rows) ? raw.rows : [])
+        .map(cleanRow)
+        .filter((r): r is ScoreRow => r !== null)
+        .slice(0, MAX_ROWS);
+      return {
+        id,
+        type: "scores",
+        title: clip(raw.title, 120) ?? "",
+        sport: clip(raw.sport, 40),
+        rows,
+        footnote: clip(raw.footnote, 400),
+        sourceUrl: clip(raw.sourceUrl, 500),
+      };
+    }
+    case "note":
+      return { id, type: "note", body: clip(raw.body, 1000) ?? "" };
+    default:
+      return null;
+  }
+}
+
+function cleanSections(raw: unknown): WeeklySection[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: WeeklySection[] = [];
+  for (const r of raw) {
+    const s = cleanSection(r);
+    if (!s) continue;
+    if (seen.has(s.id)) s.id = newSectionId();
+    seen.add(s.id);
+    out.push(s);
+    if (out.length >= MAX_SECTIONS) break;
+  }
+  return out;
+}
+
 function normalizeV2(o: Record<string, unknown>): WeeklyLayout {
   const out = emptyLayout();
   const seen = new Set<string>();
@@ -144,6 +321,7 @@ function normalizeV2(o: Record<string, unknown>): WeeklyLayout {
       out.regions[region].push(item);
     }
   }
+  out.sections = cleanSections(o.sections);
   if (isObj(o.nameplate)) {
     const ears = resolveMasthead(o.nameplate);
     out.nameplate = {
@@ -201,6 +379,14 @@ function fromV1(blocks: V1Block[]): WeeklyLayout {
     if (!b || typeof b !== "object") continue;
     if (b.type === "intro" && typeof b.body === "string" && b.body.trim()) {
       layout.note = { byline: str(b.byline), body: b.body };
+    } else if (b.type === "text" && typeof b.body === "string" && b.body.trim()) {
+      if (layout.sections.length < MAX_SECTIONS) {
+        layout.sections.push({
+          id: newSectionId(),
+          type: "text",
+          doc: docFromText(b.body),
+        });
+      }
     } else if (b.type === "article" && b.articleId) {
       const item = cleanItem(b);
       if (!item) continue;
@@ -245,6 +431,7 @@ export function parseLayout(raw: unknown): WeeklyLayout {
 export function layoutHasContent(layout: WeeklyLayout): boolean {
   return (
     Boolean(layout.note?.body.trim()) ||
+    layout.sections.length > 0 ||
     WEEKLY_REGIONS.some((r) => layout.regions[r].length > 0)
   );
 }
