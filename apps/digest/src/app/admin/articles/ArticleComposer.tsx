@@ -6,9 +6,6 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
-import StarterKit from "@tiptap/starter-kit";
-import ImageExt from "@tiptap/extension-image";
-import { Placeholder } from "@tiptap/extensions";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -20,6 +17,9 @@ import {
 } from "@/lib/articles";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
 import { uploadCover } from "@/lib/uploads";
+import { normalizeBodyDoc } from "@/lib/body-normalize";
+import { buildEditorProps, createBodyExtensions } from "@/lib/editor-config";
+import { useEditorImages } from "@/lib/editor-images";
 import { locales, localeNames } from "@/i18n/locales";
 import { CoverEditorModal } from "@/components/CoverEditorModal";
 import { ImageInfo } from "@/components/ImageInfo";
@@ -37,23 +37,6 @@ import { ShareDraftPanel } from "./ShareDraftPanel";
 
 const EMPTY_DOC = { type: "doc", content: [] };
 const AUTOSAVE_MS = 2000;
-
-const AlignedImage = ImageExt.extend({
-  selectable: true,
-  draggable: true,
-  addAttributes() {
-    return {
-      ...this.parent?.(),
-      align: {
-        default: "center",
-        parseHTML: (el: HTMLElement) => el.getAttribute("data-align") || "center",
-        renderHTML: (attrs: Record<string, unknown>) => ({
-          "data-align": attrs.align as string,
-        }),
-      },
-    };
-  },
-});
 
 function Btn({
   active,
@@ -250,60 +233,37 @@ export function ArticleComposer({
 
   const resolvedSection = sectionId || sections[0]?.id || "";
 
+  /** Pasted/dropped images call through here once the upload hook exists. */
+  const imageFilesRef = useRef<(files: File[], pos?: number) => void>(() => {});
+
   const editor = useEditor({
-    extensions: [
-      StarterKit.configure({ link: { openOnClick: false } }),
-      AlignedImage.configure({ inline: false }),
-      Placeholder.configure({ placeholder: "Tell your story…" }),
-    ],
-    content: (initial?.body as object) ?? EMPTY_DOC,
+    extensions: createBodyExtensions(),
+    // Repairs raw newlines inside paragraphs so edit and preview agree.
+    content: normalizeBodyDoc((initial?.body as object) ?? EMPTY_DOC),
     editable: !locked,
     immediatelyRender: false,
-    editorProps: {
-      attributes: { class: "article-body composer-body" },
-      /** Drop Word/Docs fonts & spacing junk; keep basic structure. */
-      transformPastedHTML(html) {
-        const doc = new DOMParser().parseFromString(html, "text/html");
-        doc
-          .querySelectorAll("style, script, meta, link, xml, o\\:p")
-          .forEach((el) => el.remove());
-        doc.querySelectorAll("*").forEach((el) => {
-          el.removeAttribute("style");
-          el.removeAttribute("class");
-          el.removeAttribute("face");
-          el.removeAttribute("size");
-          el.removeAttribute("color");
-          el.removeAttribute("bgcolor");
-          for (const attr of [...el.attributes]) {
-            if (attr.name.startsWith("data-") || attr.name.startsWith("o:")) {
-              el.removeAttribute(attr.name);
-            }
-          }
-        });
-        doc.querySelectorAll("font").forEach((el) => {
-          const parent = el.parentNode;
-          if (!parent) return;
-          while (el.firstChild) parent.insertBefore(el.firstChild, el);
-          parent.removeChild(el);
-        });
-        doc.querySelectorAll("span").forEach((el) => {
-          if (el.attributes.length === 0) {
-            const parent = el.parentNode;
-            if (!parent) return;
-            while (el.firstChild) parent.insertBefore(el.firstChild, el);
-            parent.removeChild(el);
-          }
-        });
-        return doc.body.innerHTML;
-      },
-      transformPastedText(text) {
-        return text.replace(/\u00a0/g, " ").replace(/\r\n/g, "\n");
-      },
-    },
+    editorProps: buildEditorProps({
+      onImageFiles: (files, pos) => imageFilesRef.current(files, pos),
+    }),
     onUpdate: () => {
       dirtyRef.current = true;
     },
   });
+
+  const { uploadFiles: uploadPastedImages } = useEditorImages({
+    editor,
+    supabase,
+    nameHint: title.trim() || article?.slug || null,
+    onDirty: () => {
+      dirtyRef.current = true;
+    },
+    onError: setError,
+    onUploadingChange: setUploading,
+  });
+
+  useEffect(() => {
+    imageFilesRef.current = (files, pos) => void uploadPastedImages(files, pos);
+  }, [uploadPastedImages]);
 
   const bodyDoc = useEditorState({
     editor,
@@ -363,7 +323,7 @@ export function ArticleComposer({
     return {
       title: title.trim() || "Untitled draft",
       dek: dek.trim() || null,
-      body: editor?.getJSON() ?? EMPTY_DOC,
+      body: normalizeBodyDoc(editor?.getJSON() ?? EMPTY_DOC),
       cover_url: coverUrl || null,
       cover_caption: coverCaption.trim() || null,
       byline: null,

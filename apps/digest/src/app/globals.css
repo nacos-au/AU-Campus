@@ -67,6 +67,15 @@ body {
 .article-body p {
   margin-bottom: 1.25rem;
 }
+/* Stored text with raw newlines shows the same breaks as the editor does
+   (the editor itself keeps ProseMirror's own white-space handling). */
+.article-body:not(.composer-body) p,
+.article-body:not(.composer-body) li,
+.article-body:not(.composer-body) h2,
+.article-body:not(.composer-body) h3,
+.article-body:not(.composer-body) blockquote {
+  white-space: pre-line;
+}
 .article-body h2 {
   font-weight: 700;
   font-size: 1.375rem;
