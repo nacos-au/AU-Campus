@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { readingMinutes } from "@/lib/articles";
 import { ImageInfo } from "@/components/ImageInfo";
 import { RichText } from "@/components/RichText";
 import { IconMoreVertical } from "@/components/icons";
@@ -642,6 +643,12 @@ export function ReviewClient({
         {content.byline && (
           <p className="mt-3 text-sm font-semibold">By {content.byline}</p>
         )}
+        <p className="mt-3 text-xs text-ink-soft">
+          {readingMinutes(content.body, {
+            extraImages: content.cover_url ? 1 : 0,
+          })}{" "}
+          min read
+        </p>
         <div
           ref={bodyRef}
           onMouseUp={captureSelection}

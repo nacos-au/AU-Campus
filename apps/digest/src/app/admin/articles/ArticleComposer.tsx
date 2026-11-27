@@ -15,6 +15,7 @@ import {
   articleSlug,
   countUntaggedImages,
   isPlaceholderSlug,
+  readingMinutes,
   slugify,
 } from "@/lib/articles";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
@@ -302,6 +303,14 @@ export function ArticleComposer({
     onUpdate: () => {
       dirtyRef.current = true;
     },
+  });
+
+  const bodyDoc = useEditorState({
+    editor,
+    selector: ({ editor: e }) => e?.getJSON() ?? EMPTY_DOC,
+  });
+  const readMins = readingMinutes(bodyDoc ?? EMPTY_DOC, {
+    extraImages: coverUrl ? 1 : 0,
   });
 
   const ui = useEditorState({
@@ -952,6 +961,7 @@ export function ArticleComposer({
                 </>
               )}
             </p>
+            <p className="mt-3 text-xs text-ink-soft">{readMins} min read</p>
             <div className="article-body mt-8">
               <RichText doc={editor?.getJSON() ?? EMPTY_DOC} />
             </div>
@@ -989,6 +999,7 @@ export function ArticleComposer({
                 ])}
               </span>
             </p>
+            <p className="mt-2 text-xs text-ink-soft">{readMins} min read</p>
 
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <label className="block text-xs font-semibold uppercase tracking-wide text-ink-soft sm:col-span-2">
