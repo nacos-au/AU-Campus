@@ -187,11 +187,6 @@ export function AdminMatchLineupPanel({
       setBusy(false);
       return;
     }
-    if (bench.length < 1) {
-      setError("Add at least one substitute to the bench.");
-      setBusy(false);
-      return;
-    }
     const players = [
       ...xi.map((id) => ({
         player_id: id,
@@ -373,14 +368,14 @@ export function AdminMatchLineupPanel({
             );
           })}
           {bench.length === 0 && (
-            <p className="px-2 py-3 text-center text-[11px] opacity-50">Drop subs here</p>
+            <p className="px-2 py-3 text-center text-[11px] opacity-50">Optional. Subs come from the full squad during the match</p>
           )}
         </DropZone>
       </div>
 
       <button
         type="button"
-        disabled={busy || xi.length < maxStarters || bench.length < 1}
+        disabled={busy || xi.length < maxStarters}
         onClick={() => void submit()}
         className="btn-filled rounded-full px-4 py-2 text-xs font-bold disabled:opacity-40"
       >

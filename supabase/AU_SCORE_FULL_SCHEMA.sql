@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS public.players (
   department_id UUID NOT NULL REFERENCES public.departments(id) ON DELETE CASCADE,
   first_name VARCHAR(100) NOT NULL,
   last_name VARCHAR(100) NOT NULL,
+  nickname VARCHAR(100),
   matric_number VARCHAR(50) UNIQUE,
   avatar_url TEXT,
   position VARCHAR(50),

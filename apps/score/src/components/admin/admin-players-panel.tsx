@@ -33,6 +33,7 @@ export function AdminPlayersPanel() {
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [nickname, setNickname] = useState("");
   const [formClubId, setFormClubId] = useState("");
   const [positions, setPositions] = useState<string[]>([]);
   const [jersey, setJersey] = useState("");
@@ -100,6 +101,7 @@ export function AdminPlayersPanel() {
     setEditingId(null);
     setFirstName("");
     setLastName("");
+    setNickname("");
     setPositions([]);
     setJersey("");
     setMatric("");
@@ -176,6 +178,7 @@ export function AdminPlayersPanel() {
             id: editingId,
             first_name: first,
             last_name: last,
+            nickname: nickname.trim() || null,
             team_id: formClubId,
             position: formatPositions(positions),
             jersey_number: jersey.trim() ? Number(jersey) : null,
@@ -203,6 +206,7 @@ export function AdminPlayersPanel() {
             {
               first_name: first,
               last_name: last,
+              nickname: nickname.trim() || null,
               team_id: formClubId,
               position: formatPositions(positions),
               jersey_number: jersey.trim() ? Number(jersey) : null,
@@ -339,6 +343,9 @@ export function AdminPlayersPanel() {
                         <div className="min-w-0 flex-1">
                           <p className="truncate font-display text-sm font-bold">
                             {p.first_name} {p.last_name}
+                            {p.nickname ? (
+                              <span className="ml-2 text-xs font-semibold text-accent/55">“{p.nickname}”</span>
+                            ) : null}
                             {p.jersey_number != null && (
                               <span className="ml-2 font-mono text-xs text-accent/50">#{p.jersey_number}</span>
                             )}
@@ -356,6 +363,7 @@ export function AdminPlayersPanel() {
                             setEditingId(p.id);
                             setFirstName(p.first_name);
                             setLastName(p.last_name);
+                            setNickname(p.nickname ?? "");
                             setFormClubId(p.team_id);
                             setJersey(p.jersey_number != null ? String(p.jersey_number) : "");
                             setMatric(p.matric_number ?? "");
@@ -427,6 +435,18 @@ export function AdminPlayersPanel() {
                   />
                 </label>
               </div>
+              <label className="block text-sm">
+                <span className="font-semibold">Nickname (optional)</span>
+                <input
+                  className={inputClass}
+                  value={nickname}
+                  onChange={(e) => setNickname(e.target.value)}
+                  placeholder="Display name, e.g. Emeka"
+                />
+                <span className="mt-1 block text-[11px] text-accent/55">
+                  First and last name stay the legal name. The site can toggle to nicknames.
+                </span>
+              </label>
               <label className="block text-sm">
                 <span className="font-semibold">Club</span>
                 <select

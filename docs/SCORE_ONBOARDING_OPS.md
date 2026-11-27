@@ -81,8 +81,20 @@ Target only this messy preseason (duplicate Nursing / Nursing FC, wrong dates) â
 
 ## Players
 
+- **Names:** `first_name` + `last_name` are the **legal name**. **Nickname** is optional and display-only. Keepers and the public match page get a legal/nickname toggle (remembered per browser). Players without a nickname always show the legal name.
+- **Cleaned squad list** (what to send before a competition): legal name, matric number, jersey number, position. Nickname only if the player goes by one. Matric is the identity key, so the same player is never duplicated.
+- **Cross-competition reuse** (carrying a squad into the next competition) is deferred. Squads are still nominated per competition.
 - **Edit** names/matric anytime (history stays linked by player id).
 - **Delete** removes them from that club pool + competition squads; keeps the row if they already have match events.
+
+## Lineups and substitutions (football)
+
+- **Apply once, in order:** [`supabase/score_player_nickname_APPLY_ALL.sql`](../supabase/score_player_nickname_APPLY_ALL.sql), then [`supabase/score_xi_only_lineups_APPLY_ALL.sql`](../supabase/score_xi_only_lineups_APPLY_ALL.sql). Run the nickname one **before** deploying: roster and lineup reads select `players.nickname`.
+- **Prematch:** only the starting XI and captain are required. A named bench is optional.
+- **During the match:** the keeper picks subs from the rest of the competition squad (injured or unavailable players are left out). Max subs per match comes from the competition (`max_subs`, default 5) and is enforced per team across the whole match. A player who has been subbed off cannot come back.
+- **Swap icon** on an XI player starts a sub for them. The roster shows On the pitch / Substitutes / Subbed off, derived from the logged substitutions, so undoing a sub restores the squad.
+- **Revert to a fixed bench:** set `require_named_bench: true` in the competition config. Lineups then need at least one named sub and the keeper bench is limited to the named subs.
+- **Already-played matches** are filled by hand through Reconcile, not through this flow.
 
 ## Season awards
 

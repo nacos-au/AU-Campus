@@ -15,6 +15,8 @@ import {
 } from "@/lib/match/football-timeline";
 import { displayMatchTime } from "@/lib/match/timeline";
 import type { SportId } from "@/lib/utils/sport";
+import { PlayerName, NameModeToggle } from "@/components/ui/player-name";
+import type { NameParts } from "@/lib/players/display-name";
 import { cn } from "@/lib/utils/cn";
 
 export function FootballMatchTimeline({
@@ -59,7 +61,10 @@ export function FootballMatchTimeline({
 
   return (
     <section>
-      <h2 className="mb-4 font-display text-xl font-extrabold">Match Events</h2>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="font-display text-xl font-extrabold">Match Events</h2>
+        {events.some((e) => e.player?.nickname?.trim()) && <NameModeToggle />}
+      </div>
       <div className="table-card px-3 py-5 sm:px-6 sm:py-6">
         <div className="space-y-4">
           {items.map((item) => {
@@ -161,6 +166,8 @@ function TimelineEventRow({
       : outName
     : assistName ?? actionLabel;
 
+  const nameParts: NameParts | undefined =
+    !isTeamAction && !(isSub && outName) && hasPlayerName ? event.player : undefined;
   const icon = <EventIcon event={event} />;
   const matchTimeLabel = displayMatchTime(event.match_time, "football");
   const time = matchTimeLabel ? (
@@ -179,6 +186,7 @@ function TimelineEventRow({
           sport={sport}
           playerId={event.player.id}
           primary={isSub && outName ? outName : playerName}
+          nameParts={nameParts}
           secondary={secondary}
           secondaryMuted={isSub || Boolean(assistName) || Boolean(actionLabel)}
           trailing={isCard ? foulLabel : undefined}
@@ -194,6 +202,7 @@ function TimelineEventRow({
         sport={sport}
         playerId={event.player.id}
         primary={isSub && outName ? outName : playerName}
+        nameParts={nameParts}
         secondary={secondary}
         secondaryMuted={isSub || Boolean(assistName) || Boolean(actionLabel)}
         trailing={isCard ? foulLabel : undefined}
@@ -211,6 +220,7 @@ function PlayerBlock({
   sport,
   playerId,
   primary,
+  nameParts,
   secondary,
   secondaryMuted,
   trailing,
@@ -220,6 +230,8 @@ function PlayerBlock({
   sport: SportId;
   playerId: string;
   primary: string;
+  /** When set, the primary name follows the viewer's legal/nickname choice. */
+  nameParts?: NameParts;
   secondary?: string | null;
   secondaryMuted?: boolean;
   trailing?: string;
@@ -235,10 +247,12 @@ function PlayerBlock({
       {primaryLabel ? (
         playerId ? (
           <Link href={`/players/${playerId}?sport=${sport}`} className="font-display font-bold text-accent hover:underline">
-            {primaryLabel}
+            {nameParts ? <PlayerName player={nameParts} short /> : primaryLabel}
           </Link>
         ) : (
-          <span className="font-display font-bold text-accent">{primaryLabel}</span>
+          <span className="font-display font-bold text-accent">
+            {nameParts ? <PlayerName player={nameParts} short /> : primaryLabel}
+          </span>
         )
       ) : null}
       {secondary && (

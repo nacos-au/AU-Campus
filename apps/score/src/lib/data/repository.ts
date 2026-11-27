@@ -456,19 +456,34 @@ export async function fetchMatchEvents(matchId: string): Promise<DemoMatchEvent[
 
   if (!data?.length) return [];
 
+  // Resolve the live player row so the site can show legal name or nickname.
+  // Best effort: if nickname isn't migrated yet this errors and we keep logged names.
+  const playerIds = [...new Set(data.map((r) => r.player_id).filter((id): id is string => Boolean(id)))];
+  const { data: playerRows } = playerIds.length
+    ? ((await supabase
+        .from("players")
+        .select("id, first_name, last_name, nickname")
+        .in("id", playerIds)) as {
+        data: Array<{ id: string; first_name: string; last_name: string; nickname: string | null }> | null;
+      })
+    : { data: null };
+  const livePlayers = new Map((playerRows ?? []).map((p) => [p.id, p]));
+
   return data.map((row) => {
     const details = row.details ?? {};
     const fullName =
       typeof details.player_name === "string" ? details.player_name : "";
     const [first = "", ...rest] = fullName.split(" ");
+    const live = row.player_id ? livePlayers.get(row.player_id) : undefined;
     return {
       id: row.id,
       match_id: row.match_id,
       player: {
         id: row.player_id ?? "",
         department_id: "unknown",
-        first_name: first,
-        last_name: rest.join(" "),
+        first_name: live?.first_name ?? first,
+        last_name: live?.last_name ?? rest.join(" "),
+        nickname: live?.nickname ?? null,
         matric_number: null,
         avatar_url: null,
         position: null,

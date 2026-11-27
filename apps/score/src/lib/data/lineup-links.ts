@@ -5,6 +5,7 @@ import {
   getCompetitionDetail,
   listCompetitionFixtures,
   listCompetitionRoster,
+  tournamentRequiresNamedBench,
 } from "@/lib/data/competition-rosters";
 import { fetchMatchById } from "@/lib/data/repository";
 import { submitMatchLineup } from "@/lib/data/match-lineups";
@@ -517,6 +518,7 @@ export async function submitLineupViaLink(input: {
   const squadIds = new Set(context.squad.map((p) => p.player_id));
   const availability = new Map(context.squad.map((p) => [p.player_id, p.availability] as const));
 
+  const requireBench = await tournamentRequiresNamedBench(match.tournament_id);
   const validation = validateLineupSheet({
     players: input.players,
     starters,
@@ -525,6 +527,7 @@ export async function submitLineupViaLink(input: {
     suspendedIds: new Set(),
     availability,
     mode: "rep",
+    requireBench,
   });
   if (validation.errors.length) {
     return { error: validation.errors[0], errors: validation.errors };
@@ -668,6 +671,7 @@ export async function reviewLineupSubmission(input: {
     }
     const match = await fetchMatchById(sub.match_id);
     const starters = match ? startersForMatchSport(match.sport_id) : 11;
+    const requireBench = match ? await tournamentRequiresNamedBench(match.tournament_id) : false;
     const result = await submitMatchLineup({
       match_id: sub.match_id,
       team_id: sub.team_id,
@@ -676,7 +680,7 @@ export async function reviewLineupSubmission(input: {
       coach_name: sub.coach_name,
       formation: sub.formation,
       min_starters: starters,
-      require_bench: true,
+      require_bench: requireBench,
     });
     if ("error" in result) return result;
     sub.status = "approved";

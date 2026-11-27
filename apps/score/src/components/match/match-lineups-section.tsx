@@ -1,5 +1,6 @@
 import { FootballLineupPitch } from "@/components/match/football-lineup-pitch";
 import { PlayerAvatar, TeamCrest } from "@/components/ui/team-crest";
+import { NameModeToggle, PlayerName } from "@/components/ui/player-name";
 import { buildTeamPitchLineup, type TeamPitchLineup } from "@/lib/data/demo-lineups";
 import type { DemoMatchEvent } from "@/lib/data/demo-match-details";
 import {
@@ -73,6 +74,7 @@ export async function MatchLineupsSection({
   const shownSides = [homeLineup, awayLineup].filter(
     (l): l is PublicMatchLineup => l != null
   );
+  const hasNicknames = shownSides.some((l) => l.resolved.some((p) => p.nickname?.trim()));
   const anyConfirmed = shownSides.some((l) => l.status === "confirmed");
   const anyCompleted = shownSides.some((l) => (l.auto_filled_ids?.length ?? 0) > 0);
   const subtitle = anyConfirmed
@@ -90,7 +92,7 @@ export async function MatchLineupsSection({
 
     return (
       <section>
-        <LineupsHeader subtitle={subtitle} />
+        <LineupsHeader subtitle={subtitle} showNameToggle={hasNicknames} />
         <FootballLineupPitch
           match={match}
           events={events}
@@ -121,7 +123,7 @@ export async function MatchLineupsSection({
   if (homeLineup || awayLineup) {
     return (
       <section>
-        <LineupsHeader subtitle={subtitle} />
+        <LineupsHeader subtitle={subtitle} showNameToggle={hasNicknames} />
         <div className="grid gap-4 sm:grid-cols-2">
           <TeamLineupCard
             teamName={match.home_team?.name ?? "Home"}
@@ -200,11 +202,20 @@ function buildFootballPitchData(
   return { homePitch, awayPitch, playersById };
 }
 
-function LineupsHeader({ subtitle }: { subtitle?: string }) {
+function LineupsHeader({
+  subtitle,
+  showNameToggle,
+}: {
+  subtitle?: string;
+  showNameToggle?: boolean;
+}) {
   return (
-    <div className="mb-4">
-      <h2 className="font-display text-xl font-extrabold">Lineups</h2>
-      {subtitle && <p className="mt-1 text-xs text-accent/55">{subtitle}</p>}
+    <div className="mb-4 flex items-start justify-between gap-3">
+      <div>
+        <h2 className="font-display text-xl font-extrabold">Lineups</h2>
+        {subtitle && <p className="mt-1 text-xs text-accent/55">{subtitle}</p>}
+      </div>
+      {showNameToggle && <NameModeToggle />}
     </div>
   );
 }
@@ -252,7 +263,7 @@ function TeamLineupCard({
                   size="sm"
                 />
                 <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-                  {p.first_name} {p.last_name}
+                  <PlayerName player={p} />
                   {sheet?.is_captain ? " (c)" : ""}
                 </span>
                 <span className="text-[10px] font-bold uppercase opacity-50">
@@ -277,7 +288,7 @@ function TeamLineupCard({
                       size="sm"
                     />
                     <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-                      {p.first_name} {p.last_name}
+                      <PlayerName player={p} />
                     </span>
                     <span className="text-[10px] font-bold uppercase opacity-50">Sub</span>
                   </li>

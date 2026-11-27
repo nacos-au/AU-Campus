@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Star } from "lucide-react";
 import { TeamCrest } from "@/components/ui/team-crest";
+import { PlayerName } from "@/components/ui/player-name";
 import type { ManOfTheMatch } from "@/lib/match/match-meta";
 import type { SportId } from "@/lib/utils/sport";
 import { playerAvatarForId } from "@/lib/utils/sport-assets";
@@ -43,7 +44,7 @@ export function ManOfTheMatchCard({
                   href={`/players/${motm.player_id}?sport=${sport}`}
                   className="font-display text-base font-extrabold text-accent hover:underline"
                 >
-                  {motm.first_name} {motm.last_name}
+                  <PlayerName player={motm} />
                 </Link>
                 <div className="mt-0.5 flex items-center gap-1.5 text-sm text-accent/60">
                   <TeamCrest code={motm.team_name.slice(0, 3).toUpperCase()} logoUrl={motm.team_logo_url} alt={motm.team_name} size="xs" />

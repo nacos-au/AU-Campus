@@ -52,6 +52,7 @@ export type CompetitionRosterPlayer = {
   team_id: string;
   first_name: string;
   last_name: string;
+  nickname: string | null;
   matric_number: string | null;
   position: string | null;
   jersey_number: number | null;
@@ -69,7 +70,7 @@ function maxSquadFromConfig(config: Record<string, unknown> | null | undefined):
 
 function maxSubsFromConfig(config: Record<string, unknown> | null | undefined): number {
   const n = Number(config?.max_subs);
-  return Number.isFinite(n) && n >= 0 ? n : 9;
+  return Number.isFinite(n) && n >= 0 ? n : 5;
 }
 
 async function inDemo(): Promise<boolean> {
@@ -283,6 +284,13 @@ export async function getCompetitionDetail(tournamentId: string): Promise<{
   };
 }
 
+/** True when a tournament still requires a named bench before kickoff. */
+export async function tournamentRequiresNamedBench(tournamentId: string): Promise<boolean> {
+  const detail = await getCompetitionDetail(tournamentId);
+  if ("error" in detail) return false;
+  return detail.competition.config?.require_named_bench === true;
+}
+
 export async function listCompetitionRoster(
   tournamentId: string,
   teamId: string
@@ -290,6 +298,10 @@ export async function listCompetitionRoster(
   nominated: CompetitionRosterPlayer[];
   pool: CompetitionRosterPlayer[];
   max_squad_size: number;
+  /** Substitutions allowed per match, from tournament config. */
+  max_subs: number;
+  /** True when the tournament still wants a named bench pre-kickoff. */
+  require_named_bench: boolean;
   formation: string;
 } | { error: string }> {
   const detail = await getCompetitionDetail(tournamentId);
@@ -297,6 +309,8 @@ export async function listCompetitionRoster(
   const team = detail.teams.find((t) => t.team_id === teamId);
   if (!team) return { error: "Team is not in this competition" };
   const max = detail.competition.max_squad_size;
+  const maxSubs = detail.competition.max_subs;
+  const requireNamedBench = detail.competition.config?.require_named_bench === true;
 
   if (await inDemo()) {
     const nominatedRows = listDemoTournamentRosters(tournamentId, teamId);
@@ -313,6 +327,7 @@ export async function listCompetitionRoster(
           team_id: teamId,
           first_name: p.first_name,
           last_name: p.last_name,
+          nickname: p.nickname ?? null,
           matric_number: p.matric_number,
           position: p.position,
           jersey_number: r.jersey_number ?? p.jersey_number,
@@ -333,6 +348,7 @@ export async function listCompetitionRoster(
           team_id: teamId,
           first_name: p.first_name,
           last_name: p.last_name,
+          nickname: p.nickname ?? null,
           matric_number: p.matric_number,
           position: p.position,
           jersey_number: p.jersey_number,
@@ -348,6 +364,8 @@ export async function listCompetitionRoster(
       nominated,
       pool,
       max_squad_size: max,
+      max_subs: maxSubs,
+      require_named_bench: requireNamedBench,
       formation: getDemoFormation(tournamentId, teamId) ?? DEFAULT_FORMATION,
     };
   }
@@ -398,13 +416,13 @@ export async function listCompetitionRoster(
   const { data: players } = allPlayerIds.length
     ? ((await supabase
         .from("players")
-        .select("id, first_name, last_name, matric_number, position, avatar_url")
+        .select("id, first_name, last_name, nickname, matric_number, position, avatar_url")
         .in("id", allPlayerIds)) as {
         data: Array<
-          Pick<Player, "id" | "first_name" | "last_name" | "matric_number" | "position" | "avatar_url">
+          Pick<Player, "id" | "first_name" | "last_name" | "nickname" | "matric_number" | "position" | "avatar_url">
         > | null;
       })
-    : { data: [] as Array<Pick<Player, "id" | "first_name" | "last_name" | "matric_number" | "position" | "avatar_url">> };
+    : { data: [] as Array<Pick<Player, "id" | "first_name" | "last_name" | "nickname" | "matric_number" | "position" | "avatar_url">> };
 
   const byId = new Map((players ?? []).map((p) => [p.id, p]));
   const regByPlayer = new Map((clubRegs ?? []).map((r) => [r.player_id, r]));
@@ -427,6 +445,7 @@ export async function listCompetitionRoster(
         team_id: teamId,
         first_name: p.first_name,
         last_name: p.last_name,
+        nickname: p.nickname ?? null,
         matric_number: p.matric_number,
         position: p.position,
         jersey_number: r.jersey_number,
@@ -449,6 +468,7 @@ export async function listCompetitionRoster(
           team_id: teamId,
           first_name: p.first_name,
           last_name: p.last_name,
+          nickname: p.nickname ?? null,
           matric_number: p.matric_number,
           position: p.position ?? r.squad_role,
           jersey_number: r.jersey_number,
@@ -465,6 +485,8 @@ export async function listCompetitionRoster(
     nominated,
     pool,
     max_squad_size: max,
+    max_subs: maxSubs,
+    require_named_bench: requireNamedBench,
     formation: teamRow?.formation ?? DEFAULT_FORMATION,
   };
 }

@@ -67,6 +67,7 @@ export async function POST(request: Request) {
     players: players.map((p) => ({
       first_name: String(p.first_name ?? "").trim(),
       last_name: String(p.last_name ?? "").trim(),
+      nickname: p.nickname ? String(p.nickname).trim() : null,
       matric_number: p.matric_number ? String(p.matric_number).trim() : null,
       position: p.position ? String(p.position).trim() : null,
       jersey_number:
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
 /**
  * Update image URLs or player profile fields.
  * Images: { kind: "team_logo" | "player_avatar", id, url } — admin for logos; staff for avatars.
- * Fields: { kind: "player_fields", id, first_name?, last_name?, matric_number?, position?, jersey_number?, team_id? }
+ * Fields: { kind: "player_fields", id, first_name?, last_name?, nickname?, matric_number?, position?, jersey_number?, team_id? }
  */
 export async function PATCH(request: Request) {
   const body = (await request.json()) as {
@@ -107,6 +108,7 @@ export async function PATCH(request: Request) {
     url?: string;
     first_name?: string;
     last_name?: string;
+    nickname?: string | null;
     matric_number?: string | null;
     position?: string | null;
     jersey_number?: number | null;
@@ -126,6 +128,7 @@ export async function PATCH(request: Request) {
     const result = await updatePlayerFields(id, {
       first_name: body.first_name,
       last_name: body.last_name,
+      nickname: body.nickname,
       matric_number: body.matric_number,
       position: body.position,
       jersey_number: body.jersey_number,

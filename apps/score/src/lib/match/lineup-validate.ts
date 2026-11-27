@@ -20,6 +20,17 @@ export interface LineupValidationInput {
    * "staff" submissions can proceed past warnings.
    */
   mode: "rep" | "staff";
+  /**
+   * Football admin rule: only the starting XI is needed before kickoff. Subs come
+   * from the competition roster during the match. Set true (tournament config
+   * `require_named_bench`) to go back to a named bench.
+   */
+  requireBench?: boolean;
+}
+
+/** Tournament config flag that restores the named-bench rule. */
+export function requiresNamedBench(config: Record<string, unknown> | null | undefined): boolean {
+  return config?.require_named_bench === true;
 }
 
 export interface LineupValidationResult {
@@ -34,6 +45,7 @@ export function validateLineupSheet(input: LineupValidationInput): LineupValidat
   const errors: string[] = [];
   const warnings: string[] = [];
   const { players, starters, formation, squadIds, suspendedIds, availability, mode } = input;
+  const requireBench = input.requireBench === true;
 
   const startersList = players.filter((p) => p.is_starting);
   const bench = players.filter((p) => !p.is_starting);
@@ -41,7 +53,7 @@ export function validateLineupSheet(input: LineupValidationInput): LineupValidat
   if (startersList.length !== starters) {
     errors.push(`Name exactly ${starters} starters (got ${startersList.length}).`);
   }
-  if (bench.length < 1) {
+  if (requireBench && bench.length < 1) {
     errors.push("Name at least one substitute on the bench.");
   }
 

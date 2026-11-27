@@ -84,6 +84,8 @@ export async function POST(request: Request, ctx: Ctx) {
     for (const row of active ?? []) suspendedIds.add(row.player_id);
   }
 
+  const requireBench = !("error" in roster) && roster.require_named_bench;
+
   const validation = validateLineupSheet({
     players: body.players,
     starters: minStarters,
@@ -92,6 +94,7 @@ export async function POST(request: Request, ctx: Ctx) {
     suspendedIds,
     availability,
     mode: "staff",
+    requireBench,
   });
   if (validation.errors.length) {
     return NextResponse.json(
@@ -108,7 +111,7 @@ export async function POST(request: Request, ctx: Ctx) {
     coach_name: body.coach_name,
     formation: body.formation ?? null,
     min_starters: minStarters,
-    require_bench: true,
+    require_bench: requireBench,
   });
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });

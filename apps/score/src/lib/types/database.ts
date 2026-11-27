@@ -185,6 +185,8 @@ export interface Player {
   department_id: string;
   first_name: string;
   last_name: string;
+  /** Optional display nickname. Legal name is first_name + last_name. */
+  nickname?: string | null;
   matric_number: string | null;
   avatar_url: string | null;
   position: string | null;

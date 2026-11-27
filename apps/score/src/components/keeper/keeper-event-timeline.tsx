@@ -2,7 +2,7 @@
 
 import { Ban, X } from "lucide-react";
 import type { KeeperLogEntry } from "@/lib/keeper/keeper-events";
-import { entryLabel } from "@/lib/keeper/keeper-events";
+import { entryLabel, type NameResolver } from "@/lib/keeper/keeper-events";
 import { TeamCrest } from "@/components/ui/team-crest";
 import { formatEventLabel } from "@/lib/match/timeline";
 import { cn } from "@/lib/utils/cn";
@@ -13,10 +13,13 @@ export function KeeperEventTimeline({
   logs,
   onRemove,
   onDisallow,
+  nameFor,
 }: {
   logs: KeeperLogEntry[];
   onRemove: (id: string) => void;
   onDisallow?: (entry: KeeperLogEntry) => void;
+  /** Show nicknames or legal names instead of the stored legal name. */
+  nameFor?: NameResolver;
 }) {
   if (logs.length === 0) {
     return (
@@ -39,7 +42,7 @@ export function KeeperEventTimeline({
             </span>
             <TeamCrest code={entry.team_code} logoUrl={entry.team_logo_url} alt={entry.team_name} size="sm" />
             <div className="min-w-0 flex-1">
-              <p className="truncate font-display text-sm font-bold">{entryLabel(entry)}</p>
+              <p className="truncate font-display text-sm font-bold">{entryLabel(entry, nameFor)}</p>
               <p className="text-xs opacity-50">{formatEventLabel(entry.event_type)}</p>
             </div>
             <EventBadge type={entry.event_type} />
@@ -49,7 +52,7 @@ export function KeeperEventTimeline({
                   type="button"
                   onClick={() => onDisallow?.(entry)}
                   className="interactive-btn rounded-full p-1.5 text-amber-700 hover:bg-amber-50"
-                  aria-label={`Disallow ${entryLabel(entry)}`}
+                  aria-label={`Disallow ${entryLabel(entry, nameFor)}`}
                   title="Disallow goal"
                 >
                   <Ban className="h-4 w-4" strokeWidth={2.5} />
@@ -59,7 +62,7 @@ export function KeeperEventTimeline({
                 type="button"
                 onClick={() => onRemove(entry.id)}
                 className="interactive-btn rounded-full p-1.5 text-red-600 hover:bg-red-50"
-                aria-label={`Remove ${entryLabel(entry)}`}
+                aria-label={`Remove ${entryLabel(entry, nameFor)}`}
                 title="Cancel / remove"
               >
                 <X className="h-4 w-4" strokeWidth={2.5} />

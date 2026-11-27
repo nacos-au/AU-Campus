@@ -185,9 +185,12 @@ export async function importRoster(input: RosterImportInput): Promise<RosterImpo
 
       if (player) {
         result.players_existing += 1;
-        if (p.position) {
+        const patch: Record<string, unknown> = {};
+        if (p.position) patch.position = p.position;
+        if (p.nickname?.trim()) patch.nickname = p.nickname.trim();
+        if (Object.keys(patch).length) {
           await (supabase.from("players") as ReturnType<typeof supabase.from>)
-            .update({ position: p.position } as Record<string, unknown>)
+            .update(patch)
             .eq("id", player.id);
         }
       } else {
@@ -195,6 +198,7 @@ export async function importRoster(input: RosterImportInput): Promise<RosterImpo
           .insert({
             first_name: first,
             last_name: last,
+            ...(p.nickname?.trim() ? { nickname: p.nickname.trim() } : {}),
             matric_number: matric,
             department_id: team.department_id,
             position: p.position ?? null,
@@ -456,6 +460,8 @@ export async function updatePlayerAvatar(
 export type UpdatePlayerFieldsInput = {
   first_name?: string;
   last_name?: string;
+  /** Display nickname; empty string clears it. */
+  nickname?: string | null;
   matric_number?: string | null;
   position?: string | null;
   jersey_number?: number | null;
@@ -537,6 +543,7 @@ export async function updatePlayerFields(
   const patch: Record<string, unknown> = {};
   if (fields.first_name != null) patch.first_name = fields.first_name.trim();
   if (fields.last_name != null) patch.last_name = fields.last_name.trim();
+  if (fields.nickname !== undefined) patch.nickname = fields.nickname?.trim() || null;
   if (fields.matric_number !== undefined) {
     patch.matric_number = fields.matric_number?.trim() || null;
   }

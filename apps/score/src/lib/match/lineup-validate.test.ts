@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { validateLineupSheet, type LineupValidationInput } from "@/lib/match/lineup-validate";
+import {
+  requiresNamedBench,
+  validateLineupSheet,
+  type LineupValidationInput,
+} from "@/lib/match/lineup-validate";
 
 function base(overrides: Partial<LineupValidationInput> = {}): LineupValidationInput {
   const players = Array.from({ length: 11 }, (_, i) => ({
@@ -27,12 +31,32 @@ test("a valid sheet has no errors or warnings", () => {
   assert.deepEqual(r.warnings, []);
 });
 
-test("wrong starter count, missing bench and missing captain are errors", () => {
+test("wrong starter count and missing captain are errors", () => {
   const input = base();
   input.players = input.players.slice(1).map((p) => ({ ...p, is_captain: false }));
   const r = validateLineupSheet(input);
   assert.ok(r.errors.some((e) => e.includes("exactly 11")));
   assert.ok(r.errors.some((e) => e.includes("captain")));
+});
+
+test("an XI-only sheet is valid by default", () => {
+  const input = base();
+  input.players = input.players.filter((p) => p.is_starting);
+  const r = validateLineupSheet(input);
+  assert.deepEqual(r.errors, []);
+});
+
+test("a named bench is required only when requireBench is set", () => {
+  const input = base({ requireBench: true });
+  input.players = input.players.filter((p) => p.is_starting);
+  const r = validateLineupSheet(input);
+  assert.ok(r.errors.some((e) => e.includes("substitute")));
+});
+
+test("requiresNamedBench reads the tournament config flag", () => {
+  assert.equal(requiresNamedBench({ require_named_bench: true }), true);
+  assert.equal(requiresNamedBench({}), false);
+  assert.equal(requiresNamedBench(null), false);
 });
 
 test("captain must be a starter", () => {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { SportId } from "@/lib/utils/sport";
 import { TeamCrest } from "@/components/ui/team-crest";
+import { PlayerName } from "@/components/ui/player-name";
 import { cn } from "@/lib/utils/cn";
 import { formatEventType, type DemoMatchEvent } from "@/lib/data/demo-match-details";
 import { displayMatchTime } from "@/lib/match/timeline";
@@ -50,10 +51,12 @@ export function MatchEventsList({
                     href={`/players/${event.player.id}?sport=${sport}`}
                     className="font-display font-bold hover:underline"
                   >
-                    {playerLabel}
+                    <PlayerName player={event.player} />
                   </Link>
                 ) : (
-                  <span className="font-display font-bold">{playerLabel}</span>
+                  <span className="font-display font-bold">
+                    <PlayerName player={event.player} />
+                  </span>
                 )
               ) : null}
               <span className="hidden text-xs font-semibold uppercase tracking-wide opacity-50 sm:inline">

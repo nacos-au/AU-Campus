@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PlayerAvatar, TeamCrest } from "@/components/ui/team-crest";
+import { PlayerName } from "@/components/ui/player-name";
 import { LineupPlayerBadges } from "@/components/match/lineup-player-badges";
 import type { DemoMatchEvent } from "@/lib/data/demo-match-details";
 import {
@@ -410,7 +411,6 @@ function PitchPlayer({
   showMotm: boolean;
   compact?: boolean;
 }) {
-  const name = playerFullName(player.first_name, player.last_name);
   const jersey = slot.jersey_number != null && slot.jersey_number > 0 ? slot.jersey_number : null;
 
   return (
@@ -450,7 +450,7 @@ function PitchPlayer({
         )}
       >
         {jersey != null ? <span className="opacity-80">{jersey} </span> : null}
-        {name}
+        <PlayerName player={player} />
         {slot.is_captain ? " (c)" : ""}
       </p>
     </Link>

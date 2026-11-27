@@ -8,6 +8,10 @@ import { KeeperActionBar } from "@/components/keeper/keeper-action-bar";
 import { KeeperEventTimeline } from "@/components/keeper/keeper-event-timeline";
 import { KeeperMatchSettings } from "@/components/keeper/keeper-match-settings";
 import { KeeperRosterColumn } from "@/components/keeper/keeper-roster-column";
+import { NameModeToggle } from "@/components/ui/player-name";
+import { playerDisplayName } from "@/lib/players/display-name";
+import { useNameMode } from "@/lib/players/use-name-mode";
+import { splitSquad, subPairsFromLogs } from "@/lib/keeper/squad-state";
 import { MatchClockControls } from "@/components/match/match-clock-controls";
 import { MatchLifecycleControls } from "@/components/match/match-lifecycle-controls";
 import {
@@ -107,6 +111,9 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
   const [homeSquad, setHomeSquad] = useState<SquadPlayer[]>(fallbackRosters.home);
   const [awaySquad, setAwaySquad] = useState<SquadPlayer[]>(fallbackRosters.away);
   const singleLabel = fallbackRosters.singleLabel;
+  const [rosterMaxSubs, setRosterMaxSubs] = useState<number | null>(null);
+  const [subNotice, setSubNotice] = useState("");
+  const [nameMode] = useNameMode();
 
   useEffect(() => {
     setHomeSquad(fallbackRosters.home);
@@ -120,10 +127,15 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
       try {
         const res = await fetch(`/api/matches/${match.id}/roster`);
         if (!res.ok) return;
-        const json = (await res.json()) as { home?: SquadPlayer[]; away?: SquadPlayer[] };
+        const json = (await res.json()) as {
+          home?: SquadPlayer[];
+          away?: SquadPlayer[];
+          max_subs?: number | null;
+        };
         if (cancelled) return;
         if (json.home?.length) setHomeSquad(json.home);
         if (json.away?.length) setAwaySquad(json.away);
+        if (typeof json.max_subs === "number") setRosterMaxSubs(json.max_subs);
       } catch {
         /* keep fallback */
       }
@@ -159,7 +171,27 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
       ? ((match.tournament as { config?: Record<string, unknown> }).config ?? {})
       : {};
   const maxSubsRaw = Number(tournamentConfig.max_subs);
-  const maxSubs = Number.isFinite(maxSubsRaw) && maxSubsRaw > 0 ? maxSubsRaw : 5;
+  const maxSubs =
+    rosterMaxSubs != null
+      ? rosterMaxSubs
+      : Number.isFinite(maxSubsRaw) && maxSubsRaw > 0
+        ? maxSubsRaw
+        : 5;
+
+  const homeSubPairs = subPairsFromLogs(logs, match.home_team_id ?? "");
+  const awaySubPairs = subPairsFromLogs(logs, match.away_team_id ?? "");
+  const homeSplit = splitSquad(homeSquad, homeSubPairs);
+  const awaySplit = splitSquad(awaySquad, awaySubPairs);
+  /** Match-wide cap: subs already confirmed count against the batch being built. */
+  const subsLeftFor = (side: Side) =>
+    Math.max(0, maxSubs - (side === "home" ? homeSubPairs.length : awaySubPairs.length));
+
+  /** Legal or nickname, for timeline and chips. Logs keep the legal name. */
+  const nameFor = (playerId: string | null | undefined, fallback: string) => {
+    if (!playerId) return fallback;
+    const p = [...homeSquad, ...awaySquad].find((x) => x.id === playerId);
+    return p ? playerDisplayName(p, nameMode) : fallback;
+  };
 
   const periodLabel = livePeriodLabel(sport, logPeriod);
   const clockVariant = sport === "basketball" ? "basketball" : "football";
@@ -374,6 +406,26 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
     setPendingFoul(null);
   }
 
+  /** Begins a substitution with `outId` going off. Enforces on-pitch and match-wide cap. */
+  function startSub(side: Side, outId: string, outName: string) {
+    const split = side === "home" ? homeSplit : awaySplit;
+    if (subsLeftFor(side) <= 0) {
+      setSubNotice(`No substitutions left (max ${maxSubs}).`);
+      return;
+    }
+    if (!split.xi.some((p) => p.id === outId)) {
+      setSubNotice("Only a player on the pitch can be taken off.");
+      return;
+    }
+    setSubNotice("");
+    setSelected(null);
+    setSubBatch({
+      side,
+      pairs: [{ outId, outName, inId: null, inName: null }],
+      phase: "pick_in",
+    });
+  }
+
   function handleAction(eventType: string) {
     if (!selected) return;
     const { player_name, player_id } = playerMeta(selected.side, selected.playerId);
@@ -382,11 +434,7 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
       eventType === "substitution" &&
       (sport === "football" || sport === "basketball" || sport === "volleyball")
     ) {
-      setSubBatch({
-        side: selected.side,
-        pairs: [{ outId: player_id, outName: player_name, inId: null, inName: null }],
-        phase: "pick_in",
-      });
+      startSub(selected.side, player_id, player_name);
       setSelected(null);
       setPendingFoul(null);
       return;
@@ -439,11 +487,22 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
       subBatch.pairs.flatMap((p) => [p.outId, p.inId].filter(Boolean) as string[])
     );
 
+    const split = subBatch.side === "home" ? homeSplit : awaySplit;
+
     if (subBatch.phase === "pick_in") {
       const incomplete = subBatch.pairs.findIndex((p) => !p.inId);
       if (incomplete < 0) return;
       if (playerId === subBatch.pairs[incomplete].outId) return;
       if (usedIds.has(playerId)) return;
+      if (!split.bench.some((p) => p.id === playerId)) {
+        setSubNotice(
+          split.subbedOff.some((p) => p.id === playerId)
+            ? "That player was already subbed off and cannot return."
+            : "Pick a substitute from the bench list."
+        );
+        return;
+      }
+      setSubNotice("");
       const pairs = subBatch.pairs.map((p, i) =>
         i === incomplete ? { ...p, inId: playerId, inName: player_name } : p
       );
@@ -451,8 +510,16 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
       return;
     }
 
-    if (subBatch.pairs.length >= maxSubs) return;
+    if (subBatch.pairs.length >= subsLeftFor(subBatch.side)) {
+      setSubNotice(`No substitutions left (max ${maxSubs}).`);
+      return;
+    }
     if (usedIds.has(playerId)) return;
+    if (!split.xi.some((p) => p.id === playerId)) {
+      setSubNotice("Only a player on the pitch can be taken off.");
+      return;
+    }
+    setSubNotice("");
     setSubBatch({
       ...subBatch,
       pairs: [
@@ -477,6 +544,7 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
       });
     }
     setSubBatch(null);
+    setSubNotice("");
   }
 
   function handleFoulChip(cardType: string) {
@@ -838,13 +906,17 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
 
       {loggingEnabled && (
         <section className="mb-4">
-          <h2 className="mb-2 font-display text-xs font-extrabold uppercase tracking-wide opacity-50">
-            {config.logSectionLabel}
-          </h2>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h2 className="font-display text-xs font-extrabold uppercase tracking-wide opacity-50">
+              {config.logSectionLabel}
+            </h2>
+            <NameModeToggle />
+          </div>
           <KeeperEventTimeline
             logs={logs}
             onRemove={handleRemove}
             onDisallow={sport === "football" ? disallowGoal : undefined}
+            nameFor={nameFor}
           />
         </section>
       )}
@@ -854,13 +926,18 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
           <p className="mb-1 text-center font-display text-sm font-bold">
             {subBatch.phase === "pick_in"
               ? "Tap player coming on"
-              : subBatch.pairs.length >= maxSubs
+              : subBatch.pairs.length >= subsLeftFor(subBatch.side)
                 ? `Max ${maxSubs} subs — confirm batch`
                 : "Confirm, or tap another player going off"}
           </p>
           <p className="mb-3 text-center text-xs opacity-60">
-            Up to {maxSubs} changes · one timeline event per pair
+            {subsLeftFor(subBatch.side)} of {maxSubs} subs left · one timeline event per pair
           </p>
+          {subNotice && (
+            <p className="mb-3 rounded-md bg-amber-50 px-2 py-1.5 text-center text-xs font-semibold text-amber-800">
+              {subNotice}
+            </p>
+          )}
           <ul className="mb-3 space-y-1.5">
             {subBatch.pairs.map((pair, i) => (
               <li
@@ -911,7 +988,7 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
                 className="interactive-btn rounded-lg border border-rule bg-white px-3 py-2 font-display text-xs font-bold"
               >
                 {p.jersey_number != null && <span className="mr-1 opacity-50">#{p.jersey_number}</span>}
-                {p.first_name} {p.last_name}
+                {playerDisplayName(p, nameMode)}
               </button>
             ))}
             <button
@@ -958,6 +1035,12 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
         </div>
       )}
 
+      {loggingEnabled && !subBatch && subNotice && (
+        <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-center text-sm font-semibold text-amber-800">
+          {subNotice}
+        </p>
+      )}
+
       {loggingEnabled && pendingFoul && !selected && (
         <p className="mb-3 rounded-lg bg-accent/5 px-3 py-2 text-center text-sm font-semibold text-accent">
           Tap a player to apply {pendingFoul.replace(/_/g, " ")}
@@ -974,6 +1057,7 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
           title={singleLabel}
           laneHeader
           subMode={subBatch?.side === "home" ? subBatch.phase : null}
+          appliedSubs={homeSubPairs}
         />
       ) : (
         <div className="grid grid-cols-2 gap-2 sm:gap-4">
@@ -985,6 +1069,9 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
             teamQuickActions={config.teamQuickActions}
             onTeamQuickAction={(action) => logTeamQuickAction("home", action)}
             subMode={subBatch?.side === "home" ? subBatch.phase : null}
+            appliedSubs={homeSubPairs}
+            subsLeft={subsLeftFor("home")}
+            onQuickSub={(id) => startSub("home", id, playerMeta("home", id).player_name)}
           />
           <KeeperRosterColumn
             team={match.away_team}
@@ -994,6 +1081,9 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
             teamQuickActions={config.teamQuickActions}
             onTeamQuickAction={(action) => logTeamQuickAction("away", action)}
             subMode={subBatch?.side === "away" ? subBatch.phase : null}
+            appliedSubs={awaySubPairs}
+            subsLeft={subsLeftFor("away")}
+            onQuickSub={(id) => startSub("away", id, playerMeta("away", id).player_name)}
           />
         </div>
       ))}
@@ -1001,7 +1091,7 @@ export function SportKeeper({ match, sport }: { match: Match; sport: SportId }) 
       {loggingEnabled && selected && selectedPlayer && (
         <div className="mt-4">
           <KeeperActionBar
-            playerName={`${selectedPlayer.first_name} ${selectedPlayer.last_name}`}
+            playerName={playerDisplayName(selectedPlayer, nameMode)}
             teamName={selectedTeam?.name ?? ""}
             actions={config.playerActions}
             foulChips={config.foulChips}

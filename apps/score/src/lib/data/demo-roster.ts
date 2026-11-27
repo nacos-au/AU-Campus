@@ -76,6 +76,7 @@ export interface RosterTeamInput {
 export interface RosterPlayerInput {
   first_name: string;
   last_name: string;
+  nickname?: string | null;
   matric_number?: string | null;
   position?: string | null;
   jersey_number?: number | null;

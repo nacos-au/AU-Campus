@@ -238,7 +238,7 @@ export function RepLineupForm({ token, context }: { token: string; context: Line
           {context.team.name} · {context.competition.season}
         </p>
         <p className="mt-2 text-sm text-accent/70">
-          Submit the starting XI and bench. Staff check it before it goes live. No account needed.
+          Submit your starting XI and captain. Substitutes are picked from the squad during the match. Staff check it before it goes live. No account needed.
         </p>
       </section>
 

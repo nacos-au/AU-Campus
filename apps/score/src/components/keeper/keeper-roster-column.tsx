@@ -4,26 +4,10 @@ import type { SquadPlayer } from "@/lib/data/demo-squads";
 import type { KeeperTeamQuickAction } from "@/lib/keeper/keeper-sport-config";
 import type { Match } from "@/lib/types/database";
 import { TeamCrest, PlayerAvatar } from "@/components/ui/team-crest";
+import { PlayerName } from "@/components/ui/player-name";
+import { splitSquad, type SubPair } from "@/lib/keeper/squad-state";
 import { cn } from "@/lib/utils/cn";
-
-function isStarterRole(role: string | null | undefined): boolean {
-  if (!role) return false;
-  const r = role.toLowerCase();
-  return (
-    r.includes("start") ||
-    r.includes("xi") ||
-    r === "gk" ||
-    r === "df" ||
-    r === "mf" ||
-    r === "fw"
-  );
-}
-
-function isBenchRole(role: string | null | undefined): boolean {
-  if (!role) return false;
-  const r = role.toLowerCase();
-  return r.includes("sub") || r.includes("bench") || r.includes("reserve");
-}
+import { ArrowLeftRight } from "lucide-react";
 
 export function KeeperRosterColumn({
   team,
@@ -36,6 +20,9 @@ export function KeeperRosterColumn({
   laneHeader,
   /** When set, split XI / bench and highlight the pick target for substitutions. */
   subMode,
+  appliedSubs,
+  onQuickSub,
+  subsLeft,
 }: {
   team?: Match["home_team"];
   players: SquadPlayer[];
@@ -46,47 +33,38 @@ export function KeeperRosterColumn({
   title?: string;
   laneHeader?: boolean;
   subMode?: "pick_out" | "pick_in" | null;
+  /** Substitutions already logged for this side. Moves players between XI, bench and off. */
+  appliedSubs?: SubPair[];
+  /** Tap the swap icon on an XI player to start a substitution for them. */
+  onQuickSub?: (playerId: string) => void;
+  /** Substitutions still allowed in this match. */
+  subsLeft?: number;
 }) {
   const code = team?.department?.short_code ?? "AU";
   const displayName = title ?? team?.name ?? "Squad";
   const institution = team?.institution ?? null;
 
-  const sorted = [...players].sort((a, b) => {
-    const ja = a.jersey_number ?? 999;
-    const jb = b.jersey_number ?? 999;
-    if (ja !== jb) return ja - jb;
-    return a.last_name.localeCompare(b.last_name);
-  });
+  const { xi, bench: subs, subbedOff } = splitSquad(players, appliedSubs ?? []);
 
-  const hasRoles = sorted.some(
-    (p) => isStarterRole(p.squad_role) || isBenchRole(p.squad_role)
-  );
-  const starters = hasRoles
-    ? sorted.filter((p) => isStarterRole(p.squad_role) || !isBenchRole(p.squad_role))
-    : sorted.slice(0, Math.min(11, sorted.length));
-  const bench = hasRoles
-    ? sorted.filter((p) => isBenchRole(p.squad_role))
-    : sorted.slice(11);
-
-  // If roles didn't produce a bench, fall back to jersey split so sub "in" has options.
-  const xi = bench.length || hasRoles ? starters : sorted.slice(0, 11);
-  const subs = bench.length || hasRoles ? bench : sorted.slice(11);
-
-  const renderPlayer = (p: SquadPlayer, idx: number, section: "xi" | "bench") => {
+  const renderPlayer = (p: SquadPlayer, idx: number, section: "xi" | "bench" | "off") => {
     const selected = selectedPlayerId === p.id;
+    const off = section === "off";
     const dimForSub =
-      subMode === "pick_in"
+      off ||
+      (subMode === "pick_in"
         ? section === "xi"
         : subMode === "pick_out"
           ? section === "bench"
-          : false;
+          : false);
+    const canQuickSub = Boolean(onQuickSub) && section === "xi" && !subMode && (subsLeft ?? 1) > 0;
     return (
-      <li key={`${p.id}-${p.jersey_number ?? idx}`}>
+      <li key={`${p.id}-${p.jersey_number ?? idx}`} className="flex items-stretch">
         <button
           type="button"
           onClick={() => onSelectPlayer(p.id)}
+          disabled={off}
           className={cn(
-            "interactive-row flex w-full items-center gap-2 px-3 py-2.5 text-left transition-colors",
+            "interactive-row flex min-w-0 flex-1 items-center gap-2 px-3 py-2.5 text-left transition-colors",
             selected && "bg-accent/10 ring-2 ring-inset ring-accent/40",
             dimForSub && "opacity-40",
             subMode === "pick_in" && section === "bench" && "bg-emerald-50/50",
@@ -107,15 +85,24 @@ export function KeeperRosterColumn({
             size="sm"
           />
           <span className="min-w-0 flex-1">
-            <span className="block truncate font-display text-sm font-bold">
-              {p.first_name} {p.last_name}
-            </span>
+            <PlayerName player={p} className="block truncate font-display text-sm font-bold" />
             <span className="text-[10px] font-semibold uppercase text-accent/45">
-              {section === "bench" ? "Bench" : p.position || p.squad_role || "XI"}
+              {off ? "Subbed off" : section === "bench" ? "Bench" : p.position || p.squad_role || "XI"}
               {selected ? " · tap to close" : ""}
             </span>
           </span>
         </button>
+        {canQuickSub && (
+          <button
+            type="button"
+            onClick={() => onQuickSub?.(p.id)}
+            aria-label="Substitute this player"
+            title="Substitute this player"
+            className="interactive-btn flex w-10 shrink-0 items-center justify-center text-accent/60 hover:text-accent"
+          >
+            <ArrowLeftRight className="h-4 w-4" strokeWidth={2.5} />
+          </button>
+        )}
       </li>
     );
   };
@@ -157,15 +144,23 @@ export function KeeperRosterColumn({
       </div>
       <ul className="max-h-[360px] overflow-y-auto">
         <li className="sticky top-0 z-10 border-b border-rule bg-surface px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-accent/50">
-          Starting XI
+          On the pitch
         </li>
         {xi.map((p, idx) => renderPlayer(p, idx, "xi"))}
         {subs.length > 0 && (
           <>
             <li className="sticky top-0 z-10 border-y border-rule bg-surface px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-accent/50">
-              Bench
+              Substitutes
             </li>
             {subs.map((p, idx) => renderPlayer(p, idx, "bench"))}
+          </>
+        )}
+        {subbedOff.length > 0 && (
+          <>
+            <li className="sticky top-0 z-10 border-y border-rule bg-surface px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-accent/50">
+              Subbed off
+            </li>
+            {subbedOff.map((p, idx) => renderPlayer(p, idx, "off"))}
           </>
         )}
       </ul>

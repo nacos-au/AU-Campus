@@ -78,7 +78,7 @@ async function resolvePlayersFromIds(
   const ids = entries.map((e) => e.player_id);
   const { data } = (await supabase
     .from("players")
-    .select("id, department_id, first_name, last_name, matric_number, avatar_url, position")
+    .select("id, department_id, first_name, last_name, nickname, matric_number, avatar_url, position")
     .in("id", ids)) as {
     data: Player[] | null;
   };
@@ -356,7 +356,7 @@ export async function submitMatchLineup(input: {
   if (starters.length < minStarters) {
     return { error: `Name at least ${minStarters} starters (got ${starters.length}).` };
   }
-  if (input.require_bench !== false && bench.length < 1) {
+  if (input.require_bench === true && bench.length < 1) {
     return { error: "Name at least one substitute on the bench." };
   }
   const captains = starters.filter((p) => p.is_captain);
