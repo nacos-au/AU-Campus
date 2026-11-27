@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RosterPlayerRow } from "@/lib/data/demo-roster";
 import type { Match } from "@/lib/types/database";
+import { AdminMatchLineupPanel } from "@/components/admin/admin-match-lineup-panel";
 import { dbIdToSport, type SportId } from "@/lib/utils/sport";
 
 type GoalDraft = {
@@ -23,6 +24,8 @@ type MatchOption = {
   id: string;
   label: string;
   sport: SportId;
+  tournament_id: string | null;
+  scheduled_at: string;
   home_team_id: string;
   away_team_id: string;
   home_team_name: string;
@@ -38,6 +41,26 @@ function newKey() {
   return `g-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+type ReconcileStatForm = {
+  shots_on_target: number | null;
+  saves: number | null;
+  corners: number | null;
+  fouls: number | null;
+  offsides: number | null;
+  yellow_cards: number | null;
+  red_cards: number | null;
+};
+
+const EMPTY_STATS: ReconcileStatForm = {
+  shots_on_target: null,
+  saves: null,
+  corners: null,
+  fouls: null,
+  offsides: null,
+  yellow_cards: null,
+  red_cards: null,
+};
+
 export function AdminReconcilePanel() {
   const [matches, setMatches] = useState<MatchOption[]>([]);
   const [query, setQuery] = useState("");
@@ -50,24 +73,10 @@ export function AdminReconcilePanel() {
   const [homeGkIds, setHomeGkIds] = useState<string[]>([]);
   const [awayGkIds, setAwayGkIds] = useState<string[]>([]);
   const [statsOpen, setStatsOpen] = useState(false);
-  const [homeStats, setHomeStats] = useState({
-    shots_on_target: 0,
-    saves: 0,
-    corners: 0,
-    fouls: 0,
-    offsides: 0,
-    yellow_cards: 0,
-    red_cards: 0,
-  });
-  const [awayStats, setAwayStats] = useState({
-    shots_on_target: 0,
-    saves: 0,
-    corners: 0,
-    fouls: 0,
-    offsides: 0,
-    yellow_cards: 0,
-    red_cards: 0,
-  });
+  const [xiOpen, setXiOpen] = useState(false);
+  // Blank = not recorded (sent as null). Stats the keeper never typed never reach the public page.
+  const [homeStats, setHomeStats] = useState<ReconcileStatForm>(EMPTY_STATS);
+  const [awayStats, setAwayStats] = useState<ReconcileStatForm>(EMPTY_STATS);
   const [scoreOnly, setScoreOnly] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -97,6 +106,8 @@ export function AdminReconcilePanel() {
             m.tournament?.name ? ` · ${m.tournament.name}` : ""
           } · ${m.status}`,
           sport: dbIdToSport(m.sport_id),
+          tournament_id: m.tournament_id ?? null,
+          scheduled_at: m.scheduled_at,
           home_team_id: m.home_team_id as string,
           away_team_id: m.away_team_id as string,
           home_team_name: m.home_team?.name ?? "Home",
@@ -595,6 +606,39 @@ export function AdminReconcilePanel() {
             })}
           </div>
 
+          {selected.sport === "football" && selected.tournament_id && (
+            <div className="space-y-3 rounded-lg border border-rule p-3">
+              <button
+                type="button"
+                className="text-sm font-semibold text-accent underline"
+                onClick={() => setXiOpen((v) => !v)}
+              >
+                {xiOpen ? "Hide starting XI" : "Add starting XI (optional)"}
+              </button>
+              <p className="text-xs text-accent/60">
+                Optional. Skip this if you only have the score. A side with no XI shows its
+                predicted XI from the squad.
+              </p>
+              {xiOpen && (
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {([
+                    [selected.home_team_id, selected.home_team_name],
+                    [selected.away_team_id, selected.away_team_name],
+                  ] as const).map(([teamId, teamName]) => (
+                    <AdminMatchLineupPanel
+                      key={teamId}
+                      matchId={selected.id}
+                      tournamentId={selected.tournament_id as string}
+                      teamId={teamId}
+                      teamName={teamName}
+                      scheduledAt={selected.scheduled_at}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <button
             type="button"
             className="text-sm font-semibold text-accent underline"
@@ -627,9 +671,15 @@ export function AdminReconcilePanel() {
                       <input
                         type="number"
                         min={0}
+                        placeholder="—"
                         className="w-20 rounded border border-rule px-2 py-1"
-                        value={stats[field]}
-                        onChange={(e) => setStats({ ...stats, [field]: Number(e.target.value) })}
+                        value={stats[field] ?? ""}
+                        onChange={(e) =>
+                          setStats({
+                            ...stats,
+                            [field]: e.target.value === "" ? null : Number(e.target.value),
+                          })
+                        }
                       />
                     </label>
                   ))}

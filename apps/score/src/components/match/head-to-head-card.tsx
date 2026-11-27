@@ -56,13 +56,13 @@ export async function HeadToHeadCard({
               </span>
               <span className="flex min-w-0 flex-1 items-center justify-end gap-2">
                 <span className="truncate text-sm font-semibold">{meeting.home_team_name}</span>
-                <TeamCrest code="AU" logoUrl={meeting.home_logo_url} alt={meeting.home_team_name} size="xs" />
+                <TeamCrest code={meeting.home_code || "AU"} logoUrl={meeting.home_logo_url} alt={meeting.home_team_name} size="xs" />
               </span>
               <span className="shrink-0 rounded-md bg-surface px-2 py-1 font-display text-sm font-extrabold tabular-nums">
                 {meeting.home_score}–{meeting.away_score}
               </span>
               <span className="flex min-w-0 flex-1 items-center gap-2">
-                <TeamCrest code="AU" logoUrl={meeting.away_logo_url} alt={meeting.away_team_name} size="xs" />
+                <TeamCrest code={meeting.away_code || "AU"} logoUrl={meeting.away_logo_url} alt={meeting.away_team_name} size="xs" />
                 <span className="truncate text-sm font-semibold">{meeting.away_team_name}</span>
               </span>
               <span className="hidden w-28 shrink-0 truncate text-right text-xs opacity-50 sm:block">

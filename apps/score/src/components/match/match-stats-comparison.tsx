@@ -12,6 +12,8 @@ export function MatchStatsComparison({
   homeCode: string;
   awayCode: string;
 }) {
+  if (stats.length === 0) return null;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wide opacity-50">
@@ -27,16 +29,18 @@ export function MatchStatsComparison({
 }
 
 function StatBar({ row }: { row: MatchStatRow }) {
-  const total = row.home + row.away || 1;
-  const homePct = (row.home / total) * 100;
-  const awayPct = (row.away / total) * 100;
+  const home = row.home ?? 0;
+  const away = row.away ?? 0;
+  const total = home + away || 1;
+  const homePct = (home / total) * 100;
+  const awayPct = (away / total) * 100;
 
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between font-display text-sm font-bold tabular-nums">
-        <span className={cn(row.home >= row.away && row.home > 0 && "text-accent")}>{row.home}</span>
+        <span className={cn(home >= away && home > 0 && "text-accent")}>{row.home ?? "–"}</span>
         <span className="text-xs font-semibold uppercase opacity-50">{row.label}</span>
-        <span className={cn(row.away >= row.home && row.away > 0 && "text-accent")}>{row.away}</span>
+        <span className={cn(away >= home && away > 0 && "text-accent")}>{row.away ?? "–"}</span>
       </div>
       <div className="flex h-2 gap-1">
         <div className="flex flex-1 justify-end overflow-hidden rounded-full bg-surface">

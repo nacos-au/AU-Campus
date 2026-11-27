@@ -30,6 +30,10 @@ A side-by-side statistical comparison tool, inspired by Premier League's "Player
 
 Team-vs-team historical record page, inspired by Premier League's "Head-to-head" feature.
 
+**Shipped (match page card):** all-time W-D-L and the last 5 meetings with real club crests (department codes, not a hardcoded "AU"). The summary logic lives in `apps/score/src/lib/match/head-to-head-summary.ts` and is unit tested.
+
+**Still parked:** the extras below.
+
 ### Planned UX
 
 - Select Home Club and Away Club
@@ -138,16 +142,58 @@ Revisit after the cloud rotator proves retention on the homepage.
 
 ---
 
-## 8. Implementation Priority
+## 8. Match page and squad polish: parked items
+
+Parked during the match-page MVP polish. Code is kept where it exists so it can be turned back on.
+
+### FINAL podium
+
+- Hidden by `PARKED_FEATURES.finalPodium` in `apps/score/src/lib/match/parked-features.ts`.
+- Re-enable: set `finalPodium: false`.
+
+### Dark 0–90 minute strip (H and A)
+
+- Hidden by `PARKED_FEATURES.minuteStrip` in the same file. The component stays in `match-live-panel.tsx`.
+- Re-enable: set `minuteStrip: false`.
+
+### Rep accounts and club desk
+
+- Team reps send XIs through a private per-team link (no login). Staff approve every XI.
+- Not built: rep sign-in accounts, a club desk that can edit a whole squad, and per-rep permissions.
+
+### Player rating
+
+- Lineup pitch shows no rating. Not built.
+
+### Photos and jersey collection
+
+- Player photos on the pitch and jersey-size collection are not built. Jersey numbers appear only when logged.
+
+### Keeper tracked-stats toggle
+
+- Keepers choosing which stats to log at kickoff or mid-match. Manual entry is blank-by-default, but the picker is not built.
+
+### Lineup shortcuts
+
+- "Copy last XI" and "paste names" are not built.
+- "Edit then approve" for rep XIs is not built. Staff edit an XI after approval from the match lineup panel.
+
+---
+
+## 9. Implementation Priority
 
 | Feature | Priority | Depends On |
 |---------|----------|------------|
 | Player Comparison | Phase 2 | Live player stats aggregation |
-| Head-to-Head | Phase 2 | Match history in database |
+| Head-to-Head extras (top scorers, home/away split) | Phase 2 | Match history in database |
 | Add Fixtures to Calendar | Phase 2 | Matches in database |
 | Digest correction notes | Later | Digest live + editorial policy |
 | Digest timed release / cron | Later | Need exact-time go-live without a click |
 | Score Phantom (un-hide) | Later | Product priority for casual scoring |
 | Digest richer Fun Fact extras | Later | Cloud Q&A rotator live |
+| FINAL podium and minute strip (parked flags) | Later | Product priority for the match page |
+| Rep accounts and club desk | Later | Team-link submissions proven in use |
+| Player rating, photos, jersey collection | Later | Player profile product decisions |
+| Keeper tracked-stats toggle | Later | Keeper workflow feedback |
 
 These will be built after the core platform (live scoring, standings, profiles, auth) is complete and connected to Supabase.

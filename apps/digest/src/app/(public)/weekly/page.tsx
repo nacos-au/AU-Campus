@@ -2,10 +2,8 @@ import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { WeekPicker } from "@/components/WeekPicker";
-import { WordOfTheDay } from "@/components/WordOfTheDay";
 import { WeeklyPage } from "@/components/weekly/WeeklyPage";
 import { ARTICLE_PUBLIC_SELECT } from "@/lib/articles";
-import { todaysWord } from "@/lib/campus-lore";
 import { getSessionProfile, hasRole } from "@/lib/auth";
 import { fetchCampusWeather } from "@/lib/weather";
 import {
@@ -20,7 +18,7 @@ import {
   issueMeta,
   issueNumberFor,
 } from "@/lib/weekly";
-import type { ArticleWithMeta, CampusWord, WeeklyIssue } from "@/lib/types";
+import type { ArticleWithMeta, WeeklyIssue } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Weekly Issue" };
 export const revalidate = 60;
@@ -42,21 +40,12 @@ export default async function WeeklyIssuePage({
     ]);
   const isStaff = hasRole(profile, "editor");
 
-  const [{ data: allIssuesData }, { data: wordsData }] = await Promise.all([
-    supabase
-      .from("weekly_issues")
-      .select("id, week_start, publish_date, title, status, scheduled_at, published_at")
-      .neq("status", "archived")
-      .order("week_start", { ascending: false }),
-    supabase
-      .from("campus_words")
-      .select("*")
-      .eq("active", true)
-      .order("sort_order")
-      .order("created_at"),
-  ]);
+  const { data: allIssuesData } = await supabase
+    .from("weekly_issues")
+    .select("id, week_start, publish_date, title, status, scheduled_at, published_at")
+    .neq("status", "archived")
+    .order("week_start", { ascending: false });
 
-  const word = todaysWord((wordsData ?? []) as CampusWord[]);
   const allIssues = (allIssuesData ?? []) as WeeklyIssue[];
   const liveIssues = allIssues.filter((i) => isLiveIssue(i));
   const pickerSource = isStaff ? allIssues : liveIssues;
@@ -153,16 +142,6 @@ export default async function WeeklyIssuePage({
         weather={weather}
       />
 
-      {word ? (
-        <div className="mt-2 max-w-sm border-t border-rule pt-8">
-          <WordOfTheDay
-            word={word}
-            label={t("wordOfTheDay")}
-            revealLabel={t("tapForMeaning")}
-            compact
-          />
-        </div>
-      ) : null}
     </div>
   );
 }

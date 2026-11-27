@@ -5,12 +5,14 @@ import { BasketballMatchPanel } from "@/components/match/basketball-match-panel"
 import { VolleyballMatchPanel } from "@/components/match/volleyball-match-panel";
 import { TennisMatchPanel } from "@/components/match/tennis-match-panel";
 import type { SportId } from "@/lib/utils/sport";
+import type { TeamStatRecord } from "@/lib/match/match-stats";
 import type { LifecycleStatus } from "@/lib/match/use-match-lifecycle";
 import { getPeriodScoresForMatch, getSetScoresForMatch } from "@/lib/data/demo-match-details";
 
 export function MatchLiveSection({
   match,
   events,
+  teamStats,
   status,
   sport,
   liveTime,
@@ -19,6 +21,7 @@ export function MatchLiveSection({
 }: {
   match: Match;
   events: DemoMatchEvent[];
+  teamStats?: TeamStatRecord[];
   status: LifecycleStatus;
   sport: SportId;
   liveTime?: string;
@@ -31,6 +34,7 @@ export function MatchLiveSection({
         <MatchLivePanel
           match={match}
           events={events}
+          teamStats={teamStats}
           status={status}
           liveTime={liveTime}
           clockRunning={clockRunning}

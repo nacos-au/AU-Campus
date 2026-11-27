@@ -4,15 +4,26 @@ import { getScoreDemoMode } from "@/lib/data/mode";
 import {
   addDemoTournamentRoster,
   getCreatedDemoTournament,
+  getDemoAvailability,
+  getDemoFormation,
   listCreatedDemoTournaments,
   listDemoTournamentRosters,
   removeDemoTournamentRoster,
+  setDemoAvailability,
+  setDemoFormation,
+  updateDemoTournamentRoster,
 } from "@/lib/data/demo-competitions-store";
 import { findDemoTeam, listDemoRosterPlayers } from "@/lib/data/demo-roster";
 import { getTournamentsForSport } from "@/lib/data/demo-competition";
 import { listAllDemoMatches } from "@/lib/data/demo-match-store";
 import { resolveSportUuid } from "@/lib/data/sport-ids";
 import type { Player, Tournament } from "@/lib/types/database";
+import {
+  DEFAULT_FORMATION,
+  FOOTBALL_FORMATIONS,
+  normaliseAvailability,
+  type AvailabilityStatus,
+} from "@/lib/match/lineup-merge";
 
 export type CompetitionListItem = {
   id: string;
@@ -45,6 +56,10 @@ export type CompetitionRosterPlayer = {
   position: string | null;
   jersey_number: number | null;
   avatar_url: string | null;
+  /** Captain for this competition side. Only one per side. */
+  is_captain: boolean;
+  availability: AvailabilityStatus;
+  availability_note: string | null;
 };
 
 function maxSquadFromConfig(config: Record<string, unknown> | null | undefined): number {
@@ -275,6 +290,7 @@ export async function listCompetitionRoster(
   nominated: CompetitionRosterPlayer[];
   pool: CompetitionRosterPlayer[];
   max_squad_size: number;
+  formation: string;
 } | { error: string }> {
   const detail = await getCompetitionDetail(tournamentId);
   if ("error" in detail) return detail;
@@ -289,6 +305,7 @@ export async function listCompetitionRoster(
     const nominated: CompetitionRosterPlayer[] = nominatedRows.flatMap((r) => {
       const p = clubPool.find((c) => c.id === r.player_id);
       if (!p) return [];
+      const av = getDemoAvailability(teamId, p.id);
       return [
         {
           id: r.id,
@@ -300,29 +317,45 @@ export async function listCompetitionRoster(
           position: p.position,
           jersey_number: r.jersey_number ?? p.jersey_number,
           avatar_url: p.avatar_url,
+          is_captain: r.is_captain,
+          availability: av.availability,
+          availability_note: av.note,
         },
       ];
     });
     const pool: CompetitionRosterPlayer[] = clubPool
       .filter((p) => !nominatedIds.has(p.id))
-      .map((p) => ({
-        id: p.id,
-        player_id: p.id,
-        team_id: teamId,
-        first_name: p.first_name,
-        last_name: p.last_name,
-        matric_number: p.matric_number,
-        position: p.position,
-        jersey_number: p.jersey_number,
-        avatar_url: p.avatar_url,
-      }));
-    return { nominated, pool, max_squad_size: max };
+      .map((p) => {
+        const av = getDemoAvailability(teamId, p.id);
+        return {
+          id: p.id,
+          player_id: p.id,
+          team_id: teamId,
+          first_name: p.first_name,
+          last_name: p.last_name,
+          matric_number: p.matric_number,
+          position: p.position,
+          jersey_number: p.jersey_number,
+          avatar_url: p.avatar_url,
+          is_captain: false,
+          availability: av.availability,
+          availability_note: av.note,
+        };
+      });
+    nominated.sort((a, b) => a.last_name.localeCompare(b.last_name));
+    pool.sort((a, b) => a.last_name.localeCompare(b.last_name));
+    return {
+      nominated,
+      pool,
+      max_squad_size: max,
+      formation: getDemoFormation(tournamentId, teamId) ?? DEFAULT_FORMATION,
+    };
   }
 
   const supabase = await createClient();
   const { data: nominatedRegs } = (await supabase
     .from("tournament_rosters")
-    .select("id, player_id, team_id, jersey_number")
+    .select("id, player_id, team_id, jersey_number, is_captain")
     .eq("tournament_id", tournamentId)
     .eq("team_id", teamId)) as {
     data: Array<{
@@ -330,16 +363,30 @@ export async function listCompetitionRoster(
       player_id: string;
       team_id: string;
       jersey_number: number | null;
+      is_captain: boolean | null;
     }> | null;
   };
 
   const { data: clubRegs } = (await supabase
     .from("player_sport_registry")
-    .select("player_id, jersey_number, squad_role")
+    .select("player_id, jersey_number, squad_role, availability, availability_note")
     .eq("team_id", teamId)
     .eq("is_active", true)) as {
-    data: Array<{ player_id: string; jersey_number: number | null; squad_role: string | null }> | null;
+    data: Array<{
+      player_id: string;
+      jersey_number: number | null;
+      squad_role: string | null;
+      availability: string | null;
+      availability_note: string | null;
+    }> | null;
   };
+
+  const { data: teamRow } = (await supabase
+    .from("tournament_teams")
+    .select("formation")
+    .eq("tournament_id", tournamentId)
+    .eq("team_id", teamId)
+    .maybeSingle()) as { data: { formation: string | null } | null };
 
   const allPlayerIds = [
     ...new Set([
@@ -347,6 +394,7 @@ export async function listCompetitionRoster(
       ...(clubRegs ?? []).map((r) => r.player_id),
     ]),
   ];
+
   const { data: players } = allPlayerIds.length
     ? ((await supabase
         .from("players")
@@ -359,7 +407,15 @@ export async function listCompetitionRoster(
     : { data: [] as Array<Pick<Player, "id" | "first_name" | "last_name" | "matric_number" | "position" | "avatar_url">> };
 
   const byId = new Map((players ?? []).map((p) => [p.id, p]));
+  const regByPlayer = new Map((clubRegs ?? []).map((r) => [r.player_id, r]));
   const nominatedIds = new Set((nominatedRegs ?? []).map((r) => r.player_id));
+  const availabilityOf = (playerId: string) => {
+    const reg = regByPlayer.get(playerId);
+    return {
+      availability: normaliseAvailability(reg?.availability),
+      availability_note: reg?.availability_note ?? null,
+    };
+  };
 
   const nominated: CompetitionRosterPlayer[] = (nominatedRegs ?? []).flatMap((r) => {
     const p = byId.get(r.player_id);
@@ -375,6 +431,8 @@ export async function listCompetitionRoster(
         position: p.position,
         jersey_number: r.jersey_number,
         avatar_url: p.avatar_url,
+        is_captain: r.is_captain === true,
+        ...availabilityOf(r.player_id),
       },
     ];
   });
@@ -395,13 +453,118 @@ export async function listCompetitionRoster(
           position: p.position ?? r.squad_role,
           jersey_number: r.jersey_number,
           avatar_url: p.avatar_url,
+          is_captain: false,
+          ...availabilityOf(r.player_id),
         },
       ];
     });
 
   nominated.sort((a, b) => a.last_name.localeCompare(b.last_name));
   pool.sort((a, b) => a.last_name.localeCompare(b.last_name));
-  return { nominated, pool, max_squad_size: max };
+  return {
+    nominated,
+    pool,
+    max_squad_size: max,
+    formation: teamRow?.formation ?? DEFAULT_FORMATION,
+  };
+}
+
+/** Formation for a side in a competition (defaults to 4-3-3). */
+export async function getTeamFormation(tournamentId: string, teamId: string): Promise<string> {
+  if (await inDemo()) return getDemoFormation(tournamentId, teamId) ?? DEFAULT_FORMATION;
+  const supabase = await createClient();
+  const { data } = (await supabase
+    .from("tournament_teams")
+    .select("formation")
+    .eq("tournament_id", tournamentId)
+    .eq("team_id", teamId)
+    .maybeSingle()) as { data: { formation: string | null } | null };
+  return data?.formation ?? DEFAULT_FORMATION;
+}
+
+/** Set a side's formation. Only formations that fit 11 starters are accepted. */
+export async function setTeamFormation(input: {
+  tournament_id: string;
+  team_id: string;
+  formation: string;
+}): Promise<{ ok: true } | { error: string }> {
+  const formation = input.formation.trim();
+  if (!(FOOTBALL_FORMATIONS as readonly string[]).includes(formation)) {
+    return { error: `Formation must be one of: ${FOOTBALL_FORMATIONS.join(", ")}` };
+  }
+  if (await inDemo()) {
+    setDemoFormation(input.tournament_id, input.team_id, formation);
+    return { ok: true };
+  }
+  const supabase = await createClient();
+  const { error } = (await (supabase.from("tournament_teams") as ReturnType<typeof supabase.from>)
+    .update({ formation } as Record<string, unknown>)
+    .eq("tournament_id", input.tournament_id)
+    .eq("team_id", input.team_id)) as { error: { message: string } | null };
+  if (error) return { error: error.message };
+  return { ok: true };
+}
+
+/** Edit one player on a competition side: jersey, captain, and club-level availability. */
+export async function updateCompetitionRosterMember(input: {
+  tournament_id: string;
+  team_id: string;
+  player_id: string;
+  jersey_number?: number | null;
+  is_captain?: boolean;
+  availability?: AvailabilityStatus;
+  availability_note?: string | null;
+}): Promise<{ ok: true } | { error: string }> {
+  const hasAvailability = input.availability !== undefined || input.availability_note !== undefined;
+  if (await inDemo()) {
+    if (
+      !updateDemoTournamentRoster(input.tournament_id, input.team_id, input.player_id, {
+        jersey_number: input.jersey_number,
+        is_captain: input.is_captain,
+      })
+    ) {
+      return { error: "Player not on this competition squad" };
+    }
+    if (hasAvailability) {
+      const prev = getDemoAvailability(input.team_id, input.player_id);
+      setDemoAvailability(input.team_id, input.player_id, {
+        availability: input.availability ?? prev.availability,
+        note: input.availability_note !== undefined ? input.availability_note : prev.note,
+      });
+    }
+    return { ok: true };
+  }
+
+  const supabase = await createClient();
+  if (input.is_captain === true) {
+    const { error: clearErr } = (await (supabase.from("tournament_rosters") as ReturnType<typeof supabase.from>)
+      .update({ is_captain: false } as Record<string, unknown>)
+      .eq("tournament_id", input.tournament_id)
+      .eq("team_id", input.team_id)) as { error: { message: string } | null };
+    if (clearErr) return { error: clearErr.message };
+  }
+  const rosterPatch: Record<string, unknown> = {};
+  if (input.jersey_number !== undefined) rosterPatch.jersey_number = input.jersey_number;
+  if (input.is_captain !== undefined) rosterPatch.is_captain = input.is_captain;
+  if (Object.keys(rosterPatch).length) {
+    const { error } = (await (supabase.from("tournament_rosters") as ReturnType<typeof supabase.from>)
+      .update(rosterPatch)
+      .eq("tournament_id", input.tournament_id)
+      .eq("team_id", input.team_id)
+      .eq("player_id", input.player_id)) as { error: { message: string } | null };
+    if (error) return { error: error.message };
+  }
+  if (hasAvailability) {
+    const regPatch: Record<string, unknown> = {};
+    if (input.availability !== undefined) regPatch.availability = input.availability;
+    if (input.availability_note !== undefined) regPatch.availability_note = input.availability_note;
+    const { error } = (await (supabase.from("player_sport_registry") as ReturnType<typeof supabase.from>)
+      .update(regPatch)
+      .eq("team_id", input.team_id)
+      .eq("player_id", input.player_id)) as { error: { message: string } | null };
+    if (error) return { error: error.message };
+  }
+  return { ok: true };
 }
 
 export async function addToCompetitionRoster(input: {

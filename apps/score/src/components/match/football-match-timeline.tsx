@@ -162,7 +162,7 @@ function TimelineEventRow({
     : assistName ?? actionLabel;
 
   const icon = <EventIcon event={event} />;
-  const matchTimeLabel = displayMatchTime(event.match_time);
+  const matchTimeLabel = displayMatchTime(event.match_time, "football");
   const time = matchTimeLabel ? (
     <span className="w-11 shrink-0 font-display text-xs font-bold tabular-nums text-accent sm:w-12 sm:text-sm">
       {matchTimeLabel}

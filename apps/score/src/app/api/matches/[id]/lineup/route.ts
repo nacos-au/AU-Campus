@@ -4,6 +4,11 @@ import { fetchMatchLineup, submitMatchLineup } from "@/lib/data/match-lineups";
 import { listCompetitionRoster } from "@/lib/data/competition-rosters";
 import { fetchMatchById } from "@/lib/data/repository";
 import { dbIdToSport } from "@/lib/utils/sport";
+import { validateLineupSheet } from "@/lib/match/lineup-validate";
+import { normaliseAvailability, type AvailabilityStatus } from "@/lib/match/lineup-merge";
+import { createClient } from "@/lib/supabase/server";
+import { hasSupabaseConfig } from "@/lib/demo-mode";
+import { getScoreDemoMode } from "@/lib/data/mode";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -42,6 +47,7 @@ export async function POST(request: Request, ctx: Ctx) {
     }>;
     status?: "predicted" | "confirmed";
     coach_name?: string | null;
+    formation?: string | null;
   };
 
   if (!body.team_id || !Array.isArray(body.players)) {
@@ -54,32 +60,44 @@ export async function POST(request: Request, ctx: Ctx) {
   }
 
   const minStarters = minStartersForSport(match.sport_id);
-  const starters = body.players.filter((p) => p.is_starting);
-  const bench = body.players.filter((p) => !p.is_starting);
-  if (starters.length < minStarters) {
-    return NextResponse.json(
-      { error: `Name at least ${minStarters} starters (got ${starters.length}).` },
-      { status: 400 }
-    );
-  }
-  if (bench.length < 1) {
-    return NextResponse.json(
-      { error: "Name at least one substitute on the bench." },
-      { status: 400 }
-    );
+
+  // Squad + availability from the competition roster when one exists.
+  const roster = await listCompetitionRoster(match.tournament_id, body.team_id);
+  const hasRoster = !("error" in roster) && roster.nominated.length > 0;
+  const squadIds = hasRoster ? new Set(roster.nominated.map((p) => p.player_id)) : null;
+  const availability = new Map<string, AvailabilityStatus>();
+  if (!("error" in roster)) {
+    for (const p of [...roster.nominated, ...roster.pool]) {
+      availability.set(p.player_id, normaliseAvailability(p.availability));
+    }
   }
 
-  // Prefer competition roster when available.
-  const roster = await listCompetitionRoster(match.tournament_id, body.team_id);
-  if (!("error" in roster) && roster.nominated.length > 0) {
-    const allowed = new Set(roster.nominated.map((p) => p.player_id));
-    const outsider = body.players.find((p) => !allowed.has(p.player_id));
-    if (outsider) {
-      return NextResponse.json(
-        { error: "Lineup players must be on this competition squad" },
-        { status: 400 }
-      );
-    }
+  // Suspended players (live DB only).
+  const suspendedIds = new Set<string>();
+  if (hasSupabaseConfig() && !(await getScoreDemoMode())) {
+    const supabase = await createClient();
+    const { data: active } = (await supabase
+      .from("player_suspensions")
+      .select("player_id")
+      .in("player_id", body.players.map((p) => p.player_id))
+      .eq("is_active", true)) as { data: Array<{ player_id: string }> | null };
+    for (const row of active ?? []) suspendedIds.add(row.player_id);
+  }
+
+  const validation = validateLineupSheet({
+    players: body.players,
+    starters: minStarters,
+    formation: body.formation ?? null,
+    squadIds,
+    suspendedIds,
+    availability,
+    mode: "staff",
+  });
+  if (validation.errors.length) {
+    return NextResponse.json(
+      { error: validation.errors.join(" "), errors: validation.errors, warnings: validation.warnings },
+      { status: 400 }
+    );
   }
 
   const result = await submitMatchLineup({
@@ -88,11 +106,12 @@ export async function POST(request: Request, ctx: Ctx) {
     players: body.players,
     status: body.status,
     coach_name: body.coach_name,
+    formation: body.formation ?? null,
     min_starters: minStarters,
     require_bench: true,
   });
   if ("error" in result) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
-  return NextResponse.json({ ok: true, status: result.status });
+  return NextResponse.json({ ok: true, status: result.status, warnings: validation.warnings });
 }

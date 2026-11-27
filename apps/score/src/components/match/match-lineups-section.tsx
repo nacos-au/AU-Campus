@@ -3,10 +3,11 @@ import { PlayerAvatar, TeamCrest } from "@/components/ui/team-crest";
 import { buildTeamPitchLineup, type TeamPitchLineup } from "@/lib/data/demo-lineups";
 import type { DemoMatchEvent } from "@/lib/data/demo-match-details";
 import {
-  defaultLineupFromPool,
   fetchMatchLineupsBothSides,
+  resolveDisplayLineup,
   type PublicMatchLineup,
 } from "@/lib/data/match-lineups";
+import { DEFAULT_FORMATION } from "@/lib/match/lineup-merge";
 import { getManOfTheMatch } from "@/lib/match/match-meta";
 import { lineupStatusLabel } from "@/lib/match/lineup-window";
 import type { Match, Player } from "@/lib/types/database";
@@ -28,10 +29,6 @@ export async function MatchLineupsSection({
     match.away_team_id
   );
   const hasDbLineups = Boolean(dbLineups.home || dbLineups.away);
-  const sheetStatus =
-    dbLineups.home?.status === "confirmed" || dbLineups.away?.status === "confirmed"
-      ? "confirmed"
-      : dbLineups.home?.status ?? dbLineups.away?.status ?? "predicted";
 
   if (sheetUrl && match.status !== "completed" && !hasDbLineups) {
     return (
@@ -50,29 +47,39 @@ export async function MatchLineupsSection({
   }
 
   const starterCount = sport === "basketball" ? 5 : sport === "volleyball" ? 6 : 11;
-  const [homeDefault, awayDefault] = await Promise.all([
+  const [homeLineup, awayLineup] = await Promise.all([
     match.home_team_id
-      ? defaultLineupFromPool(
-          match.id,
-          match.home_team_id,
-          match.tournament_id,
-          match.sport_id,
-          starterCount
-        )
+      ? resolveDisplayLineup({
+          matchId: match.id,
+          teamId: match.home_team_id,
+          tournamentId: match.tournament_id,
+          sportId: match.sport_id,
+          starters: starterCount,
+          sheet: dbLineups.home,
+        })
       : Promise.resolve(null),
     match.away_team_id
-      ? defaultLineupFromPool(
-          match.id,
-          match.away_team_id,
-          match.tournament_id,
-          match.sport_id,
-          starterCount
-        )
+      ? resolveDisplayLineup({
+          matchId: match.id,
+          teamId: match.away_team_id,
+          tournamentId: match.tournament_id,
+          sportId: match.sport_id,
+          starters: starterCount,
+          sheet: dbLineups.away,
+        })
       : Promise.resolve(null),
   ]);
 
-  const homeLineup = dbLineups.home ?? homeDefault;
-  const awayLineup = dbLineups.away ?? awayDefault;
+  const shownSides = [homeLineup, awayLineup].filter(
+    (l): l is PublicMatchLineup => l != null
+  );
+  const anyConfirmed = shownSides.some((l) => l.status === "confirmed");
+  const anyCompleted = shownSides.some((l) => (l.auto_filled_ids?.length ?? 0) > 0);
+  const subtitle = anyConfirmed
+    ? lineupStatusLabel("confirmed")
+    : anyCompleted
+      ? "Predicted XI · completed from squad"
+      : "Predicted XI · from squad pool";
 
   if (sport === "football" && (homeLineup || awayLineup)) {
     const { homePitch, awayPitch, playersById } = buildFootballPitchData(
@@ -80,9 +87,6 @@ export async function MatchLineupsSection({
       homeLineup,
       awayLineup
     );
-    const subtitle = hasDbLineups
-      ? lineupStatusLabel(sheetStatus)
-      : "Predicted XI · from squad pool";
 
     return (
       <section>
@@ -117,11 +121,7 @@ export async function MatchLineupsSection({
   if (homeLineup || awayLineup) {
     return (
       <section>
-        <LineupsHeader
-          subtitle={
-            hasDbLineups ? lineupStatusLabel(sheetStatus) : "Predicted XI · from squad pool"
-          }
-        />
+        <LineupsHeader subtitle={subtitle} />
         <div className="grid gap-4 sm:grid-cols-2">
           <TeamLineupCard
             teamName={match.home_team?.name ?? "Home"}
@@ -171,7 +171,7 @@ function buildFootballPitchData(
       ? buildTeamPitchLineup({
           matchId: match.id,
           teamId: match.home_team_id,
-          formation: "4-3-3",
+          formation: home.formation ?? DEFAULT_FORMATION,
           starters: home.players
             .filter((p) => p.is_starting)
             .map((p) => ({
@@ -186,7 +186,7 @@ function buildFootballPitchData(
       ? buildTeamPitchLineup({
           matchId: match.id,
           teamId: match.away_team_id,
-          formation: "4-3-3",
+          formation: away.formation ?? DEFAULT_FORMATION,
           starters: away.players
             .filter((p) => p.is_starting)
             .map((p) => ({

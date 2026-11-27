@@ -28,7 +28,7 @@ export function MatchEventsList({
           <p className="p-8 text-center opacity-70">No events yet</p>
         ) : (
           events.map((event) => {
-            const matchTimeLabel = displayMatchTime(event.match_time);
+            const matchTimeLabel = displayMatchTime(event.match_time, sport);
             const playerLabel = [event.player.first_name, event.player.last_name]
               .filter(Boolean)
               .join(" ")

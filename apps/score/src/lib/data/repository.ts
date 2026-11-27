@@ -64,6 +64,7 @@ import { getSquadForTeam } from "@/lib/data/demo-squads";
 import { tournamentOmitsStats } from "@/lib/competition/stats-availability";
 import { createClient } from "@/lib/supabase/server";
 import { sportToDbId, type SportId } from "@/lib/utils/sport";
+import type { TeamStatRecord } from "@/lib/match/match-stats";
 
 type TournamentRow = {
   id: string;
@@ -405,7 +406,9 @@ export async function fetchMatchesForHeadToHead(
   const supabase = await createClient();
   const { data } = await supabase
     .from("matches")
-    .select("*, home_team:teams!home_team_id(*), away_team:teams!away_team_id(*), tournament:tournaments(*)")
+    .select(
+      "*, home_team:teams!home_team_id(*, department:departments(short_code)), away_team:teams!away_team_id(*, department:departments(short_code)), tournament:tournaments(*)"
+    )
     .eq("sport_id", sportDbId)
     .eq("status", "completed")
     .is("deleted_at", null)
@@ -415,6 +418,18 @@ export async function fetchMatchesForHeadToHead(
     .order("scheduled_at", { ascending: false }) as { data: Match[] | null };
 
   return (data ?? []) as Match[];
+}
+
+/** Explicit team stats logged on the manual log page. Demo mode returns none (no fake numbers). */
+export async function fetchMatchTeamStats(matchId: string): Promise<TeamStatRecord[]> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) return [];
+
+  const supabase = await createClient();
+  const { data } = (await supabase
+    .from("match_team_stats")
+    .select("team_id, shots_on_target, saves, corners, fouls, offsides, yellow_cards, red_cards")
+    .eq("match_id", matchId)) as { data: TeamStatRecord[] | null };
+  return data ?? [];
 }
 
 export async function fetchMatchEvents(matchId: string): Promise<DemoMatchEvent[]> {

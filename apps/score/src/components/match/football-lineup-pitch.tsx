@@ -14,8 +14,8 @@ import type { Match, Player } from "@/lib/types/database";
 import type { SportId } from "@/lib/utils/sport";
 import { cn } from "@/lib/utils/cn";
 
-function playerShortName(first: string, last: string): string {
-  return `${first[0]}. ${last}`;
+function playerFullName(first: string, last: string): string {
+  return `${first} ${last}`.trim();
 }
 
 export function FootballLineupPitch({
@@ -410,7 +410,8 @@ function PitchPlayer({
   showMotm: boolean;
   compact?: boolean;
 }) {
-  const name = playerShortName(player.first_name, player.last_name);
+  const name = playerFullName(player.first_name, player.last_name);
+  const jersey = slot.jersey_number != null && slot.jersey_number > 0 ? slot.jersey_number : null;
 
   return (
     <Link
@@ -442,14 +443,15 @@ function PitchPlayer({
 
       <p
         className={cn(
-          "text-center font-display font-bold leading-tight text-white drop-shadow-sm group-hover:underline",
+          "line-clamp-2 text-center font-display font-bold leading-tight text-white drop-shadow-sm group-hover:underline",
           compact
             ? "max-w-[56px] text-[8px]"
             : "max-w-[76px] text-[9px] sm:max-w-[84px] sm:text-[10px]"
         )}
       >
-        {slot.jersey_number}
-        {slot.is_captain ? " (c)" : ""} {name}
+        {jersey != null ? <span className="opacity-80">{jersey} </span> : null}
+        {name}
+        {slot.is_captain ? " (c)" : ""}
       </p>
     </Link>
   );

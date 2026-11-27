@@ -25,15 +25,16 @@ export type ReconcileGoalInput = {
   period?: string;
 };
 
+/** Null (or omitted) means "not recorded". Only explicit numbers are stored and shown. */
 export type ReconcileTeamStatsInput = {
   team_id: string;
-  shots_on_target?: number;
-  saves?: number;
-  corners?: number;
-  fouls?: number;
-  offsides?: number;
-  yellow_cards?: number;
-  red_cards?: number;
+  shots_on_target?: number | null;
+  saves?: number | null;
+  corners?: number | null;
+  fouls?: number | null;
+  offsides?: number | null;
+  yellow_cards?: number | null;
+  red_cards?: number | null;
 };
 
 export type ReconcileGkInput = {
@@ -176,14 +177,18 @@ export async function reconcileMatchResult(
     for (const gk of input.goalkeepers) {
       const { data: existingLineup } = (await supabase
         .from("match_lineups")
-        .select("players")
+        .select("players, status")
         .eq("match_id", matchId)
         .eq("team_id", gk.team_id)
         .maybeSingle()) as {
-        data: { players: Array<Record<string, unknown>> | null } | null;
+        data: { players: Array<Record<string, unknown>> | null; status: string | null } | null;
       };
 
       const prev = Array.isArray(existingLineup?.players) ? existingLineup!.players! : [];
+      const prevStarters = prev.filter((p) => p.is_starting === true).length;
+      // A GK-only write is a partial sheet. Only keep a confirmed status when a full XI already exists.
+      const sheetStatus =
+        existingLineup?.status === "confirmed" && prevStarters >= 11 ? "confirmed" : "predicted";
       const withoutGk = prev.filter((p) => String(p.role ?? "").toUpperCase() !== "GK");
       const keepers =
         gk.keepers?.length
@@ -214,7 +219,7 @@ export async function reconcileMatchResult(
           match_id: matchId,
           team_id: gk.team_id,
           players,
-          status: "confirmed",
+          status: sheetStatus,
           submitted_at: new Date().toISOString(),
           published_at: new Date().toISOString(),
         } as Record<string, unknown>,
@@ -251,13 +256,13 @@ export async function reconcileMatchResult(
         {
           match_id: matchId,
           team_id: row.team_id,
-          shots_on_target: row.shots_on_target ?? 0,
-          saves: row.saves ?? 0,
-          corners: row.corners ?? 0,
-          fouls: row.fouls ?? 0,
-          offsides: row.offsides ?? 0,
-          yellow_cards: row.yellow_cards ?? 0,
-          red_cards: row.red_cards ?? 0,
+          shots_on_target: row.shots_on_target ?? null,
+          saves: row.saves ?? null,
+          corners: row.corners ?? null,
+          fouls: row.fouls ?? null,
+          offsides: row.offsides ?? null,
+          yellow_cards: row.yellow_cards ?? null,
+          red_cards: row.red_cards ?? null,
           updated_at: new Date().toISOString(),
         } as Record<string, unknown>,
         { onConflict: "match_id,team_id" }

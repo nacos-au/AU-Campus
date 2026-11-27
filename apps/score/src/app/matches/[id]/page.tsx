@@ -23,6 +23,7 @@ import {
 import {
   fetchMatchById,
   fetchMatchEvents,
+  fetchMatchTeamStats,
   fetchPeriodScores,
   fetchSetScores,
   fetchTrackResults,
@@ -37,6 +38,7 @@ import {
 } from "@/lib/match/podium";
 import { getManOfTheMatch, getMatchMeta } from "@/lib/match/match-meta";
 import { supportsHeadToHead } from "@/lib/match/head-to-head";
+import { PARKED_FEATURES } from "@/lib/match/parked-features";
 import { notFound } from "next/navigation";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -77,6 +79,7 @@ export default async function MatchPage({
   const activeSport = parseSportParam(sport ?? matchSport);
   const config = getSportConfig(matchSport);
   const events = await fetchMatchEvents(id);
+  const teamStats = await fetchMatchTeamStats(id);
   const livePeriodScores = await fetchPeriodScores(id);
   const periodScores = livePeriodScores.length ? livePeriodScores : getPeriodScoresForMatch(id);
   const liveSetScores = await fetchSetScores(id);
@@ -148,6 +151,7 @@ export default async function MatchPage({
               <MatchPageLiveBlock
                 match={match}
                 events={events}
+                teamStats={teamStats}
                 sport={matchSport}
                 isEventSport={config.isEventSport}
               />
@@ -157,7 +161,7 @@ export default async function MatchPage({
         </div>
 
         <div className="mx-auto max-w-[1200px] space-y-10 px-4 py-10 sm:px-6">
-          {podium && podium.entries.length > 0 && (
+          {!PARKED_FEATURES.finalPodium && podium && podium.entries.length > 0 && (
             <PodiumDisplay podium={podium} sport={matchSport} />
           )}
 

@@ -7,6 +7,15 @@ import {
   isPredictedLineupWindow,
   lineupStatusLabel,
 } from "@/lib/match/lineup-window";
+import {
+  completeStartingXi,
+  DEFAULT_FORMATION,
+  FOOTBALL_FORMATIONS,
+  normaliseAvailability,
+  type PoolPlayer,
+  type SheetEntry,
+} from "@/lib/match/lineup-merge";
+import { validateLineupSheet } from "@/lib/match/lineup-validate";
 import type { LineupSheetStatus } from "@/lib/types/database";
 import { cn } from "@/lib/utils/cn";
 
@@ -45,6 +54,8 @@ export function AdminMatchLineupPanel({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [dragId, setDragId] = useState<string | null>(null);
+  const [formation, setFormation] = useState(DEFAULT_FORMATION);
+  const [autoFilled, setAutoFilled] = useState(0);
   const predictedWindow = isPredictedLineupWindow(scheduledAt);
 
   const byId = useMemo(() => new Map(pool.map((p) => [p.player_id, p])), [pool]);
@@ -55,20 +66,57 @@ export function AdminMatchLineupPanel({
         fetch(`/api/competitions/${tournamentId}/roster?teamId=${encodeURIComponent(teamId)}`),
         fetch(`/api/matches/${matchId}/lineup?teamId=${encodeURIComponent(teamId)}`),
       ]);
-      const rosterJson = (await rosterRes.json()) as { nominated?: CompetitionRosterPlayer[] };
-      setPool(rosterJson.nominated ?? []);
+      const rosterJson = (await rosterRes.json()) as {
+        nominated?: CompetitionRosterPlayer[];
+        formation?: string;
+      };
+      const nominated = rosterJson.nominated ?? [];
+      setPool(nominated);
 
       const lineupJson = (await lineupRes.json()) as {
         lineup?: {
-          players?: Array<{ player_id: string; is_starting: boolean; is_captain?: boolean }>;
+          players?: Array<{ player_id: string; is_starting: boolean; is_captain?: boolean; role?: string | null; jersey_number?: number | null }>;
           status?: LineupSheetStatus;
           coach_name?: string | null;
+          formation?: string | null;
         } | null;
       };
-      const players = lineupJson.lineup?.players ?? [];
-      setXi(players.filter((p) => p.is_starting).map((p) => p.player_id));
-      setBench(players.filter((p) => !p.is_starting).map((p) => p.player_id));
-      setCaptainId(players.find((p) => p.is_captain)?.player_id ?? null);
+      const storedFormation = lineupJson.lineup?.formation ?? rosterJson.formation ?? DEFAULT_FORMATION;
+      setFormation(storedFormation);
+
+      // Predicted XI: a missing or partial sheet is completed from the squad.
+      // Named starters stay put; the rest of the squad sits on the bench.
+      const stored = lineupJson.lineup?.players ?? [];
+      const sheet: SheetEntry[] = stored.map((p) => ({
+        player_id: p.player_id,
+        is_starting: p.is_starting,
+        role: p.role ?? null,
+        is_captain: p.is_captain === true,
+        jersey_number: p.jersey_number ?? null,
+      }));
+      const poolPlayers: PoolPlayer[] = nominated.map((p) => ({
+        player_id: p.player_id,
+        position: p.position,
+        jersey_number: p.jersey_number,
+        available: normaliseAvailability(p.availability) === "available",
+      }));
+      const completed = completeStartingXi({
+        sheet,
+        pool: poolPlayers,
+        starters: maxStarters,
+        formation: storedFormation,
+      });
+      setAutoFilled(completed.autoFilledIds.length);
+      setXi(completed.players.filter((p) => p.is_starting).map((p) => p.player_id));
+      setBench(completed.players.filter((p) => !p.is_starting).map((p) => p.player_id));
+      const captainFromSheet = completed.players.find((p) => p.is_captain && p.is_starting)?.player_id;
+      const squadCaptain = nominated.find((p) => p.is_captain)?.player_id;
+      const captainCandidate = captainFromSheet ?? squadCaptain ?? null;
+      setCaptainId(
+        captainCandidate && completed.players.some((p) => p.is_starting && p.player_id === captainCandidate)
+          ? captainCandidate
+          : null
+      );
       if (lineupJson.lineup?.coach_name) setCoachName(lineupJson.lineup.coach_name);
       else if (defaultCoach) setCoachName(defaultCoach);
       if (lineupJson.lineup?.status) {
@@ -79,7 +127,7 @@ export function AdminMatchLineupPanel({
     } catch {
       setPool([]);
     }
-  }, [tournamentId, teamId, matchId, scheduledAt, defaultCoach]);
+  }, [tournamentId, teamId, matchId, scheduledAt, defaultCoach, maxStarters]);
 
   useEffect(() => {
     void load();
@@ -88,6 +136,22 @@ export function AdminMatchLineupPanel({
   const unused = pool.filter(
     (p) => !xi.includes(p.player_id) && !bench.includes(p.player_id)
   );
+
+  const warnings = useMemo(() => {
+    const players: SheetEntry[] = [
+      ...xi.map((id) => ({ player_id: id, is_starting: true, is_captain: captainId === id })),
+      ...bench.map((id) => ({ player_id: id, is_starting: false, is_captain: false })),
+    ];
+    return validateLineupSheet({
+      players,
+      starters: maxStarters,
+      formation: maxStarters === 11 ? formation : null,
+      squadIds: new Set(pool.map((p) => p.player_id)),
+      suspendedIds: new Set(),
+      availability: new Map(pool.map((p) => [p.player_id, normaliseAvailability(p.availability)])),
+      mode: "staff",
+    }).warnings;
+  }, [xi, bench, captainId, formation, pool, maxStarters]);
 
   function removeFromAll(playerId: string) {
     setXi((prev) => prev.filter((id) => id !== playerId));
@@ -149,6 +213,7 @@ export function AdminMatchLineupPanel({
           players,
           status,
           coach_name: coachName.trim() || null,
+          formation: maxStarters === 11 ? formation : null,
         }),
       });
       const json = (await res.json()) as { error?: string; status?: LineupSheetStatus };
@@ -156,6 +221,7 @@ export function AdminMatchLineupPanel({
         setError(json.error ?? "Could not save lineup");
         return;
       }
+      setAutoFilled(0);
       if (json.status) setStatus(json.status);
       setMessage(`${lineupStatusLabel(json.status ?? status)} saved for ${teamName}.`);
     } catch {
@@ -193,6 +259,35 @@ export function AdminMatchLineupPanel({
           <option value="confirmed">Confirmed</option>
         </select>
       </label>
+
+      {maxStarters === 11 && (
+        <label className="block text-xs">
+          <span className="font-semibold text-accent/70">Formation</span>
+          <select
+            className="mt-1 w-full rounded-lg border border-rule px-2 py-1.5 text-sm"
+            value={formation}
+            onChange={(e) => setFormation(e.target.value)}
+          >
+            {FOOTBALL_FORMATIONS.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {autoFilled > 0 && (
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+          {autoFilled} starter{autoFilled === 1 ? " was" : "s were"} filled from the squad to make a full XI.
+          Check them, then save.
+        </p>
+      )}
+      {warnings.map((w) => (
+        <p key={w} className="rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-800">
+          {w}
+        </p>
+      ))}
 
       <label className="block text-xs">
         <span className="font-semibold text-accent/70">Coach</span>

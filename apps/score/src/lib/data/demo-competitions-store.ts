@@ -16,25 +16,50 @@ export type DemoTournamentRosterEntry = {
   team_id: string;
   player_id: string;
   jersey_number: number | null;
+  is_captain: boolean;
   added_at: string;
 };
 
-let created: DemoTournamentMeta[] = [];
-let rosters: DemoTournamentRosterEntry[] = [];
-let rosterSeq = 0;
+export type DemoAvailabilityRecord = {
+  availability: "available" | "doubtful" | "injured" | "unavailable";
+  note: string | null;
+};
+
+/**
+ * Kept on globalThis so API routes and server-rendered pages (separate module
+ * graphs in dev) see the same demo competitions, rosters, and availability.
+ */
+type CompetitionsDemoState = {
+  created: DemoTournamentMeta[];
+  rosters: DemoTournamentRosterEntry[];
+  rosterSeq: number;
+  /** Keyed `${teamId}:${playerId}` — availability is per player per club. */
+  availability: Map<string, DemoAvailabilityRecord>;
+  /** Keyed `${tournamentId}:${teamId}`. */
+  formations: Map<string, string>;
+};
+const demoState: CompetitionsDemoState = ((globalThis as typeof globalThis & {
+  __auScoreDemoCompetitions?: CompetitionsDemoState;
+}).__auScoreDemoCompetitions ??= {
+  created: [],
+  rosters: [],
+  rosterSeq: 0,
+  availability: new Map(),
+  formations: new Map(),
+});
 
 export function listCreatedDemoTournaments(sportId?: string): DemoTournamentMeta[] {
-  return sportId ? created.filter((t) => t.sport_id === sportId) : [...created];
+  return sportId ? demoState.created.filter((t) => t.sport_id === sportId) : [...demoState.created];
 }
 
 export function getCreatedDemoTournament(id: string): DemoTournamentMeta | null {
-  return created.find((t) => t.id === id) ?? null;
+  return demoState.created.find((t) => t.id === id) ?? null;
 }
 
 export function archiveDemoTournament(id: string): boolean {
-  const idx = created.findIndex((t) => t.id === id);
+  const idx = demoState.created.findIndex((t) => t.id === id);
   if (idx < 0) return false;
-  created = created.map((t) => (t.id === id ? { ...t, is_draft: true } : t));
+  demoState.created = demoState.created.map((t) => (t.id === id ? { ...t, is_draft: true } : t));
   return true;
 }
 
@@ -47,7 +72,7 @@ export function registerDemoTournament(
     config: opts?.config ?? {},
     team_ids: opts?.team_ids ?? [],
   };
-  created = [...created, meta];
+  demoState.created = [...demoState.created, meta];
   return meta;
 }
 
@@ -55,7 +80,7 @@ export function listDemoTournamentRosters(
   tournamentId: string,
   teamId?: string | null
 ): DemoTournamentRosterEntry[] {
-  return rosters.filter(
+  return demoState.rosters.filter(
     (r) => r.tournament_id === tournamentId && (!teamId || r.team_id === teamId)
   );
 }
@@ -66,31 +91,77 @@ export function addDemoTournamentRoster(input: {
   player_id: string;
   jersey_number?: number | null;
 }): DemoTournamentRosterEntry | { error: string } {
-  if (rosters.some((r) => r.tournament_id === input.tournament_id && r.player_id === input.player_id)) {
+  if (demoState.rosters.some((r) => r.tournament_id === input.tournament_id && r.player_id === input.player_id)) {
     return { error: "Player is already on this competition squad" };
   }
-  rosterSeq += 1;
+  demoState.rosterSeq += 1;
   const row: DemoTournamentRosterEntry = {
-    id: `trost-${Date.now().toString(36)}-${rosterSeq}`,
+    id: `trost-${Date.now().toString(36)}-${demoState.rosterSeq}`,
     tournament_id: input.tournament_id,
     team_id: input.team_id,
     player_id: input.player_id,
     jersey_number: input.jersey_number ?? null,
+    is_captain: false,
     added_at: new Date().toISOString(),
   };
-  rosters = [...rosters, row];
+  demoState.rosters = [...demoState.rosters, row];
   return row;
+}
+
+export function updateDemoTournamentRoster(
+  tournamentId: string,
+  teamId: string,
+  playerId: string,
+  patch: { jersey_number?: number | null; is_captain?: boolean }
+): boolean {
+  const target = demoState.rosters.find(
+    (r) => r.tournament_id === tournamentId && r.team_id === teamId && r.player_id === playerId
+  );
+  if (!target) return false;
+  demoState.rosters = demoState.rosters.map((r) => {
+    if (r.tournament_id !== tournamentId || r.team_id !== teamId) return r;
+    if (r.player_id === playerId) {
+      return {
+        ...r,
+        ...(patch.jersey_number !== undefined ? { jersey_number: patch.jersey_number } : {}),
+        ...(patch.is_captain !== undefined ? { is_captain: patch.is_captain } : {}),
+      };
+    }
+    // Only one captain per side in a competition.
+    return patch.is_captain ? { ...r, is_captain: false } : r;
+  });
+  return true;
+}
+
+export function getDemoAvailability(teamId: string, playerId: string): DemoAvailabilityRecord {
+  return demoState.availability.get(`${teamId}:${playerId}`) ?? { availability: "available", note: null };
+}
+
+export function setDemoAvailability(
+  teamId: string,
+  playerId: string,
+  record: DemoAvailabilityRecord
+): void {
+  demoState.availability.set(`${teamId}:${playerId}`, record);
+}
+
+export function getDemoFormation(tournamentId: string, teamId: string): string | null {
+  return demoState.formations.get(`${tournamentId}:${teamId}`) ?? null;
+}
+
+export function setDemoFormation(tournamentId: string, teamId: string, formation: string): void {
+  demoState.formations.set(`${tournamentId}:${teamId}`, formation);
 }
 
 export function removeDemoTournamentRoster(
   tournamentId: string,
   playerId: string
 ): boolean {
-  const before = rosters.length;
-  rosters = rosters.filter(
+  const before = demoState.rosters.length;
+  demoState.rosters = demoState.rosters.filter(
     (r) => !(r.tournament_id === tournamentId && r.player_id === playerId)
   );
-  return rosters.length < before;
+  return demoState.rosters.length < before;
 }
 
 /** Next Saturday at 16:00 local time, `weeks` weeks ahead. */

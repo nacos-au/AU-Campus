@@ -8,10 +8,23 @@ export interface TimelineMarker {
   teamCode: string;
 }
 
-/** Public clock label — omit unknown/manual placeholders like "?" entirely. */
-export function displayMatchTime(matchTime: string | null | undefined): string | null {
+const FOOTBALL_MINUTE = /^\d+(\+\d+)?'?$/;
+const FOOTBALL_ET_MINUTE = /^ET\s*\d+'?$/i;
+
+/**
+ * Public clock label. Omits unknown/manual placeholders like "?".
+ * Football minutes get a trailing apostrophe: `23` -> `23'`, `90+3` -> `90+3'`.
+ */
+export function displayMatchTime(
+  matchTime: string | null | undefined,
+  sport?: string
+): string | null {
   const t = (matchTime ?? "").trim();
   if (!t || t === "?" || t === "—" || t.toLowerCase() === "unknown") return null;
+  if (sport === "football") {
+    if (FOOTBALL_MINUTE.test(t)) return t.endsWith("'") ? t : `${t}'`;
+    if (FOOTBALL_ET_MINUTE.test(t)) return t.endsWith("'") ? t : `${t}'`;
+  }
   return t;
 }
 

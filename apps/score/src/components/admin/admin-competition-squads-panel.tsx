@@ -1,17 +1,26 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Users } from "lucide-react";
+import { Star, Users } from "lucide-react";
 import type {
   CompetitionListItem,
   CompetitionRosterPlayer,
   CompetitionTeamRow,
 } from "@/lib/data/competition-rosters";
+import { AdminLineupLinksPanel } from "@/components/admin/admin-lineup-links-panel";
+import { DEFAULT_FORMATION, FOOTBALL_FORMATIONS } from "@/lib/match/lineup-merge";
 import { formatPositionsDisplay } from "@/lib/roster/positions";
 import { SPORT_LABELS, type SportId, sportToDbId } from "@/lib/utils/sport";
 import { cn } from "@/lib/utils/cn";
 
 const inputClass = "mt-1 w-full rounded-lg border border-rule px-3 py-2 text-sm";
+
+const AVAILABILITY_OPTIONS = [
+  { value: "available", label: "Available" },
+  { value: "doubtful", label: "Doubtful" },
+  { value: "injured", label: "Injured" },
+  { value: "unavailable", label: "Unavailable" },
+] as const;
 
 export function AdminCompetitionSquadsPanel({
   focusCompetitionId,
@@ -29,6 +38,7 @@ export function AdminCompetitionSquadsPanel({
   const [teamId, setTeamId] = useState("");
   const [nominated, setNominated] = useState<CompetitionRosterPlayer[]>([]);
   const [pool, setPool] = useState<CompetitionRosterPlayer[]>([]);
+  const [formation, setFormation] = useState(DEFAULT_FORMATION);
   const [maxSquad, setMaxSquad] = useState(25);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -114,6 +124,7 @@ export function AdminCompetitionSquadsPanel({
         nominated?: CompetitionRosterPlayer[];
         pool?: CompetitionRosterPlayer[];
         max_squad_size?: number;
+        formation?: string;
         error?: string;
       };
       if (!res.ok) {
@@ -122,6 +133,7 @@ export function AdminCompetitionSquadsPanel({
       }
       setNominated(json.nominated ?? []);
       setPool(json.pool ?? []);
+      setFormation(json.formation ?? DEFAULT_FORMATION);
       if (json.max_squad_size) setMaxSquad(json.max_squad_size);
     } catch {
       setError("Could not load squad");
@@ -153,6 +165,30 @@ export function AdminCompetitionSquadsPanel({
       await loadCompetitions(sport);
     } catch {
       setError("Could not add player");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function patchSquad(body: Record<string, unknown>, okMessage: string) {
+    setError("");
+    setMessage("");
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/competitions/${competitionId}/roster`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ team_id: teamId, ...body }),
+      });
+      const json = (await res.json()) as { error?: string };
+      if (!res.ok) {
+        setError(json.error ?? "Could not save");
+        return;
+      }
+      setMessage(okMessage);
+      await loadRoster(competitionId, teamId);
+    } catch {
+      setError("Could not save");
     } finally {
       setBusy(false);
     }
@@ -313,9 +349,31 @@ export function AdminCompetitionSquadsPanel({
       {teamRow && (
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
           <div>
-            <h3 className="font-display text-sm font-extrabold">
-              Competition squad · {teamRow.roster_count}/{maxSquad}
-            </h3>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-display text-sm font-extrabold">
+                Competition squad · {teamRow.roster_count}/{maxSquad}
+              </h3>
+              {sport === "football" && (
+                <label className="flex items-center gap-2 text-xs font-semibold">
+                  Formation
+                  <select
+                    aria-label="Team formation"
+                    className="rounded border border-rule px-2 py-1 text-xs"
+                    value={formation}
+                    disabled={busy}
+                    onChange={(e) =>
+                      void patchSquad({ formation: e.target.value }, `Formation set to ${e.target.value}.`)
+                    }
+                  >
+                    {FOOTBALL_FORMATIONS.map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
             <ul className="mt-2 divide-y divide-rule rounded-lg border border-rule">
               {nominated.length === 0 ? (
                 <li className="px-3 py-6 text-center text-sm text-accent/60">
@@ -323,13 +381,13 @@ export function AdminCompetitionSquadsPanel({
                 </li>
               ) : (
                 nominated.map((p) => (
-                  <li key={p.player_id} className="flex items-center gap-2 px-3 py-2 text-sm">
+                  <li key={p.player_id} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold">
                         {p.first_name} {p.last_name}
-                        {p.jersey_number != null && (
-                          <span className="ml-1 font-mono text-xs text-accent/50">
-                            #{p.jersey_number}
+                        {p.is_captain && (
+                          <span className="ml-1 rounded bg-accent/10 px-1 text-[10px] font-bold text-accent">
+                            C
                           </span>
                         )}
                       </p>
@@ -338,6 +396,66 @@ export function AdminCompetitionSquadsPanel({
                         {p.matric_number ? ` · ${p.matric_number}` : ""}
                       </p>
                     </div>
+                    <label className="flex items-center gap-1 text-xs text-accent/70">
+                      #
+                      <input
+                        aria-label={`Jersey for ${p.first_name} ${p.last_name}`}
+                        className="w-14 rounded border border-rule px-1.5 py-0.5 text-xs"
+                        inputMode="numeric"
+                        defaultValue={p.jersey_number ?? ""}
+                        disabled={busy}
+                        onBlur={(e) => {
+                          const raw = e.target.value.trim();
+                          const next = raw === "" ? null : Number(raw);
+                          if (next === p.jersey_number) return;
+                          if (next !== null && (!Number.isInteger(next) || next < 1 || next > 99)) {
+                            setError("Jersey number must be between 1 and 99.");
+                            e.target.value = String(p.jersey_number ?? "");
+                            return;
+                          }
+                          void patchSquad(
+                            { player_id: p.player_id, jersey_number: next },
+                            "Jersey saved."
+                          );
+                        }}
+                      />
+                    </label>
+                    <select
+                      aria-label={`Availability for ${p.first_name} ${p.last_name}`}
+                      className="rounded border border-rule px-1.5 py-0.5 text-xs"
+                      value={p.availability}
+                      disabled={busy}
+                      onChange={(e) =>
+                        void patchSquad(
+                          { player_id: p.player_id, availability: e.target.value },
+                          "Availability saved."
+                        )
+                      }
+                    >
+                      {AVAILABILITY_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      title="Set as captain"
+                      onClick={() =>
+                        void patchSquad(
+                          { player_id: p.player_id, is_captain: true },
+                          `${p.first_name} ${p.last_name} is captain.`
+                        )
+                      }
+                      className={cn(
+                        "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-bold disabled:opacity-40",
+                        p.is_captain ? "border-accent bg-accent/10 text-accent" : "border-rule text-accent/70"
+                      )}
+                    >
+                      <Star className="h-3 w-3" />
+                      Captain
+                    </button>
                     <button
                       type="button"
                       disabled={busy}
@@ -389,6 +507,10 @@ export function AdminCompetitionSquadsPanel({
 
       {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       {message && <p className="mt-3 text-sm text-accent/80">{message}</p>}
+
+      {competitionId && active && (
+        <AdminLineupLinksPanel key={competitionId} competitionId={competitionId} />
+      )}
     </div>
   );
 }

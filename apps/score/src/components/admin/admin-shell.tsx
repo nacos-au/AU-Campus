@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   CalendarClock,
   CalendarDays,
+  ClipboardCheck,
   Handshake,
   LayoutGrid,
   MessageSquare,
@@ -31,6 +32,7 @@ export const ADMIN_NAV: AdminNavItem[] = [
   { href: "/admin/competitions", label: "Competitions", icon: Trophy },
   { href: "/admin/fixtures", label: "Fixtures", icon: CalendarClock, adminOnly: true },
   { href: "/admin/matches", label: "Matches", icon: Handshake },
+  { href: "/admin/lineups", label: "Lineups", icon: ClipboardCheck },
   { href: "/admin/awards", label: "Awards", icon: Trophy },
   { href: "/admin/feedback", label: "Feedback", icon: MessageSquare, adminOnly: true },
 ];
@@ -115,6 +117,13 @@ export function AdminHubCards({ staff }: { staff?: SessionStaff | null }) {
           },
         ]
       : []),
+    {
+      href: "/admin/lineups",
+      icon: ClipboardCheck,
+      title: "Lineup approvals",
+      body: "Review starting XIs sent by team reps through their private links. Nothing goes live until you approve it.",
+      cta: "Review XIs",
+    },
     {
       href: "/admin/matches",
       icon: CalendarDays,

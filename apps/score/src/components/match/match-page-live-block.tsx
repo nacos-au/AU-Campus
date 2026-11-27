@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Match } from "@/lib/types/database";
 import type { DemoMatchEvent } from "@/lib/data/demo-match-details";
+import type { TeamStatRecord } from "@/lib/match/match-stats";
 import { MatchLiveSection } from "@/components/match/match-live-section";
 import { TeamCrest } from "@/components/ui/team-crest";
 import { useMatchLifecycle } from "@/lib/match/use-match-lifecycle";
@@ -17,16 +18,19 @@ import {
 export function MatchPageLiveBlock({
   match: initialMatch,
   events: initialEvents,
+  teamStats: initialTeamStats = [],
   sport,
   isEventSport,
 }: {
   match: Match;
   events: DemoMatchEvent[];
+  teamStats?: TeamStatRecord[];
   sport: SportId;
   isEventSport: boolean;
 }) {
   const [match, setMatch] = useState(initialMatch);
   const [events, setEvents] = useState(initialEvents);
+  const [teamStats, setTeamStats] = useState<TeamStatRecord[]>(initialTeamStats);
   const lifecycle = useMatchLifecycle(initialMatch.id, {
     status: initialMatch.status as "scheduled" | "live" | "completed",
     scheduledAt: initialMatch.scheduled_at,
@@ -42,10 +46,15 @@ export function MatchPageLiveBlock({
     try {
       const res = await fetch(`/api/matches/${initialMatch.id}/live`);
       if (!res.ok) return;
-      const json = (await res.json()) as { match?: Match; events?: DemoMatchEvent[] };
+      const json = (await res.json()) as {
+        match?: Match;
+        events?: DemoMatchEvent[];
+        team_stats?: TeamStatRecord[];
+      };
       if (!json.match) return;
       setMatch(json.match);
       if (json.events) setEvents(json.events);
+      if (json.team_stats) setTeamStats(json.team_stats);
       applyServerClock(clockFromServer(json.match));
       reconcileFromServer(json.match.status as "scheduled" | "live" | "completed");
     } catch {
@@ -88,6 +97,7 @@ export function MatchPageLiveBlock({
     <MatchLiveSection
       match={match}
       events={events}
+      teamStats={teamStats}
       status={status}
       sport={sport}
       liveTime={status === "live" ? formatTime() : undefined}

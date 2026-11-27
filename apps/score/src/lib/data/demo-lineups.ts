@@ -4,7 +4,8 @@ import type { LineupSheetStatus, Player } from "@/lib/types/database";
 
 export interface PitchLineupSlot {
   player_id: string;
-  jersey_number: number;
+  /** Null when the jersey number was not logged. Never invented. */
+  jersey_number: number | null;
   is_captain?: boolean;
 }
 
@@ -32,6 +33,7 @@ export interface SubmittedLineup {
   status?: LineupSheetStatus;
   published_at?: string | null;
   coach_name?: string | null;
+  formation?: string | null;
 }
 
 /** 4-3-3: GK, back four (LB–RB), midfield three, front three (LW–ST–RW). */
@@ -104,7 +106,22 @@ const DEMO_PITCH_LINEUPS: TeamPitchLineup[] = [
   { match_id: "match-3", team_id: "team-csc-fc", formation: "4-3-3", rows: CSC_433 },
 ];
 
-const DEMO_SUBMITTED_LINEUPS: SubmittedLineup[] = [];
+/**
+ * Lineups saved in demo mode (staff entry or an approved rep XI). Kept on globalThis so
+ * API routes and server-rendered match pages share them.
+ */
+const DEMO_SUBMITTED_LINEUPS: SubmittedLineup[] = ((globalThis as typeof globalThis & {
+  __auScoreDemoSubmittedLineups?: SubmittedLineup[];
+}).__auScoreDemoSubmittedLineups ??= []);
+
+/** Save a demo lineup for one side of a match (replaces any earlier one for that side). */
+export function setDemoSubmittedLineup(lineup: SubmittedLineup): void {
+  const idx = DEMO_SUBMITTED_LINEUPS.findIndex(
+    (l) => l.match_id === lineup.match_id && l.team_id === lineup.team_id
+  );
+  if (idx >= 0) DEMO_SUBMITTED_LINEUPS.splice(idx, 1);
+  DEMO_SUBMITTED_LINEUPS.push(lineup);
+}
 
 export function getPitchLineup(matchId: string, teamId: string): TeamPitchLineup | null {
   return DEMO_PITCH_LINEUPS.find((l) => l.match_id === matchId && l.team_id === teamId) ?? null;
@@ -177,9 +194,9 @@ export function buildTeamPitchLineup(opts: {
 }): TeamPitchLineup | null {
   if (!opts.starters.length) return null;
   const formation = opts.formation?.trim() || DEFAULT_FORMATION;
-  const slots: PitchLineupSlot[] = opts.starters.map((p, i) => ({
+  const slots: PitchLineupSlot[] = opts.starters.map((p) => ({
     player_id: p.id,
-    jersey_number: p.jersey_number && p.jersey_number > 0 ? p.jersey_number : i + 1,
+    jersey_number: p.jersey_number && p.jersey_number > 0 ? p.jersey_number : null,
     is_captain: p.is_captain,
   }));
   const rows = buildPitchRows(formation, slots);
