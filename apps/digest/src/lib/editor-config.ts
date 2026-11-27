@@ -1,7 +1,9 @@
 import ImageExt from "@tiptap/extension-image";
 import { Placeholder } from "@tiptap/extensions";
 import StarterKit from "@tiptap/starter-kit";
-import type { EditorProps } from "@tiptap/pm/view";
+import { Fragment, Slice, type Node as PMNode } from "@tiptap/pm/model";
+import type { EditorProps, EditorView } from "@tiptap/pm/view";
+import { markdownToDoc } from "./paste-markdown";
 
 /** Image node with an alignment attribute (center / left / wide). */
 export const AlignedImage = ImageExt.extend({
@@ -23,7 +25,7 @@ export const AlignedImage = ImageExt.extend({
 
 export function createBodyExtensions(placeholder = "Tell your story…") {
   return [
-    StarterKit.configure({ link: { openOnClick: false } }),
+    StarterKit.configure({ codeBlock: false, link: { openOnClick: false } }),
     AlignedImage.configure({ inline: false }),
     Placeholder.configure({ placeholder }),
   ];
@@ -94,6 +96,28 @@ export function cleanPastedHTML(html: string): string {
   return doc.body.innerHTML;
 }
 
+function insertMarkdown(view: EditorView, text: string): boolean {
+  const { schema } = view.state;
+  let nodes: PMNode[];
+  try {
+    nodes = markdownToDoc(text).map((n) => schema.nodeFromJSON(n));
+  } catch {
+    return false;
+  }
+  if (nodes.length === 0) return false;
+  const first = nodes[0];
+  const last = nodes[nodes.length - 1];
+  const slice = new Slice(
+    Fragment.fromArray(nodes),
+    first.type.name === "paragraph" ? 1 : 0,
+    last.type.name === "paragraph" ? 1 : 0
+  );
+  view.dispatch(
+    view.state.tr.replaceSelection(slice).setMeta("paste", true).scrollIntoView()
+  );
+  return true;
+}
+
 export function buildEditorProps(opts: {
   /** Called with image files pasted or dropped into the editor. */
   onImageFiles: (files: File[], pos?: number) => void;
@@ -104,17 +128,27 @@ export function buildEditorProps(opts: {
     transformPastedText(text) {
       return text.replace(/\u00a0/g, " ").replace(/\r\n/g, "\n");
     },
-    handlePaste(_view, event) {
+    handlePaste(view, event) {
       const data = event.clipboardData;
       if (!data) return false;
+      const text = data.getData("text/plain");
       const files = imageFilesFrom(data.files);
-      if (files.length === 0) return false;
       // Word/Docs also put a picture of the text on the clipboard; only treat
       // it as an image paste when there is no text to paste.
-      if (data.getData("text/plain").trim()) return false;
-      event.preventDefault();
-      opts.onImageFiles(files);
-      return true;
+      if (files.length > 0 && !text.trim()) {
+        event.preventDefault();
+        opts.onImageFiles(files);
+        return true;
+      }
+      if (!text.trim() || view.state.selection.$from.parent.type.spec.code) {
+        return false;
+      }
+      // Cursor / VS Code (and plain-text sources) send line-based text whose
+      // HTML, if any, is syntax-highlight markup rather than document structure.
+      const fromIde = !!data.getData("vscode-editor-data");
+      const plainOnly = !data.getData("text/html");
+      if (!fromIde && !(plainOnly && /\n/.test(text.trim()))) return false;
+      return insertMarkdown(view, text);
     },
     handleDrop(view, event, _slice, moved) {
       if (moved) return false;

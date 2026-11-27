@@ -1,5 +1,6 @@
 import { memo, type ReactNode } from "react";
 import { ImageInfo } from "@/components/ImageInfo";
+import { normalizeBodyDoc } from "@/lib/body-normalize";
 import { isExternalHref, safeHref } from "@/lib/safe-link";
 
 interface Mark {
@@ -109,7 +110,11 @@ function renderNode(node: Node, key: number): ReactNode {
 /** Server-side renderer for Tiptap JSON documents. */
 function RichTextInner({ doc }: { doc: unknown }) {
   if (!doc || typeof doc !== "object") return null;
-  return <div className="article-body">{renderNode(doc as Node, 0)}</div>;
+  return (
+    <div className="article-body">
+      {renderNode(normalizeBodyDoc(doc) as Node, 0)}
+    </div>
+  );
 }
 
 /** Memoized so parent re-renders do not recreate the DOM and wipe review marks. */

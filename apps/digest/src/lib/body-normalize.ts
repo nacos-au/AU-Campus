@@ -6,6 +6,8 @@
  * always agree.
  */
 
+import { markdownToDoc } from "./paste-markdown";
+
 export type DocNode = {
   type?: string;
   text?: string;
@@ -63,6 +65,12 @@ function splitInline(kids: DocNode[], inHeading: boolean): DocNode[][] {
 }
 
 function normalizeNode(node: DocNode): DocNode[] {
+  // Article bodies have no code blocks; older pastes from Cursor/VS Code
+  // landed the whole draft in one.
+  if (node.type === "codeBlock") {
+    const text = (node.content ?? []).map((k) => k.text ?? "").join("");
+    return markdownToDoc(text) as DocNode[];
+  }
   if (node.type === "paragraph" || node.type === "heading") {
     const kids = node.content ?? [];
     if (!hasStrayNewline(kids)) return [node];
@@ -96,7 +104,7 @@ export function bodyHasStrayNewlines(doc: unknown): boolean {
   let found = false;
   const walk = (n: DocNode) => {
     if (found) return;
-    if (n.type === "text" && n.text?.includes("\n")) {
+    if (n.type === "codeBlock" || (n.type === "text" && n.text?.includes("\n"))) {
       found = true;
       return;
     }

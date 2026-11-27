@@ -1,3 +1,4 @@
+import { normalizeBodyDoc } from "@/lib/body-normalize";
 import { wordDiff, type DiffSeg } from "@/lib/textDiff";
 
 type Node = {
@@ -143,7 +144,10 @@ function lcsOps(a: FlatBlock[], b: FlatBlock[]): Op[] {
 
 /** Block-level diff, with word-level changes inside blocks that were edited. */
 export function diffBodies(before: unknown, after: unknown): DiffBlock[] {
-  const ops = lcsOps(flattenBlocks(before), flattenBlocks(after));
+  const ops = lcsOps(
+    flattenBlocks(normalizeBodyDoc(before)),
+    flattenBlocks(normalizeBodyDoc(after))
+  );
   const out: DiffBlock[] = [];
   let k = 0;
   while (k < ops.length) {
