@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { uploadCover } from "@/lib/uploads";
+import { uploadBodyImage } from "@/lib/body-image";
 import { imageFileProblem } from "@/lib/editor-config";
 
 type Options = {
@@ -55,7 +55,7 @@ export function useEditorImages({
         for (const file of files) {
           const problem = imageFileProblem(file);
           if (problem) throw new Error(problem);
-          const url = await uploadCover(supabase, file, "articles", hintRef.current);
+          const url = await uploadBodyImage(supabase, file, hintRef.current);
           const node = { type: "image", attrs: { src: url, align: "center" } };
           const chain = editor.chain().focus();
           if (typeof at === "number") {
@@ -108,7 +108,7 @@ export function useEditorImages({
           const file = new File([blob], `pasted.${ext}`, { type: blob.type });
           const problem = imageFileProblem(file);
           if (problem) throw new Error(problem);
-          const url = await uploadCover(supabase, file, "articles", hintRef.current);
+          const url = await uploadBodyImage(supabase, file, hintRef.current);
           const current = findDataImage();
           if (current && current.src === target.src) {
             const node = editor.state.doc.nodeAt(current.pos);

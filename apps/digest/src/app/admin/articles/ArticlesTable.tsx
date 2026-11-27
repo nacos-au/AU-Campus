@@ -10,7 +10,6 @@ import { createClient } from "@/lib/supabase/client";
 import { articlePublicPath } from "@/lib/articles";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
 import type { ArticleStatus, ArticleWithMeta, Section } from "@/lib/types";
-import { ReoptimizeImagesPanel } from "./ReoptimizeImagesPanel";
 
 interface Row extends ArticleWithMeta {
   article_revisions:
@@ -442,8 +441,6 @@ export function ArticlesTable({
           </button>
         ))}
       </div>
-
-      {isStaff && <ReoptimizeImagesPanel />}
 
       {error && (
         <p className="mt-4 border border-accent/30 bg-accent-soft px-3 py-2 text-sm text-accent">

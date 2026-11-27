@@ -17,6 +17,7 @@ import {
 } from "@/lib/articles";
 import { digestFeatures, isPublicSectionSlug } from "@/lib/features";
 import { uploadCover } from "@/lib/uploads";
+import { uploadBodyImage } from "@/lib/body-image";
 import { normalizeBodyDoc } from "@/lib/body-normalize";
 import { buildEditorProps, createBodyExtensions } from "@/lib/editor-config";
 import { useEditorImages } from "@/lib/editor-images";
@@ -555,12 +556,7 @@ export function ArticleComposer({
     setUploading(true);
     setError(null);
     try {
-      const url = await uploadCover(
-        supabase,
-        file,
-        "articles",
-        uploadNameHint()
-      );
+      const url = await uploadBodyImage(supabase, file, uploadNameHint());
       if (replace && editor.isActive("image")) {
         editor
           .chain()
