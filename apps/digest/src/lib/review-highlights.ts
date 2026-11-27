@@ -104,7 +104,7 @@ function rangeFromOffsets(
 }
 
 /** Map each char in whitespace-collapsed string back to original index. */
-function collapseWs(s: string): { norm: string; toOrig: number[] } {
+export function collapseWs(s: string): { norm: string; toOrig: number[] } {
   let norm = "";
   const toOrig: number[] = [];
   let sawSpace = true;
@@ -128,7 +128,7 @@ function collapseWs(s: string): { norm: string; toOrig: number[] } {
   return { norm, toOrig };
 }
 
-function findCandidates(haystack: string, needle: string): number[] {
+export function findCandidates(haystack: string, needle: string): number[] {
   const out: number[] = [];
   if (!needle) return out;
   let from = 0;
@@ -141,7 +141,7 @@ function findCandidates(haystack: string, needle: string): number[] {
   return out;
 }
 
-function pickCandidate(
+export function pickCandidate(
   full: string,
   candidates: number[],
   quoteLen: number,

@@ -76,6 +76,24 @@ export default async function ReviewPage({
   const sections = ((sectionRows ?? []) as Section[]).filter((s) =>
     isPublicSectionSlug(s.slug)
   );
+  // What the editor last reviewed: the live story for a pending edit, otherwise
+  // the snapshot taken when the piece was sent back to the writer.
+  let baselineBody: unknown = null;
+  if (isRevision) {
+    baselineBody = article.body;
+  } else if (state === "awaiting_writer" || state === "awaiting_editor") {
+    const { data: sentBack } = await supabase
+      .from("article_versions")
+      .select("snapshot")
+      .eq("article_id", id)
+      .eq("note", "Sent back to writer")
+      .order("version_no", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ snapshot: { body?: unknown } }>();
+    baselineBody = sentBack?.snapshot?.body ?? null;
+  }
+  const canEditBody = isAuthor && state === "awaiting_writer";
+
   const sectionId =
     typeof content.section_id === "number" && content.section_id
       ? content.section_id
@@ -102,6 +120,8 @@ export default async function ReviewPage({
         isSuperAdmin={isSuperAdmin}
         adminModeOn={adminModeOn}
         initialComments={(comments ?? []) as unknown as ReviewComment[]}
+        baselineBody={baselineBody}
+        canEditBody={canEditBody}
       />
 
       <section className="mt-10 border-t border-rule pt-6">

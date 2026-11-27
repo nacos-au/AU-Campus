@@ -4,12 +4,25 @@ import { useConfirm } from "@/components/ConfirmDialog";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { readingMinutes } from "@/lib/articles";
+import { countUntaggedImages, readingMinutes } from "@/lib/articles";
+import { diffBodies, diffHasChanges, diffSummary } from "@/lib/doc-diff";
 import { ImageInfo } from "@/components/ImageInfo";
 import { RichText } from "@/components/RichText";
+import { TrackedBody } from "@/components/TrackedBody";
+import {
+  FeedbackEditor,
+  type FeedbackEditorHandle,
+} from "@/components/FeedbackEditor";
 import { IconMoreVertical } from "@/components/icons";
 import {
   applyReviewHighlights,
@@ -54,6 +67,8 @@ export function ReviewClient({
   isSuperAdmin,
   adminModeOn,
   initialComments,
+  baselineBody,
+  canEditBody,
 }: {
   articleId: string;
   content: RevisionPayload;
@@ -70,6 +85,10 @@ export function ReviewClient({
   isSuperAdmin: boolean;
   adminModeOn: boolean;
   initialComments: ReviewComment[];
+  /** What the editor last reviewed (or the live story for a pending edit). */
+  baselineBody: unknown | null;
+  /** Author may fix the copy right here (story is back with the writer). */
+  canEditBody: boolean;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
@@ -94,6 +113,45 @@ export function ReviewClient({
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const hashHandled = useRef(false);
   const { confirm } = useConfirm();
+
+  type ViewMode = "clean" | "changes" | "edit";
+  const [liveBody, setLiveBody] = useState<unknown>(content.body);
+  const liveBodyRef = useRef<unknown>(content.body);
+  const editorHandle = useRef<FeedbackEditorHandle | null>(null);
+  const diffBlocks = useMemo(
+    () => (baselineBody ? diffBodies(baselineBody, liveBody) : null),
+    [baselineBody, liveBody]
+  );
+  const hasDiff = !!diffBlocks && diffHasChanges(diffBlocks);
+  const [mode, setMode] = useState<ViewMode>(() => {
+    if (canEditBody) return "edit";
+    if (baselineBody && diffHasChanges(diffBodies(baselineBody, content.body))) {
+      return "changes";
+    }
+    return "clean";
+  });
+
+  const handleBodyChange = useCallback((b: unknown) => {
+    liveBodyRef.current = b;
+    setLiveBody(b);
+  }, []);
+
+  const reportMissed = useCallback((ids: string[]) => {
+    setMissedIds((prev) => (prev.join("\0") === ids.join("\0") ? prev : ids));
+  }, []);
+
+  async function switchMode(next: ViewMode) {
+    if (next === mode) return;
+    if (mode === "edit") {
+      try {
+        await editorHandle.current?.flush();
+      } catch (e) {
+        setError((e as Error).message);
+        return;
+      }
+    }
+    setMode(next);
+  }
 
   const showSelfAssignTools = isSuperAdmin && adminModeOn;
 
@@ -140,7 +198,7 @@ export function ReviewClient({
     },
   });
 
-  const body = useMemo(() => <RichText doc={content.body} />, [content.body]);
+  const body = useMemo(() => <RichText doc={liveBody} />, [liveBody]);
 
   const highlightSpecs: HighlightSpec[] = useMemo(() => {
     const specs: HighlightSpec[] = comments
@@ -183,6 +241,9 @@ export function ReviewClient({
     .join("\u0000");
 
   function paintHighlights() {
+    // Only the read-only clean view is painted by hand; the editor draws its
+    // own highlights and the changes view mixes old and new text.
+    if (mode !== "clean") return;
     const root = bodyRef.current;
     if (!root) return;
     const { missed } = applyReviewHighlights(root, highlightSpecs);
@@ -193,10 +254,11 @@ export function ReviewClient({
   useLayoutEffect(() => {
     paintHighlights();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [quoteKey]);
+  }, [quoteKey, mode, liveBody]);
 
   // Recover if a parent re-render wiped imperative marks while quoteKey stayed put
   useLayoutEffect(() => {
+    if (mode !== "clean") return;
     const root = bodyRef.current;
     if (!root || highlightSpecs.length === 0) return;
     const missing = highlightSpecs.some(
@@ -354,6 +416,7 @@ export function ReviewClient({
   }
 
   function captureSelection() {
+    if (mode !== "clean") return;
     if (!bodyRef.current) return;
     const anchor = captureAnchorFromSelection(bodyRef.current);
     if (!anchor?.quote) return;
@@ -526,6 +589,45 @@ export function ReviewClient({
     router.refresh();
   }
 
+  async function submitRevisions() {
+    setError(null);
+    try {
+      await editorHandle.current?.flush();
+    } catch (e) {
+      return setError((e as Error).message);
+    }
+    const missing = countUntaggedImages({
+      coverUrl: content.cover_url,
+      coverCaption: content.cover_caption,
+      body: liveBodyRef.current,
+    });
+    if (missing > 0) {
+      return setError(
+        `Add a short description to every photo before sending (${missing} still ${
+          missing === 1 ? "needs" : "need"
+        } one).`
+      );
+    }
+    const open = comments.filter((c) => !c.resolved).length;
+    const ok = await confirm({
+      title: "Send back to the editor?",
+      body:
+        open > 0
+          ? `${open} editor comment${open === 1 ? " is" : "s are"} still open. You can mark them addressed first, or send now.`
+          : "Your revised copy goes back to the assigned editor.",
+      confirmLabel: "Submit revisions",
+    });
+    if (!ok) return;
+    setBusy(true);
+    const { error } = await supabase.rpc("submit_article", {
+      p_article_id: articleId,
+    });
+    setBusy(false);
+    if (error) return setError(error.message);
+    router.push("/admin/articles");
+    router.refresh();
+  }
+
   async function act(kind: "changes" | "approve" | "park" | "make_live") {
     const ok = await confirm(
       kind === "park"
@@ -644,18 +746,96 @@ export function ReviewClient({
           <p className="mt-3 text-sm font-semibold">By {content.byline}</p>
         )}
         <p className="mt-3 text-xs text-ink-soft">
-          {readingMinutes(content.body, {
+          {readingMinutes(liveBody, {
             extraImages: content.cover_url ? 1 : 0,
           })}{" "}
           min read
         </p>
+
+        {(canEditBody || diffBlocks) && (
+          <div className="mt-6 flex flex-wrap items-center gap-2 border-y border-rule py-2 text-xs">
+            {canEditBody && (
+              <button
+                type="button"
+                onClick={() => void switchMode("edit")}
+                className={
+                  mode === "edit"
+                    ? "bg-ink px-3 py-1.5 font-semibold uppercase tracking-wider text-paper"
+                    : "border border-rule-dark px-3 py-1.5 font-semibold uppercase tracking-wider hover:border-ink"
+                }
+              >
+                Edit
+              </button>
+            )}
+            {diffBlocks && (
+              <button
+                type="button"
+                onClick={() => void switchMode("changes")}
+                className={
+                  mode === "changes"
+                    ? "bg-ink px-3 py-1.5 font-semibold uppercase tracking-wider text-paper"
+                    : "border border-rule-dark px-3 py-1.5 font-semibold uppercase tracking-wider hover:border-ink"
+                }
+              >
+                {canEditBody ? "My changes" : "Changes"}
+                {hasDiff
+                  ? ` · ${(() => {
+                      const s = diffSummary(diffBlocks);
+                      return s.added + s.removed + s.edited;
+                    })()}`
+                  : ""}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => void switchMode("clean")}
+              className={
+                mode === "clean"
+                  ? "bg-ink px-3 py-1.5 font-semibold uppercase tracking-wider text-paper"
+                  : "border border-rule-dark px-3 py-1.5 font-semibold uppercase tracking-wider hover:border-ink"
+              }
+            >
+              Clean
+            </button>
+            <span className="text-[11px] text-ink-soft">
+              {mode === "edit"
+                ? "Fix the copy where the editor flagged it. Edits save automatically."
+                : mode === "changes"
+                  ? hasDiff
+                    ? canEditBody
+                      ? "Green is what you added, red is what you removed."
+                      : "Green was added and red removed since the last review. Switch to Clean to comment on text."
+                    : "No changes since the last review."
+                  : ""}
+            </span>
+          </div>
+        )}
+
         <div
           ref={bodyRef}
           onMouseUp={captureSelection}
           onTouchEnd={captureSelection}
           className="mt-6"
         >
-          {body}
+          {mode === "edit" ? (
+            <FeedbackEditor
+              articleId={articleId}
+              isRevision={isRevision}
+              payloadBase={content}
+              initialBody={liveBody}
+              specs={highlightSpecs.filter((s) => s.id !== "pending")}
+              specsKey={quoteKey}
+              onHighlightClick={focusThread}
+              onMissed={reportMissed}
+              onBodyChange={handleBodyChange}
+              handleRef={editorHandle}
+              nameHint={content.title || null}
+            />
+          ) : mode === "changes" && diffBlocks ? (
+            <TrackedBody blocks={diffBlocks} />
+          ) : (
+            body
+          )}
         </div>
         {iconPop && (
           <div
@@ -1032,12 +1212,31 @@ export function ReviewClient({
           </div>
         )}
 
+        {isAuthor && canEditBody && (
+          <button
+            type="button"
+            onClick={() => void submitRevisions()}
+            disabled={busy}
+            className="mt-5 block w-full bg-accent py-3 text-center text-xs font-semibold uppercase tracking-wider text-white hover:bg-accent-hover disabled:opacity-50"
+          >
+            Submit revisions
+          </button>
+        )}
+
         {isAuthor && state !== "awaiting_editor" && (
           <Link
             href={`/admin/articles/${articleId}/edit`}
-            className="mt-5 block bg-accent py-3 text-center text-xs font-semibold uppercase tracking-wider text-white hover:bg-accent-hover"
+            className={
+              canEditBody
+                ? "mt-2 block border border-ink py-3 text-center text-xs font-semibold uppercase tracking-wider hover:bg-ink hover:text-paper"
+                : "mt-5 block bg-accent py-3 text-center text-xs font-semibold uppercase tracking-wider text-white hover:bg-accent-hover"
+            }
           >
-            {state === "awaiting_writer" ? "Revise & resubmit" : "Edit"}
+            {canEditBody
+              ? "Open full editor (title, cover, section)"
+              : state === "awaiting_writer"
+                ? "Revise & resubmit"
+                : "Edit"}
           </Link>
         )}
       </aside>
