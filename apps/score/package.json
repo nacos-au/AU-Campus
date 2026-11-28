@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start --port 3002",
     "lint": "eslint",
-    "test": "tsx --test src/lib/schedule/*.test.ts src/lib/match/*.test.ts src/lib/lineup-links/*.test.ts src/lib/keeper/*.test.ts src/lib/players/*.test.ts src/lib/data/head-to-head-query.test.ts",
+    "test": "tsx --test src/lib/schedule/*.test.ts src/lib/match/*.test.ts src/lib/lineup-links/*.test.ts src/lib/keeper/*.test.ts src/lib/players/*.test.ts src/lib/data/*.test.ts",
     "db:seed": "tsx scripts/seed.ts"
   },
   "dependencies": {

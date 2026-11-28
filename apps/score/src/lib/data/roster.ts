@@ -15,6 +15,8 @@ import {
   type RosterPlayerRow,
 } from "@/lib/data/demo-roster";
 import { primaryPosition } from "@/lib/roster/positions";
+import { queryPlayerStats } from "@/lib/data/player-stats-query";
+import type { PlayerCareerStats } from "@/lib/players/player-stats";
 import { sportToDbId, type SportId } from "@/lib/utils/sport";
 
 export type { RosterImportInput, RosterImportResult, RosterPlayerRow } from "@/lib/data/demo-roster";
@@ -328,7 +330,7 @@ export async function fetchPlayerById(playerId: string): Promise<Player | null> 
   const supabase = await createClient();
   const { data } = (await supabase
     .from("players")
-    .select("*")
+    .select("*, department:departments(id, name, short_code)")
     .eq("id", playerId)
     .maybeSingle()) as { data: Player | null };
   return data;
@@ -370,7 +372,12 @@ export async function fetchTeamById(
 export async function fetchPlayerClubForSport(
   playerId: string,
   sport: SportId
-): Promise<{ team_id: string; team_name: string; short_code: string | null } | null> {
+): Promise<{
+  team_id: string;
+  team_name: string;
+  short_code: string | null;
+  jersey_number?: number | null;
+} | null> {
   if (await inDemo()) {
     const { DEMO_PLAYERS, DEMO_TEAMS, DEMO_DEPARTMENTS } = await import("@/lib/data/demo");
     const player = DEMO_PLAYERS.find((p) => p.id === playerId);
@@ -389,13 +396,16 @@ export async function fetchPlayerClubForSport(
 
   const { data } = (await supabase
     .from("player_sport_registry")
-    .select("team_id, team:teams(id, name, department:departments(short_code))")
+    // Inner join so the sport filter applies to the club, not just the registry row.
+    .select("team_id, jersey_number, team:teams!inner(id, name, sport_id, department:departments(short_code))")
     .eq("player_id", playerId)
     .eq("is_active", true)
+    .eq("team.sport_id", sportUuid)
     .limit(1)
     .maybeSingle()) as {
     data: {
       team_id: string;
+      jersey_number: number | null;
       team:
         | {
             id: string;
@@ -418,7 +428,20 @@ export async function fetchPlayerClubForSport(
     team_id: data.team_id,
     team_name: team.name,
     short_code: dept?.short_code ?? null,
+    jersey_number: data.jersey_number,
   };
+}
+
+/**
+ * Career stats for the public profile. Live only: demo profiles keep the
+ * sample numbers from the sport config. Null means "could not be read".
+ */
+export async function fetchPlayerCareerStats(
+  playerId: string,
+  sport: SportId
+): Promise<PlayerCareerStats | null> {
+  if (await inDemo()) return null;
+  return queryPlayerStats(await createClient(), playerId, sportToDbId(sport));
 }
 
 export async function updateTeamLogo(

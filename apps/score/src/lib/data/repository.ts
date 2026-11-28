@@ -33,6 +33,7 @@ import {
 } from "@/lib/data/demo-competitions-store";
 import { resolveSportUuid } from "@/lib/data/sport-ids";
 import { queryHeadToHeadMatches } from "@/lib/data/head-to-head-query";
+import { queryClubDirectory } from "@/lib/data/club-directory-query";
 import {
   getDemoMatchById,
   listAllDemoMatches,
@@ -407,6 +408,15 @@ export async function fetchMatchesForHeadToHead(
   }
 
   return queryHeadToHeadMatches(await createClient(), sportDbId, teamAId, teamBId);
+}
+
+/** Public clubs directory. Live mode reads teams; demo mode is handled by the page. */
+export async function fetchClubDirectory(
+  sport: SportId,
+  tournamentId?: string | null
+): Promise<Team[]> {
+  if (!hasSupabaseConfig() || (await getScoreDemoMode())) return [];
+  return queryClubDirectory(await createClient(), sportToDbId(sport), tournamentId);
 }
 
 /** Explicit team stats logged on the manual log page. Demo mode returns none (no fake numbers). */
@@ -857,10 +867,16 @@ export async function fetchSeasonAwards(
   }
 
   const supabase = await createClient();
+  // season_awards.sport_id is a UUID; callers pass a slug like "sport-football".
+  const sportUuid = await resolveSportUuid(supabase, sportDbId);
+  if (typeof sportUuid !== "string") {
+    console.error("[awards] sport lookup failed:", sportUuid.error);
+    return [];
+  }
   let query = supabase
     .from("season_awards")
     .select("*")
-    .eq("sport_id", sportDbId)
+    .eq("sport_id", sportUuid)
     .eq("season", season)
     .eq("published", true)
     .order("award_type");
@@ -1428,7 +1444,15 @@ export async function fetchGuestTeams(sport?: SportId): Promise<Team[]> {
 
   const supabase = await createClient();
   let query = supabase.from("teams").select("*").eq("is_guest", true).is("deleted_at", null);
-  if (sportDbId) query = query.eq("sport_id", sportDbId);
+  if (sportDbId) {
+    // teams.sport_id is a UUID; sportDbId is a slug like "sport-football".
+    const sportUuid = await resolveSportUuid(supabase, sportDbId);
+    if (typeof sportUuid !== "string") {
+      console.error("[guest-teams] sport lookup failed:", sportUuid.error);
+      return [];
+    }
+    query = query.eq("sport_id", sportUuid);
+  }
   const { data } = await query.order("name") as { data: Team[] | null };
   return data ?? [];
 }
