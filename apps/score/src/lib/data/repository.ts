@@ -32,6 +32,7 @@ import {
   registerDemoTournament,
 } from "@/lib/data/demo-competitions-store";
 import { resolveSportUuid } from "@/lib/data/sport-ids";
+import { queryHeadToHeadMatches } from "@/lib/data/head-to-head-query";
 import {
   getDemoMatchById,
   listAllDemoMatches,
@@ -279,6 +280,8 @@ export async function fetchLeagueStandings(
   tournamentId?: string
 ): Promise<StandingRow[]> {
   const rows = await fetchGroupStandings(sportDbId, tournamentId);
+  // Group columns are stripped from the league table; the destructured names are unused on purpose.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   return rows.map(({ group_id: _g, group_name: _n, ...row }) => row);
 }
 
@@ -403,32 +406,7 @@ export async function fetchMatchesForHeadToHead(
     );
   }
 
-  const supabase = await createClient();
-  // `matches.sport_id` is a UUID; the caller passes a slug like "sport-football".
-  const sportUuid = await resolveSportUuid(supabase, sportDbId);
-  if (typeof sportUuid !== "string") {
-    console.error("[head-to-head] sport lookup failed:", sportUuid.error);
-    return [];
-  }
-
-  const { data, error } = await supabase
-    .from("matches")
-    .select(
-      "*, home_team:teams!home_team_id(*, department:departments(short_code)), away_team:teams!away_team_id(*, department:departments(short_code)), tournament:tournaments(*)"
-    )
-    .eq("sport_id", sportUuid)
-    .eq("status", "completed")
-    .is("deleted_at", null)
-    .or(
-      `and(home_team_id.eq.${teamAId},away_team_id.eq.${teamBId}),and(home_team_id.eq.${teamBId},away_team_id.eq.${teamAId})`
-    )
-    .order("scheduled_at", { ascending: false }) as { data: Match[] | null; error: { message: string } | null };
-
-  if (error) {
-    console.error("[head-to-head] matches read failed:", error.message);
-    return [];
-  }
-  return (data ?? []) as Match[];
+  return queryHeadToHeadMatches(await createClient(), sportDbId, teamAId, teamBId);
 }
 
 /** Explicit team stats logged on the manual log page. Demo mode returns none (no fake numbers). */

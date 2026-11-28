@@ -1,7 +1,7 @@
 import type { createClient } from "@/lib/supabase/server";
 import { dbIdToSport, type SportId } from "@/lib/utils/sport";
 
-type Supabase = Awaited<ReturnType<typeof createClient>>;
+export type Supabase = Awaited<ReturnType<typeof createClient>>;
 
 /** Map a `sports.name` row to the public SportId slug used in URLs. */
 export function sportLabelToSportId(name: string): SportId {
